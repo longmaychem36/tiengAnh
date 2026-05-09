@@ -23,6 +23,9 @@ const navItems = [
 // Admin can manage content
 const adminItems = [
   { to: '/admin/courses', icon: FiBook, label: 'QL Khóa học' },
+  { to: '/admin/speaking', icon: FiMic, label: 'QL Speaking' },
+  { to: '/admin/writing', icon: FiBook, label: 'QL Writing' },
+  { to: '/admin/grammar', icon: FiBookOpen, label: 'QL Grammar' },
   { to: '/admin/games', icon: FiPlay, label: 'QL Mini Games' },
 ];
 

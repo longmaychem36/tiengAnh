@@ -32,6 +32,9 @@ import AdminCourses from './pages/admin/AdminCourses';
 import AdminLessons from './pages/admin/AdminLessons';
 import AdminGames from './pages/admin/AdminGames';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminSpeaking from './pages/admin/AdminSpeaking';
+import AdminWriting from './pages/admin/AdminWriting';
+import AdminGrammar from './pages/admin/AdminGrammar';
 
 function App() {
   const { user } = useAuth();
@@ -72,6 +75,9 @@ function App() {
           <>
             <Route path="/admin/courses" element={<AdminCourses />} />
             <Route path="/admin/courses/:courseId/lessons" element={<AdminLessons />} />
+            <Route path="/admin/speaking" element={<AdminSpeaking />} />
+            <Route path="/admin/writing" element={<AdminWriting />} />
+            <Route path="/admin/grammar" element={<AdminGrammar />} />
             <Route path="/admin/games" element={<AdminGames />} />
           </>
         )}

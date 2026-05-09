@@ -4,33 +4,39 @@
 const speakingService = require('./speaking.service');
 const { success, created, badRequest } = require('../../utils/responseHelper');
 const fs = require('fs');
-const { exec } = require('child_process');
 const path = require('path');
+const axios = require('axios');
+const FormData = require('form-data');
+
+const WHISPER_SERVER_URL = process.env.WHISPER_SERVER_URL || 'http://127.0.0.1:5001';
 
 const speakingController = {
-  async uploadRecording(req, res, next) {
-    try {
-      const { lessonId } = req.body;
-      if (!lessonId) return badRequest(res, 'Lesson ID is required');
-      if (!req.file) return badRequest(res, 'Audio file is required');
-
-      const audioUrl = `/uploads/audio/${req.file.filename}`;
-      const record = await speakingService.saveRecording(req.user.id, lessonId, audioUrl);
-      return created(res, record, 'Recording saved');
-    } catch (err) {
-      next(err);
-    }
-  },
-
+  /**
+   * Transcribe audio file using Whisper server.
+   * Receives audio upload from frontend, forwards to Python Whisper server.
+   */
   async transcribeAudio(req, res, next) {
     try {
       if (!req.file) return badRequest(res, 'Audio file is required');
 
       const filePath = path.resolve(req.file.path);
-      const axios = require('axios');
       
       try {
-        const response = await axios.post('http://127.0.0.1:5001/transcribe', { file: filePath });
+        // Create form data to send to Whisper server
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(filePath), {
+          filename: req.file.filename || 'audio.webm',
+          contentType: req.file.mimetype || 'audio/webm'
+        });
+
+        const response = await axios.post(`${WHISPER_SERVER_URL}/transcribe`, formData, {
+          headers: {
+            ...formData.getHeaders()
+          },
+          timeout: 30000, // 30 second timeout
+          maxContentLength: 50 * 1024 * 1024
+        });
+
         const result = response.data;
         
         if (result.error) {
@@ -38,31 +44,34 @@ const speakingController = {
           return res.status(500).json({ success: false, message: result.error });
         }
         
-        return success(res, { transcript: result.text });
+        return success(res, { 
+          transcript: result.text,
+          duration: result.duration,
+          language: result.language
+        });
       } catch (err) {
         console.error('Failed to communicate with Whisper Server:', err.message);
-        // Clean up file
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Whisper server đang offline. Vui lòng chạy: python whisper_server.py' 
+        });
+      } finally {
+        // Clean up uploaded file
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (e) {
+          console.error('Failed to delete temp audio file:', e.message);
         }
-        return res.status(500).json({ success: false, message: 'Speech recognition engine is offline. Please make sure the whisper server is running.' });
       }
     } catch (err) {
       next(err);
     }
   },
 
-  async getRecords(req, res, next) {
-    try {
-      const records = await speakingService.getRecords(req.user.id);
-      return success(res, records);
-    } catch (err) {
-      next(err);
-    }
-  },
-
   // ==========================================
-  // NEW FLUENTEZ-LIKE MODULE ENDPOINTS
+  // LESSON ENDPOINTS
   // ==========================================
   
   async getLessons(req, res, next) {
@@ -111,18 +120,24 @@ const speakingController = {
       if (levelResult.recordset.length === 0) return badRequest(res, 'Lesson not found');
 
       const qResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`
-        SELECT Id, Question, Translation, Option1, Option2, Option3
+        SELECT Id, Question, Translation, Option1, Option1VI, Option2, Option2VI, Option3, Option3VI
         FROM SpeakingQuestions
         WHERE LessonId = @id
         ORDER BY OrderIndex ASC
       `);
 
-      const sentences = qResult.recordset.map(q => ({
-        id: q.Id,
-        question: q.Question,
-        translation: q.Translation,
-        options: [q.Option1, q.Option2, q.Option3].filter(Boolean)
-      }));
+      const sentences = qResult.recordset.map(q => {
+        const opts = [];
+        if (q.Option1) opts.push({ text: q.Option1, translation: q.Option1VI || '' });
+        if (q.Option2) opts.push({ text: q.Option2, translation: q.Option2VI || '' });
+        if (q.Option3) opts.push({ text: q.Option3, translation: q.Option3VI || '' });
+        return {
+          id: q.Id,
+          question: q.Question,
+          translation: q.Translation,
+          options: opts
+        };
+      });
 
       return success(res, { 
         lesson: { id: levelResult.recordset[0].Id, title: levelResult.recordset[0].Name },
