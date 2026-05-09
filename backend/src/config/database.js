@@ -1,11 +1,38 @@
 // ============================================
 // SQL Server Database Configuration
+// Supports both Windows Auth (dev) and SQL Auth (production/cloud)
 // ============================================
-const sql = require('mssql/msnodesqlv8');
+const sql = require('mssql');
 
-const dbConfig = {
-  connectionString: `Driver={SQL Server};Server=${process.env.DB_SERVER || 'localhost\\SQLEXPRESS'};Database=${process.env.DB_NAME || 'EnglishLearningSystem'};Trusted_Connection=yes;`
-};
+function getDbConfig() {
+  // Production mode: use username/password authentication (for Azure SQL, Render, etc.)
+  if (process.env.NODE_ENV === 'production' || process.env.DB_USER) {
+    return {
+      server: process.env.DB_SERVER || 'localhost',
+      database: process.env.DB_NAME || 'EnglishLearningSystem',
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      port: parseInt(process.env.DB_PORT) || 1433,
+      options: {
+        encrypt: process.env.DB_ENCRYPT === 'true',
+        trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true',
+      },
+      pool: {
+        max: 10,
+        min: 0,
+        idleTimeoutMillis: 30000
+      },
+      requestTimeout: 30000,
+      connectionTimeout: 30000
+    };
+  }
+
+  // Development mode: use Windows Authentication via msnodesqlv8
+  const sqlLocal = require('mssql/msnodesqlv8');
+  return {
+    connectionString: `Driver={SQL Server};Server=${process.env.DB_SERVER || 'localhost\\SQLEXPRESS'};Database=${process.env.DB_NAME || 'EnglishLearningSystem'};Trusted_Connection=yes;`
+  };
+}
 
 let pool = null;
 
@@ -14,7 +41,15 @@ let pool = null;
  */
 async function connectDB() {
   try {
-    pool = await sql.connect(dbConfig);
+    const config = getDbConfig();
+    
+    // Use msnodesqlv8 driver for local Windows Auth
+    if (config.connectionString) {
+      const sqlLocal = require('mssql/msnodesqlv8');
+      pool = await sqlLocal.connect(config);
+    } else {
+      pool = await sql.connect(config);
+    }
     return pool;
   } catch (error) {
     console.error('Database connection failed:', error?.message || error);
