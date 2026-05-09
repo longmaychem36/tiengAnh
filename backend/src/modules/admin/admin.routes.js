@@ -6,10 +6,231 @@ const authMiddleware = require('../../middlewares/authMiddleware');
 const { requireRole, superAdminOnly } = require('../../middlewares/roleMiddleware');
 const adminGameService = require('./admin.game.service');
 const adminUserService = require('./admin.user.service');
+const adminContentService = require('./admin.content.service');
 const { success, badRequest, notFound } = require('../../utils/responseHelper');
 
 // All admin routes require at least admin role
 router.use(authMiddleware);
+
+// ========== SPEAKING MANAGEMENT (admin + superadmin) ==========
+router.get('/speaking/lessons', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.getSpeakingLessons();
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/speaking/lessons', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.createSpeakingLesson(req.body);
+    return success(res, data, 'Lesson created');
+  } catch (err) { next(err); }
+});
+
+router.put('/speaking/lessons/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.updateSpeakingLesson(req.params.id, req.body);
+    return success(res, null, 'Lesson updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/speaking/lessons/:id', superAdminOnly(), async (req, res, next) => {
+  try {
+    await adminContentService.deleteSpeakingLesson(req.params.id);
+    return success(res, null, 'Lesson deleted');
+  } catch (err) { next(err); }
+});
+
+router.get('/speaking/lessons/:id/questions', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.getSpeakingQuestions(req.params.id);
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/speaking/questions', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.createSpeakingQuestion(req.body);
+    return success(res, data, 'Question created');
+  } catch (err) { next(err); }
+});
+
+router.put('/speaking/questions/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.updateSpeakingQuestion(req.params.id, req.body);
+    return success(res, null, 'Question updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/speaking/questions/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.deleteSpeakingQuestion(req.params.id);
+    return success(res, null, 'Question deleted');
+  } catch (err) { next(err); }
+});
+
+// ========== WRITING MANAGEMENT (admin + superadmin) ==========
+router.get('/writing/lessons', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.getWritingLessons();
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/writing/lessons', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.createWritingLesson(req.body);
+    return success(res, data, 'Lesson created');
+  } catch (err) { next(err); }
+});
+
+router.put('/writing/lessons/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.updateWritingLesson(req.params.id, req.body);
+    return success(res, null, 'Lesson updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/writing/lessons/:id', superAdminOnly(), async (req, res, next) => {
+  try {
+    await adminContentService.deleteWritingLesson(req.params.id);
+    return success(res, null, 'Lesson deleted');
+  } catch (err) { next(err); }
+});
+
+router.get('/writing/lessons/:id/exercises', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.getWritingExercises(req.params.id);
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/writing/exercises', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.createWritingExercise(req.body);
+    return success(res, data, 'Exercise created');
+  } catch (err) { next(err); }
+});
+
+router.put('/writing/exercises/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.updateWritingExercise(req.params.id, req.body);
+    return success(res, null, 'Exercise updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/writing/exercises/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.deleteWritingExercise(req.params.id);
+    return success(res, null, 'Exercise deleted');
+  } catch (err) { next(err); }
+});
+
+router.get('/writing/exercises/:id/vocab', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.getWritingVocab(req.params.id);
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/writing/vocab', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.createWritingVocab(req.body);
+    return success(res, data, 'Vocab created');
+  } catch (err) { next(err); }
+});
+
+router.delete('/writing/vocab/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.deleteWritingVocab(req.params.id);
+    return success(res, null, 'Vocab deleted');
+  } catch (err) { next(err); }
+});
+
+// ========== GRAMMAR MANAGEMENT (admin + superadmin) ==========
+router.get('/grammar/categories', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.getGrammarCategories();
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/grammar/categories', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.createGrammarCategory(req.body);
+    return success(res, data, 'Category created');
+  } catch (err) { next(err); }
+});
+
+router.put('/grammar/categories/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.updateGrammarCategory(req.params.id, req.body);
+    return success(res, null, 'Category updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/grammar/categories/:id', superAdminOnly(), async (req, res, next) => {
+  try {
+    await adminContentService.deleteGrammarCategory(req.params.id);
+    return success(res, null, 'Category deleted');
+  } catch (err) { next(err); }
+});
+
+router.get('/grammar/categories/:id/topics', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.getGrammarTopics(req.params.id);
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/grammar/topics', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.createGrammarTopic(req.body);
+    return success(res, data, 'Topic created');
+  } catch (err) { next(err); }
+});
+
+router.put('/grammar/topics/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.updateGrammarTopic(req.params.id, req.body);
+    return success(res, null, 'Topic updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/grammar/topics/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.deleteGrammarTopic(req.params.id);
+    return success(res, null, 'Topic deleted');
+  } catch (err) { next(err); }
+});
+
+router.get('/grammar/topics/:id/quizzes', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.getGrammarQuizzes(req.params.id);
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/grammar/quizzes', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.createGrammarQuiz(req.body);
+    return success(res, data, 'Quiz created');
+  } catch (err) { next(err); }
+});
+
+router.put('/grammar/quizzes/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.updateGrammarQuiz(req.params.id, req.body);
+    return success(res, null, 'Quiz updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/grammar/quizzes/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.deleteGrammarQuiz(req.params.id);
+    return success(res, null, 'Quiz deleted');
+  } catch (err) { next(err); }
+});
 
 // ========== GAME MANAGEMENT (admin + superadmin) ==========
 

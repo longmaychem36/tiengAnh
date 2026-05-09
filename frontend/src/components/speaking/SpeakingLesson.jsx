@@ -93,20 +93,36 @@ const SpeakingLesson = () => {
     }
   }, [currentIndex, currentSentence, loading, showSettings]);
 
-  const handleRecordingComplete = async (transcript) => {
+  /**
+   * New flow: receives audio blob from Recorder
+   * 1. Upload audio → Whisper server transcribes
+   * 2. Use transcript → analyze against target texts
+   */
+  const handleRecordingComplete = async (audioBlob) => {
     setIsAnalyzing(true);
     
     try {
-      const res = await speakingApi.analyzeText({
-        targetTexts: currentSentence.options,
+      // Step 1: Transcribe audio using Whisper
+      const transcribeRes = await speakingApi.transcribeAudio(audioBlob);
+      const transcript = transcribeRes.data.transcript;
+
+      if (!transcript || transcript.trim() === '') {
+        toast.error('Không nhận diện được giọng nói. Vui lòng nói to và rõ ràng hơn.');
+        setIsAnalyzing(false);
+        return;
+      }
+
+      // Step 2: Analyze transcript against target texts
+      const analyzeRes = await speakingApi.analyzeText({
+        targetTexts: currentSentence.options.map(o => o.text),
         transcript: transcript
       });
       
       const newResult = {
-        score: res.data.score,
-        transcript: res.data.transcript,
-        feedback: res.data.feedback,
-        matchedText: res.data.matchedText
+        score: analyzeRes.data.score,
+        transcript: analyzeRes.data.transcript,
+        feedback: analyzeRes.data.feedback,
+        matchedText: analyzeRes.data.matchedText
       };
       
       setResult(newResult);
@@ -119,10 +135,11 @@ const SpeakingLesson = () => {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Lỗi phân tích giọng nói');
+      const errorMsg = err.response?.data?.message || 'Lỗi nhận diện giọng nói';
+      toast.error(errorMsg);
       setResult({
         score: 0,
-        transcript: transcript,
+        transcript: '',
         feedback: 'Không thể phân tích, vui lòng thử lại.'
       });
     } finally {
@@ -182,7 +199,7 @@ const SpeakingLesson = () => {
         {/* Step 1: Show Question & Options */}
         <div style={{ marginBottom: 'var(--space-8)' }}>
           <div style={{ color: 'var(--color-primary)', fontWeight: 600, marginBottom: 'var(--space-2)' }}>Câu hỏi:</div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-6)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
             <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
               "{currentSentence.question}"
             </h2>
@@ -195,13 +212,18 @@ const SpeakingLesson = () => {
               <FiVolume2 size={24} />
             </button>
           </div>
+          {currentSentence.translation && (
+            <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 'var(--space-6)' }}>
+              ({currentSentence.translation})
+            </div>
+          )}
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', alignItems: 'center' }}>
             <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
               Hãy chọn và đọc một trong các câu trả lời sau:
             </div>
             {currentSentence.options?.map((opt, idx) => {
-               let isMatched = result && result.matchedText === opt;
+               let isMatched = result && result.matchedText === opt.text;
                let opacity = result && !isMatched ? 0.4 : 1;
                return (
                  <div key={idx} style={{ 
@@ -215,10 +237,19 @@ const SpeakingLesson = () => {
                    fontSize: 'var(--font-size-lg)',
                    opacity: opacity,
                    transition: 'all 0.3s',
-                   cursor: 'pointer'
-                 }} onClick={() => playTTS(opt)}>
-                   <span>{opt}</span>
-                   <button className="btn btn-ghost" style={{ padding: 4, margin: 0, color: isMatched ? '#059669' : 'var(--color-text-muted)' }} onClick={(e) => { e.stopPropagation(); playTTS(opt); }}>
+                   cursor: 'pointer',
+                   width: '100%',
+                   maxWidth: 500
+                 }} onClick={() => playTTS(opt.text)}>
+                   <div style={{ flex: 1, textAlign: 'left' }}>
+                     <div>{opt.text}</div>
+                     {opt.translation && (
+                       <div style={{ fontSize: 'var(--font-size-xs)', fontWeight: 400, color: isMatched ? '#059669' : 'var(--color-text-muted)', fontStyle: 'italic', marginTop: 2 }}>
+                         ({opt.translation})
+                       </div>
+                     )}
+                   </div>
+                   <button className="btn btn-ghost" style={{ padding: 4, margin: 0, flexShrink: 0, color: isMatched ? '#059669' : 'var(--color-text-muted)' }} onClick={(e) => { e.stopPropagation(); playTTS(opt.text); }}>
                      <FiVolume2 size={18} />
                    </button>
                  </div>
@@ -304,7 +335,7 @@ const SpeakingLesson = () => {
                 style={{ width: '100%', accentColor: 'var(--color-primary)' }}
               />
               <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginTop: 'var(--space-2)' }}>
-                Nhận diện tự động có thể sai sót nhỏ, nên để mức 60-70% để dễ dàng vượt qua. 100% đòi hỏi đọc chuẩn xác tuyệt đối.
+                Để mức 60-70% để dễ vượt qua, hoặc 80-100% nếu muốn luyện chuẩn xác hơn.
               </p>
             </div>
 
