@@ -9,7 +9,8 @@ const corsOptions = {
       'http://localhost:5173'
     ];
     // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin || allowedOrigins.includes(origin)) {
+    // In production, also allow any *.vercel.app subdomain
+    if (!origin || allowedOrigins.includes(origin) || (origin && origin.endsWith('.vercel.app'))) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
