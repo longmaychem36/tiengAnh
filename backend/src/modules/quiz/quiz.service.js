@@ -84,8 +84,7 @@ const quizService = {
       .input('correctAnswer', sql.NVarChar, data.correctAnswer)
       .query(`
         INSERT INTO Quiz (LessonId, Question, Type, CorrectAnswer)
-        OUTPUT INSERTED.*
-        VALUES (@lessonId, @question, @type, @correctAnswer)
+        VALUES (@lessonId, @question, @type, @correctAnswer) RETURNING *
       `);
 
     const quiz = result.recordset[0];

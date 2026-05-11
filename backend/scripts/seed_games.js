@@ -1,9 +1,9 @@
 // ============================================
 // Seed Games — Insert sample games, questions and options
 // ============================================
-require('dotenv').config();
-const { connectDB, getPool } = require('./src/config/database');
-const { sql } = require('./src/config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { connectDB, getPool } = require('../src/config/database');
+const { sql } = require('../src/config/database');
 
 async function seed() {
   await connectDB();
@@ -13,8 +13,7 @@ async function seed() {
 
   // ===== GAME 1: Multiple Choice — Basic Vocabulary =====
   const g1 = await pool.request().query(`
-    INSERT INTO Games (Name, Type, Difficulty) OUTPUT INSERTED.Id
-    VALUES (N'Vocabulary Challenge', 'multiple_choice', 'easy')
+    INSERT INTO Games (Name, Type, Difficulty) VALUES (N'Vocabulary Challenge', 'multiple_choice', 'easy') RETURNING Id
   `);
   const game1Id = g1.recordset[0].Id;
 
@@ -32,7 +31,7 @@ async function seed() {
       .input('question', sql.NVarChar, item.q)
       .input('correctAnswer', sql.NVarChar, item.answer)
       .query(`INSERT INTO GameQuestions (GameId, Question, QuestionType, CorrectAnswer)
-              OUTPUT INSERTED.Id VALUES (@gameId, @question, 'text', @correctAnswer)`);
+              VALUES (@gameId, @question, 'text', @correctAnswer) RETURNING Id`);
     const qId = qRes.recordset[0].Id;
     for (const opt of item.options) {
       await pool.request()
@@ -45,8 +44,7 @@ async function seed() {
 
   // ===== GAME 2: Listening — Audio Comprehension =====
   const g2 = await pool.request().query(`
-    INSERT INTO Games (Name, Type, Difficulty) OUTPUT INSERTED.Id
-    VALUES (N'Listening Comprehension', 'listening', 'medium')
+    INSERT INTO Games (Name, Type, Difficulty) VALUES (N'Listening Comprehension', 'listening', 'medium') RETURNING Id
   `);
   const game2Id = g2.recordset[0].Id;
 
@@ -64,7 +62,7 @@ async function seed() {
       .input('question', sql.NVarChar, item.q)
       .input('correctAnswer', sql.NVarChar, item.answer)
       .query(`INSERT INTO GameQuestions (GameId, Question, QuestionType, CorrectAnswer)
-              OUTPUT INSERTED.Id VALUES (@gameId, @question, 'text', @correctAnswer)`);
+              VALUES (@gameId, @question, 'text', @correctAnswer) RETURNING Id`);
     const qId = qRes.recordset[0].Id;
     for (const opt of item.options) {
       await pool.request()
@@ -77,8 +75,7 @@ async function seed() {
 
   // ===== GAME 3: Typing — Spell It Out =====
   const g3 = await pool.request().query(`
-    INSERT INTO Games (Name, Type, Difficulty) OUTPUT INSERTED.Id
-    VALUES (N'Spell It Out', 'typing', 'medium')
+    INSERT INTO Games (Name, Type, Difficulty) VALUES (N'Spell It Out', 'typing', 'medium') RETURNING Id
   `);
   const game3Id = g3.recordset[0].Id;
 
@@ -104,8 +101,7 @@ async function seed() {
 
   // ===== GAME 4: Matching — Word Pairs =====
   const g4 = await pool.request().query(`
-    INSERT INTO Games (Name, Type, Difficulty) OUTPUT INSERTED.Id
-    VALUES (N'Word Match', 'matching', 'easy')
+    INSERT INTO Games (Name, Type, Difficulty) VALUES (N'Word Match', 'matching', 'easy') RETURNING Id
   `);
   const game4Id = g4.recordset[0].Id;
 
@@ -123,7 +119,7 @@ async function seed() {
       .input('question', sql.NVarChar, item.q)
       .input('correctAnswer', sql.NVarChar, item.answer)
       .query(`INSERT INTO GameQuestions (GameId, Question, QuestionType, CorrectAnswer)
-              OUTPUT INSERTED.Id VALUES (@gameId, @question, 'matching', @correctAnswer)`);
+              VALUES (@gameId, @question, 'matching', @correctAnswer) RETURNING Id`);
     const qId = qRes.recordset[0].Id;
     for (const opt of item.options) {
       await pool.request()

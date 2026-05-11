@@ -51,7 +51,7 @@ const dictionaryService = {
       LEFT JOIN LearningLevels ll ON d.LevelId = ll.Id
       ${whereClause}
       ORDER BY d.Word ASC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      LIMIT @limit OFFSET @offset
     `);
     
     let entries = result.recordset;
@@ -198,7 +198,7 @@ const dictionaryService = {
       const pool = getPool();
       const existing = await pool.request()
         .input('w', sql.NVarChar, englishWord)
-        .query('SELECT TOP 1 * FROM DictionaryEntries WHERE LOWER(Word) = @w');
+        .query('SELECT * FROM DictionaryEntries WHERE LOWER(Word) = @w LIMIT 1');
       if (existing.recordset.length > 0) return existing.recordset[0];
 
       // Create new entry
@@ -261,7 +261,7 @@ const dictionaryService = {
       // Source 3: Local DB — fuzzy match with LIKE
       const fuzzyResult = await pool.request()
         .input('fuzzy', sql.NVarChar, `${word.substring(0, Math.max(2, Math.floor(word.length * 0.6)))}%`)
-        .query('SELECT TOP 5 Word FROM DictionaryEntries WHERE Word LIKE @fuzzy ORDER BY Word');
+        .query('SELECT Word FROM DictionaryEntries WHERE Word LIKE @fuzzy ORDER BY Word LIMIT 5');
       fuzzyResult.recordset.forEach(r => {
         if (!suggestions.includes(r.Word) && r.Word.toLowerCase() !== word.toLowerCase()) {
           suggestions.push(r.Word);
@@ -310,10 +310,11 @@ const dictionaryService = {
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
       .query(`
-        SELECT TOP 50 Id, Word, SearchedAt
+        SELECT Id, Word, SearchedAt
         FROM DictionarySearchHistory
         WHERE UserId = @userId
         ORDER BY SearchedAt DESC
+        LIMIT 50
       `);
     return result.recordset;
   },
@@ -331,8 +332,7 @@ const dictionaryService = {
       .input('levelId', sql.Int, data.levelId || null)
       .query(`
         INSERT INTO DictionaryEntries (Word, Phonetic, PartOfSpeech, MeaningEN, MeaningVI, Example, AudioUrl, LevelId)
-        OUTPUT INSERTED.*
-        VALUES (@word, @phonetic, @partOfSpeech, @meaningEN, @meaningVI, @example, @audioUrl, @levelId)
+        VALUES (@word, @phonetic, @partOfSpeech, @meaningEN, @meaningVI, @example, @audioUrl, @levelId) RETURNING *
       `);
 
     // Add synonyms if provided
@@ -357,13 +357,14 @@ const dictionaryService = {
       .input('q', sql.NVarChar, `${query}%`)
       .input('limit', sql.Int, limit)
       .query(`
-        SELECT TOP (@limit) Word, PartOfSpeech, MeaningVI
+        SELECT Word, PartOfSpeech, MeaningVI
         FROM DictionaryEntries
         WHERE Word LIKE @q OR MeaningVI LIKE @q
         ORDER BY 
           CASE WHEN Word LIKE @q THEN 0 ELSE 1 END,
-          LEN(Word) ASC, 
+          LENGTH(Word) ASC, 
           Word ASC
+        LIMIT @limit
       `);
     
     // Also try Datamuse for words not in local DB

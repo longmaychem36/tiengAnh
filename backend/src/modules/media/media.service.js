@@ -15,8 +15,7 @@ const mediaService = {
       .input('description', sql.NVarChar, description || null)
       .query(`
         INSERT INTO LessonMedia (LessonId, MediaType, MediaUrl, Description)
-        OUTPUT INSERTED.*
-        VALUES (@lessonId, @mediaType, @mediaUrl, @description)
+        VALUES (@lessonId, @mediaType, @mediaUrl, @description) RETURNING *
       `);
     return result.recordset[0];
   }

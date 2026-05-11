@@ -1,73 +1,132 @@
 // ============================================
-// SQL Server Database Configuration
-// Supports both Windows Auth (dev) and SQL Auth (production/cloud)
+// PostgreSQL Database Configuration
+// Compatibility layer mimicking mssql API
 // ============================================
-const sql = require('mssql');
-
-function getDbConfig() {
-  // Production mode: use username/password authentication (for Azure SQL, Render, etc.)
-  if (process.env.NODE_ENV === 'production' || process.env.DB_USER) {
-    return {
-      server: process.env.DB_SERVER || 'localhost',
-      database: process.env.DB_NAME || 'EnglishLearningSystem',
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      port: parseInt(process.env.DB_PORT) || 1433,
-      options: {
-        encrypt: process.env.DB_ENCRYPT === 'true',
-        trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true',
-      },
-      pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000
-      },
-      requestTimeout: 30000,
-      connectionTimeout: 30000
-    };
-  }
-
-  // Development mode: use Windows Authentication via msnodesqlv8
-  const sqlLocal = require('mssql/msnodesqlv8');
-  return {
-    connectionString: `Driver={SQL Server};Server=${process.env.DB_SERVER || 'localhost\\SQLEXPRESS'};Database=${process.env.DB_NAME || 'EnglishLearningSystem'};Trusted_Connection=yes;`
-  };
-}
+const { Pool } = require('pg');
 
 let pool = null;
 
+// Dummy sql type constants (for backward compatibility with mssql code)
+const sql = {
+  NVarChar: 'NVarChar',
+  VarChar: 'VarChar',
+  Int: 'Int',
+  Float: 'Float',
+  Bit: 'Bit',
+  UniqueIdentifier: 'UniqueIdentifier',
+  DateTime: 'DateTime',
+  NText: 'NText',
+  MAX: 'MAX',
+};
+
 /**
- * Connect to SQL Server and return the connection pool
+ * Request builder that mimics mssql's pool.request().input().query() pattern
+ */
+class PgRequest {
+  constructor(pgPool) {
+    this.pgPool = pgPool;
+    this.params = {};
+    this.paramOrder = [];
+  }
+
+  input(name, typeOrValue, value) {
+    // Support both .input(name, type, value) and .input(name, value)
+    const actualValue = value !== undefined ? value : typeOrValue;
+    this.params[name] = actualValue;
+    if (!this.paramOrder.includes(name)) {
+      this.paramOrder.push(name);
+    }
+    return this;
+  }
+
+  async query(queryText) {
+    // Convert @paramName to $N placeholders
+    let converted = queryText;
+    const values = [];
+    let paramIndex = 1;
+    const paramMap = {};
+
+    // First pass: find all @param references in the query and map them
+    for (const name of this.paramOrder) {
+      if (queryText.includes(`@${name}`)) {
+        paramMap[name] = paramIndex;
+        values.push(this.params[name]);
+        paramIndex++;
+      }
+    }
+
+    // Replace @paramName with $N (handle longer names first to avoid partial matches)
+    const sortedNames = Object.keys(paramMap).sort((a, b) => b.length - a.length);
+    for (const name of sortedNames) {
+      const regex = new RegExp(`@${name}\\b`, 'g');
+      converted = converted.replace(regex, `$${paramMap[name]}`);
+    }
+
+    // Execute the natively converted query
+    const result = await this.pgPool.query(converted, values);
+    
+    // Fallback to capitalizing first letter if not in map
+    let columnMap = {};
+    try { columnMap = require('./columnMap.json'); } catch(e) {}
+
+    const mappedRows = result.rows.map(row => {
+      const newRow = {};
+      for (const key in row) {
+        newRow[key] = row[key];
+        // Use columnMap to restore exact original casing, else fallback to PascalCase
+        const aliasKey = columnMap[key] || (key.charAt(0).toUpperCase() + key.slice(1));
+        newRow[aliasKey] = row[key];
+      }
+      return newRow;
+    });
+
+    return {
+      recordset: mappedRows,
+      rowsAffected: [result.rowCount],
+    };
+  }
+}
+
+
+/**
+ * Connect to PostgreSQL
  */
 async function connectDB() {
   try {
-    const config = getDbConfig();
-    
-    // Use msnodesqlv8 driver for local Windows Auth
-    if (config.connectionString) {
-      const sqlLocal = require('mssql/msnodesqlv8');
-      pool = await sqlLocal.connect(config);
-    } else {
-      pool = await sql.connect(config);
-    }
+    pool = new Pool({
+      host: process.env.DB_HOST || process.env.DB_SERVER || 'localhost',
+      port: parseInt(process.env.DB_PORT) || 5432,
+      database: process.env.DB_NAME || 'EnglishLearningSystem',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || '',
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+
+    // Test connection
+    const client = await pool.connect();
+    client.release();
     return pool;
   } catch (error) {
     console.error('Database connection failed:', error?.message || error);
-    if (error && typeof error === 'object') {
-      console.error('Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-    }
     throw error;
   }
 }
 
 /**
- * Get the active connection pool
+ * Get the active connection pool (returns wrapper with .request() method)
  */
 function getPool() {
   if (!pool) {
     throw new Error('Database not connected. Call connectDB() first.');
   }
-  return pool;
+  return {
+    request: () => new PgRequest(pool),
+    // Also expose raw pg pool for direct queries if needed
+    query: (text, params) => pool.query(text, params),
+  };
 }
 
 /**
@@ -76,7 +135,7 @@ function getPool() {
 async function closeDB() {
   try {
     if (pool) {
-      await pool.close();
+      await pool.end();
       pool = null;
       console.log('Database connection closed.');
     }

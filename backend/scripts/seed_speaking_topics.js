@@ -1,3 +1,4 @@
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const { connectDB, getPool, sql } = require('../src/config/database');
 
 const topics = [
@@ -113,7 +114,7 @@ async function seed() {
         .input('title', sql.NVarChar, t.Title)
         .input('desc', sql.NVarChar, t.Desc)
         .input('order', sql.Int, t.Order)
-        .query(`INSERT INTO SpeakingLessons (Title, Description, OrderIndex) OUTPUT INSERTED.Id VALUES (@title, @desc, @order)`);
+        .query(`INSERT INTO SpeakingLessons (Title, Description, OrderIndex) VALUES (@title, @desc, @order) RETURNING Id`);
 
       const topicId = res.recordset[0].Id;
       const qs = allQuestions[i];

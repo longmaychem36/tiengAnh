@@ -1,8 +1,8 @@
 // ============================================
 // Clear old grammar data and reseed with detailed content
 // ============================================
-require('dotenv').config();
-const { connectDB, getPool, sql } = require('./src/config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { connectDB, getPool, sql } = require('../src/config/database');
 
 async function clearAndReseed() {
   await connectDB();
@@ -19,14 +19,14 @@ async function clearAndReseed() {
     const r = await pool.request()
       .input('n', sql.NVarChar, name).input('nv', sql.NVarChar, nameVI)
       .input('i', sql.NVarChar, icon).input('o', sql.Int, order)
-      .query('INSERT INTO GrammarCategories (Name,NameVI,Icon,OrderIndex) OUTPUT INSERTED.Id VALUES (@n,@nv,@i,@o)');
+      .query('INSERT INTO GrammarCategories (Name,NameVI,Icon,OrderIndex) VALUES (@n,@nv,@i,@o) RETURNING Id');
     return r.recordset[0].Id;
   }
   async function insertTopic(catId, title, titleVI, content, order) {
     const r = await pool.request()
       .input('c', sql.Int, catId).input('t', sql.NVarChar, title).input('tv', sql.NVarChar, titleVI)
       .input('ct', sql.NVarChar, content).input('o', sql.Int, order)
-      .query('INSERT INTO GrammarTopics (CategoryId,Title,TitleVI,Content,OrderIndex) OUTPUT INSERTED.Id VALUES (@c,@t,@tv,@ct,@o)');
+      .query('INSERT INTO GrammarTopics (CategoryId,Title,TitleVI,Content,OrderIndex) VALUES (@c,@t,@tv,@ct,@o) RETURNING Id');
     return r.recordset[0].Id;
   }
   async function insertQuiz(topicId, q, a, b, c, d, ans, explain) {

@@ -29,7 +29,7 @@ const adminUserService = {
       LEFT JOIN UserStats us ON u.Id = us.UserId
       ${whereClause}
       ORDER BY u.CreatedAt DESC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      LIMIT @limit OFFSET @offset
     `);
 
     return { users: dataRes.recordset, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -50,7 +50,7 @@ const adminUserService = {
     const pool = getPool();
     await pool.request()
       .input('id', sql.UniqueIdentifier, userId)
-      .query('UPDATE Users SET IsActive = CASE WHEN IsActive = 1 THEN 0 ELSE 1 END WHERE Id = @id');
+      .query('UPDATE Users SET IsActive = NOT IsActive WHERE Id = @id');
   },
 
   async getUserStats() {
@@ -61,7 +61,7 @@ const adminUserService = {
         SUM(CASE WHEN Role = 'user' THEN 1 ELSE 0 END) as members,
         SUM(CASE WHEN Role = 'admin' THEN 1 ELSE 0 END) as admins,
         SUM(CASE WHEN Role = 'superadmin' THEN 1 ELSE 0 END) as superadmins,
-        SUM(CASE WHEN IsActive = 0 THEN 1 ELSE 0 END) as locked
+        SUM(CASE WHEN IsActive = false THEN 1 ELSE 0 END) as locked
       FROM Users
     `);
     return r.recordset[0];

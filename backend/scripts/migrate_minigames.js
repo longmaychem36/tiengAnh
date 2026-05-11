@@ -1,8 +1,8 @@
 // ============================================
 // Migration: New Mini Game Tables (Set → Level → Question)
 // ============================================
-require('dotenv').config();
-const { connectDB, getPool, sql } = require('./src/config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { connectDB, getPool, sql } = require('../src/config/database');
 
 async function migrate() {
   await connectDB();
@@ -21,14 +21,14 @@ async function migrate() {
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='GameSets' AND xtype='U')
     CREATE TABLE GameSets (
-      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
       Name NVARCHAR(200) NOT NULL,
       Description NVARCHAR(500),
       GameType NVARCHAR(50) NOT NULL,  -- 'matching', 'listening', 'typing', 'sentence'
       Icon NVARCHAR(10) DEFAULT '🎮',
       OrderIndex INT DEFAULT 0,
       UnlockCondition NVARCHAR(200) DEFAULT 'none', -- 'none' | 'complete_previous'
-      CreatedAt DATETIME DEFAULT GETDATE()
+      CreatedAt DATETIME DEFAULT NOW()
     )
   `);
   console.log('  ✅ GameSets');
@@ -37,7 +37,7 @@ async function migrate() {
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='GameLevels' AND xtype='U')
     CREATE TABLE GameLevels (
-      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
       SetId UNIQUEIDENTIFIER NOT NULL,
       LevelNumber INT NOT NULL,
       Name NVARCHAR(200),
@@ -45,7 +45,7 @@ async function migrate() {
       TimeLimit INT DEFAULT 60,  -- seconds
       PassScore INT DEFAULT 70,  -- minimum % to pass
       IsLocked BIT DEFAULT 0,
-      CreatedAt DATETIME DEFAULT GETDATE(),
+      CreatedAt DATETIME DEFAULT NOW(),
       FOREIGN KEY (SetId) REFERENCES GameSets(Id) ON DELETE CASCADE
     )
   `);
@@ -55,7 +55,7 @@ async function migrate() {
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='MiniGameQuestions' AND xtype='U')
     CREATE TABLE MiniGameQuestions (
-      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
       LevelId UNIQUEIDENTIFIER NOT NULL,
       QuestionType NVARCHAR(50) NOT NULL, -- 'match_pair', 'listen_choose', 'type_answer', 'order_sentence'
       ContentEN NVARCHAR(500),   -- English content (word, sentence, etc.)
@@ -74,7 +74,7 @@ async function migrate() {
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='UserGameProgress' AND xtype='U')
     CREATE TABLE UserGameProgress (
-      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
       UserId UNIQUEIDENTIFIER NOT NULL,
       LevelId UNIQUEIDENTIFIER NOT NULL,
       Score INT DEFAULT 0,

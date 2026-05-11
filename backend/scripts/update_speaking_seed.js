@@ -1,5 +1,6 @@
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const sql = require('mssql');
-const config = require('./src/config/database');
+const config = require('../src/config/database');
 
 async function run() {
   const pool = await config.connectDB();

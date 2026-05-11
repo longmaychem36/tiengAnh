@@ -168,7 +168,6 @@ function Games() {
         <h1 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <FiPlay style={{ color: 'var(--color-primary)' }} /> 
           {typeFilter === 'listening' ? 'Khoá Học Nghe' : 
-           typeFilter === 'speaking' ? 'Khoá Học Nói' : 
            typeFilter === 'matching' ? 'Khoá Học Đọc' : 
            typeFilter === 'sentence' ? 'Khoá Học Viết' : 'Mini Games'}
         </h1>

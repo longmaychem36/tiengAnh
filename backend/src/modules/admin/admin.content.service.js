@@ -16,8 +16,7 @@ const adminContentService = {
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         INSERT INTO SpeakingLessons (Title, Description, OrderIndex)
-        OUTPUT INSERTED.*
-        VALUES (@title, @desc, @order)
+        VALUES (@title, @desc, @order) RETURNING *
       `);
     return res.recordset[0];
   },
@@ -63,8 +62,7 @@ const adminContentService = {
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         INSERT INTO SpeakingQuestions (LessonId, Question, Translation, Option1, Option1VI, Option2, Option2VI, Option3, Option3VI, OrderIndex)
-        OUTPUT INSERTED.*
-        VALUES (@lessonId, @question, @translation, @o1, @o1vi, @o2, @o2vi, @o3, @o3vi, @order)
+        VALUES (@lessonId, @question, @translation, @o1, @o1vi, @o2, @o2vi, @o3, @o3vi, @order) RETURNING *
       `);
     return res.recordset[0];
   },
@@ -113,8 +111,7 @@ const adminContentService = {
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         INSERT INTO WritingLessons (Title, Description, OrderIndex)
-        OUTPUT INSERTED.*
-        VALUES (@title, @desc, @order)
+        VALUES (@title, @desc, @order) RETURNING *
       `);
     return res.recordset[0];
   },
@@ -154,8 +151,7 @@ const adminContentService = {
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         INSERT INTO WritingExercises (LessonId, ContentVI, CorrectAnswerEN, OrderIndex)
-        OUTPUT INSERTED.*
-        VALUES (@lessonId, @vi, @en, @order)
+        VALUES (@lessonId, @vi, @en, @order) RETURNING *
       `);
     return res.recordset[0];
   },
@@ -194,8 +190,7 @@ const adminContentService = {
       .input('meaning', sql.NVarChar, data.Meaning)
       .query(`
         INSERT INTO WritingVocab (ExerciseId, Word, Meaning)
-        OUTPUT INSERTED.*
-        VALUES (@exId, @word, @meaning)
+        VALUES (@exId, @word, @meaning) RETURNING *
       `);
     return res.recordset[0];
   },
@@ -221,8 +216,7 @@ const adminContentService = {
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         INSERT INTO GrammarCategories (Name, NameVI, Icon, OrderIndex)
-        OUTPUT INSERTED.*
-        VALUES (@name, @namevi, @icon, @order)
+        VALUES (@name, @namevi, @icon, @order) RETURNING *
       `);
     return res.recordset[0];
   },
@@ -264,8 +258,7 @@ const adminContentService = {
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         INSERT INTO GrammarTopics (CategoryId, Title, TitleVI, Content, OrderIndex)
-        OUTPUT INSERTED.*
-        VALUES (@catId, @title, @titlevi, @content, @order)
+        VALUES (@catId, @title, @titlevi, @content, @order) RETURNING *
       `);
     return res.recordset[0];
   },
@@ -310,8 +303,7 @@ const adminContentService = {
       .input('exp', sql.NVarChar, data.Explanation)
       .query(`
         INSERT INTO GrammarQuiz (TopicId, Question, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Explanation)
-        OUTPUT INSERTED.*
-        VALUES (@topicId, @q, @a, @b, @c, @d, @ans, @exp)
+        VALUES (@topicId, @q, @a, @b, @c, @d, @ans, @exp) RETURNING *
       `);
     return res.recordset[0];
   },

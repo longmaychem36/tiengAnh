@@ -1,4 +1,5 @@
-const { connectDB, getPool } = require('./src/config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { connectDB, getPool } = require('../src/config/database');
 
 async function migrate() {
   try {
@@ -16,15 +17,15 @@ async function migrate() {
       console.log('Creating Writing tables...');
       await pool.request().query(`
         CREATE TABLE WritingLessons (
-            Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+            Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
             Title NVARCHAR(255),
             Description NVARCHAR(MAX),
             OrderIndex INT,
-            CreatedAt DATETIME DEFAULT GETDATE()
+            CreatedAt DATETIME DEFAULT NOW()
         );
 
         CREATE TABLE WritingExercises (
-            Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+            Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
             LessonId UNIQUEIDENTIFIER,
             ContentVI NVARCHAR(MAX),
             CorrectAnswerEN NVARCHAR(MAX),
@@ -33,7 +34,7 @@ async function migrate() {
         );
 
         CREATE TABLE WritingVocab (
-            Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+            Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
             ExerciseId UNIQUEIDENTIFIER,
             Word NVARCHAR(100),
             Meaning NVARCHAR(255),
@@ -45,7 +46,7 @@ async function migrate() {
             LessonId UNIQUEIDENTIFIER,
             Status NVARCHAR(50),
             Score FLOAT,
-            UpdatedAt DATETIME DEFAULT GETDATE(),
+            UpdatedAt DATETIME DEFAULT NOW(),
             PRIMARY KEY(UserId, LessonId)
         );
       `);

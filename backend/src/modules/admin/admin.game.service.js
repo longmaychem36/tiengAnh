@@ -12,7 +12,7 @@ const adminGameService = {
       .input('n', sql.NVarChar, name).input('d', sql.NVarChar, description || '')
       .input('t', sql.NVarChar, gameType).input('i', sql.NVarChar, icon || '🎮')
       .input('o', sql.Int, orderIndex || 0).input('u', sql.NVarChar, unlockCondition || 'none')
-      .query('INSERT INTO GameSets (Name,Description,GameType,Icon,OrderIndex,UnlockCondition) OUTPUT INSERTED.* VALUES (@n,@d,@t,@i,@o,@u)');
+      .query('INSERT INTO GameSets (Name,Description,GameType,Icon,OrderIndex,UnlockCondition) VALUES (@n,@d,@t,@i,@o,@u) RETURNING *');
     return r.recordset[0];
   },
 
@@ -49,8 +49,8 @@ const adminGameService = {
       .input('s', sql.UniqueIdentifier, setId).input('n', sql.Int, levelNumber)
       .input('nm', sql.NVarChar, name).input('d', sql.NVarChar, difficulty || 'easy')
       .input('t', sql.Int, timeLimit || 60).input('p', sql.Int, passScore || 70)
-      .input('l', sql.Int, isLocked ? 1 : 0)
-      .query('INSERT INTO GameLevels (SetId,LevelNumber,Name,Difficulty,TimeLimit,PassScore,IsLocked) OUTPUT INSERTED.* VALUES (@s,@n,@nm,@d,@t,@p,@l)');
+      .input('l', sql.Bit, isLocked ? true : false)
+      .query('INSERT INTO GameLevels (SetId,LevelNumber,Name,Difficulty,TimeLimit,PassScore,IsLocked) VALUES (@s,@n,@nm,@d,@t,@p,@l) RETURNING *');
     return r.recordset[0];
   },
 
@@ -89,7 +89,7 @@ const adminGameService = {
       .input('a', sql.NVarChar, correctAnswer)
       .input('o', sql.NVarChar, options ? JSON.stringify(options) : null)
       .input('oi', sql.Int, orderIndex || 0)
-      .query('INSERT INTO MiniGameQuestions (LevelId,QuestionType,ContentEN,ContentVI,AudioUrl,ImageUrl,CorrectAnswer,Options,OrderIndex) OUTPUT INSERTED.* VALUES (@lid,@t,@en,@vi,@au,@im,@a,@o,@oi)');
+      .query('INSERT INTO MiniGameQuestions (LevelId,QuestionType,ContentEN,ContentVI,AudioUrl,ImageUrl,CorrectAnswer,Options,OrderIndex) VALUES (@lid,@t,@en,@vi,@au,@im,@a,@o,@oi) RETURNING *');
     return r.recordset[0];
   },
 

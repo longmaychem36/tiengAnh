@@ -1,4 +1,5 @@
-const { connectDB, getPool, sql } = require('./src/config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { connectDB, getPool, sql } = require('../src/config/database');
 
 async function seed() {
   try {
@@ -47,8 +48,7 @@ async function seed() {
         .input('order', sql.Int, t.OrderIndex)
         .query(`
           INSERT INTO WritingLessons (Title, Description, OrderIndex)
-          OUTPUT INSERTED.Id
-          VALUES (@title, @desc, @order)
+          VALUES (@title, @desc, @order) RETURNING Id
         `);
       
       const topicId = res.recordset[0].Id;
@@ -62,8 +62,7 @@ async function seed() {
           .input('order', sql.Int, j + 1)
           .query(`
             INSERT INTO WritingExercises (LessonId, ContentVI, CorrectAnswerEN, OrderIndex)
-            OUTPUT INSERTED.Id
-            VALUES (@lessonId, @vi, @en, @order)
+            VALUES (@lessonId, @vi, @en, @order) RETURNING Id
           `);
         
         const exerciseId = exerRes.recordset[0].Id;

@@ -93,7 +93,7 @@ function AdminGames() {
     if (t === 'matching') return 'match_pair';
     if (t === 'listening') return 'listen_choose';
     if (t === 'sentence') return 'order_sentence';
-    if (t === 'speaking') return 'speak_sentence';
+    return 'match_pair';
     return 'match_pair';
   };
   const openQuestionForm = (q = null) => {
@@ -143,8 +143,6 @@ function AdminGames() {
         if (finalCorrectAnswer && !finalOptions.includes(finalCorrectAnswer)) {
            finalOptions.push(finalCorrectAnswer);
         }
-      } else if (activeSet?.GameType === 'speaking') {
-        finalCorrectAnswer = formData.contentEN; // Use contentEN as the target string
       }
 
       const d = { 
@@ -206,14 +204,7 @@ function AdminGames() {
       ];
     }
 
-    if (t === 'speaking') {
-      return [
-        { key: 'contentEN', label: 'Câu/Từ cần luyện nói (Tiếng Anh)', placeholder: 'Ví dụ: How are you today?' },
-        { key: 'contentVI', label: 'Nghĩa (Tiếng Việt)', placeholder: 'Ví dụ: Hôm nay bạn thế nào?' },
-        { key: 'audioUrl', label: 'Link File Audio mẫu (Tuỳ chọn, bỏ trống sẽ dùng giọng AI đọc tự động)' },
-        { key: 'orderIndex', label: 'Thứ tự hiển thị', type: 'number' }
-      ];
-    }
+
 
     return [
       { key: 'contentEN', label: 'Nội dung (EN)' },
