@@ -1,4 +1,5 @@
-const { getPool, sql, connectDB } = require('./src/config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { getPool, sql, connectDB } = require('../src/config/database');
 async function run() {
   try {
     await connectDB();

@@ -14,7 +14,7 @@ class BaseRepository {
       .query(`
         SELECT * FROM ${this.tableName}
         ORDER BY ${this.primaryKey}
-        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+        LIMIT @limit OFFSET @offset
       `);
     return result.recordset;
   }

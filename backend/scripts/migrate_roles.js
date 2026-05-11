@@ -1,8 +1,8 @@
 // ============================================
 // Migration: Add superadmin role + IsActive column
 // ============================================
-require('dotenv').config();
-const { connectDB, getPool } = require('./src/config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { connectDB, getPool } = require('../src/config/database');
 
 async function migrate() {
   await connectDB();

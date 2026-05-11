@@ -81,8 +81,7 @@ const lessonService = {
       .input('orderIndex', sql.Int, data.orderIndex || 0)
       .query(`
         INSERT INTO Lessons (CourseId, Title, Content, Type, LevelId, OrderIndex)
-        OUTPUT INSERTED.*
-        VALUES (@courseId, @title, @content, @type, @levelId, @orderIndex)
+        VALUES (@courseId, @title, @content, @type, @levelId, @orderIndex) RETURNING *
       `);
     return result.recordset[0];
   },
@@ -103,8 +102,8 @@ const lessonService = {
             Type = COALESCE(@type, Type),
             LevelId = COALESCE(@levelId, LevelId),
             OrderIndex = COALESCE(@orderIndex, OrderIndex)
-        OUTPUT INSERTED.*
         WHERE Id = @lessonId
+        RETURNING *
       `);
     return result.recordset[0] || null;
   },
@@ -144,7 +143,7 @@ const lessonService = {
       LEFT JOIN Courses c ON l.CourseId = c.Id
       ${whereClause}
       ORDER BY l.OrderIndex ASC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      LIMIT @limit OFFSET @offset
     `);
     
     return { lessons: result.recordset, total: countResult.recordset[0].total };
@@ -159,8 +158,7 @@ const lessonService = {
       .input('description', sql.NVarChar, data.description || null)
       .query(`
         INSERT INTO LessonMedia (LessonId, MediaType, MediaUrl, Description)
-        OUTPUT INSERTED.*
-        VALUES (@lessonId, @mediaType, @mediaUrl, @description)
+        VALUES (@lessonId, @mediaType, @mediaUrl, @description) RETURNING *
       `);
     return result.recordset[0];
   },

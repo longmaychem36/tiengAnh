@@ -28,8 +28,7 @@ class CollectionRepository extends BaseRepository {
       .input('description', sql.NVarChar(sql.MAX), collection.description || null)
       .query(`
         INSERT INTO UserCollections (UserId, Name, Description)
-        OUTPUT inserted.*
-        VALUES (@userId, @name, @description)
+        VALUES (@userId, @name, @description) RETURNING *
       `);
     return result.recordset[0];
   }
@@ -59,8 +58,7 @@ class CollectionRepository extends BaseRepository {
       .input('customExample', sql.NVarChar(sql.MAX), wordData.customExample || null)
       .query(`
         INSERT INTO UserCollectionWords (CollectionId, DictionaryEntryId, CustomWord, CustomMeaning, CustomExample)
-        OUTPUT inserted.*
-        VALUES (@collectionId, @dictionaryEntryId, @customWord, @customMeaning, @customExample)
+        VALUES (@collectionId, @dictionaryEntryId, @customWord, @customMeaning, @customExample) RETURNING *
       `);
     return result.recordset[0];
   }

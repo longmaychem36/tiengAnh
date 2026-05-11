@@ -159,7 +159,7 @@ const speakingController = {
         .input('lessonId', sql.UniqueIdentifier, lessonId)
         .query(`
           IF EXISTS (SELECT 1 FROM SpeakingProgress WHERE UserId = @userId AND LessonId = @lessonId)
-            UPDATE SpeakingProgress SET Status = 'completed', UpdatedAt = GETDATE() WHERE UserId = @userId AND LessonId = @lessonId
+            UPDATE SpeakingProgress SET Status = 'completed', UpdatedAt = NOW() WHERE UserId = @userId AND LessonId = @lessonId
           ELSE
             INSERT INTO SpeakingProgress (UserId, LessonId, Score, Status) VALUES (@userId, @lessonId, 100, 'completed')
         `);

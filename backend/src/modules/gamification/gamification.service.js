@@ -48,8 +48,8 @@ const gamificationService = {
               WHEN Exp + @exp >= 100 THEN 1
               ELSE Level
             END
-        OUTPUT INSERTED.Exp, INSERTED.Level, INSERTED.StreakDays
         WHERE UserId = @userId
+        RETURNING Exp, Level, StreakDays
       `);
 
     return result.recordset[0];

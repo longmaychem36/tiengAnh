@@ -22,7 +22,7 @@ const userService = {
         FROM Users u
         LEFT JOIN LearningLevels ll ON u.LevelId = ll.Id
         ORDER BY u.CreatedAt DESC
-        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+        LIMIT @limit OFFSET @offset
       `);
 
     return { users: result.recordset, total };
@@ -65,8 +65,8 @@ const userService = {
         UPDATE Users
         SET Username = COALESCE(@username, Username),
             LevelId = COALESCE(@levelId, LevelId)
-        OUTPUT INSERTED.Id, INSERTED.Username, INSERTED.Email, INSERTED.Role, INSERTED.LevelId
         WHERE Id = @userId
+        RETURNING Id, Username, Email, Role, LevelId
       `);
 
     return result.recordset[0] || null;

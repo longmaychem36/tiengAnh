@@ -135,7 +135,7 @@ const writingController = {
         .input('lessonId', sql.UniqueIdentifier, lessonId)
         .query(`
           IF EXISTS (SELECT 1 FROM WritingProgress WHERE UserId = @userId AND LessonId = @lessonId)
-            UPDATE WritingProgress SET Status = 'completed', UpdatedAt = GETDATE() WHERE UserId = @userId AND LessonId = @lessonId
+            UPDATE WritingProgress SET Status = 'completed', UpdatedAt = NOW() WHERE UserId = @userId AND LessonId = @lessonId
           ELSE
             INSERT INTO WritingProgress (UserId, LessonId, Score, Status) VALUES (@userId, @lessonId, 100, 'completed')
         `);

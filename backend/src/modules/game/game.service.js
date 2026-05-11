@@ -25,9 +25,9 @@ const gameService = {
           .input('userId', sql.UniqueIdentifier, userId)
           .query(`
             SELECT COUNT(*) as completedLevels,
-                   ISNULL(SUM(ugp.Stars), 0) as totalStars
+                   COALESCE(SUM(ugp.Stars), 0) as totalStars
             FROM GameLevels gl
-            INNER JOIN UserGameProgress ugp ON gl.Id = ugp.LevelId AND ugp.UserId = @userId AND ugp.IsCompleted = 1
+            INNER JOIN UserGameProgress ugp ON gl.Id = ugp.LevelId AND ugp.UserId = @userId AND ugp.IsCompleted = true
             WHERE gl.SetId = @setId
           `);
         set.CompletedLevels = progressRes.recordset[0].completedLevels;
@@ -166,23 +166,23 @@ const gameService = {
       .input('levelId', sql.UniqueIdentifier, levelId)
       .query('SELECT * FROM UserGameProgress WHERE UserId = @userId AND LevelId = @levelId');
 
-    const completedInt = passed ? 1 : 0;
+    const completedInt = passed ? true : false;
 
     if (existingProgress.recordset.length > 0) {
       const old = existingProgress.recordset[0];
-      const finalCompleted = (old.IsCompleted || passed) ? 1 : 0;
+      const finalCompleted = (old.IsCompleted || passed) ? true : false;
       await pool.request()
         .input('userId', sql.UniqueIdentifier, userId)
         .input('levelId', sql.UniqueIdentifier, levelId)
         .input('score', sql.Int, Math.max(old.Score, scorePercent))
         .input('stars', sql.Int, Math.max(old.Stars, stars))
-        .input('completed', sql.Int, finalCompleted)
+        .input('completed', sql.Bit, finalCompleted)
         .input('bestTime', sql.Int, (old.BestTime && old.BestTime < duration && old.BestTime > 0) ? old.BestTime : (duration || 0))
         .input('attempts', sql.Int, old.Attempts + 1)
         .query(`UPDATE UserGameProgress 
                 SET Score = @score, Stars = @stars, IsCompleted = @completed, 
                     BestTime = @bestTime, Attempts = @attempts
-                    ${passed ? ', CompletedAt = GETDATE()' : ''}
+                    ${passed ? ', CompletedAt = NOW()' : ''}
                 WHERE UserId = @userId AND LevelId = @levelId`);
     } else {
       await pool.request()
@@ -190,10 +190,10 @@ const gameService = {
         .input('levelId', sql.UniqueIdentifier, levelId)
         .input('score', sql.Int, scorePercent)
         .input('stars', sql.Int, stars)
-        .input('completed', sql.Int, completedInt)
+        .input('completed', sql.Bit, completedInt)
         .input('bestTime', sql.Int, duration || 0)
         .query(`INSERT INTO UserGameProgress (UserId,LevelId,Score,Stars,IsCompleted,BestTime,Attempts${passed ? ',CompletedAt' : ''}) 
-                VALUES (@userId,@levelId,@score,@stars,@completed,@bestTime,1${passed ? ',GETDATE()' : ''})`);
+                VALUES (@userId,@levelId,@score,@stars,@completed,@bestTime,1${passed ? ',NOW()' : ''})`);
     }
 
     // Award EXP (safe — create UserStats row if missing)
@@ -207,8 +207,9 @@ const gameService = {
         await pool.request()
           .input('userId', sql.UniqueIdentifier, userId)
           .query(`
-            IF NOT EXISTS (SELECT 1 FROM UserStats WHERE UserId = @userId)
-            INSERT INTO UserStats (UserId, Exp, Level, StreakDays) VALUES (@userId, 0, 1, 0)
+            INSERT INTO UserStats (UserId, Exp, Level, StreakDays) 
+            SELECT @userId, 0, 1, 0 
+            WHERE NOT EXISTS (SELECT 1 FROM UserStats WHERE UserId = @userId)
           `);
 
         await pool.request()

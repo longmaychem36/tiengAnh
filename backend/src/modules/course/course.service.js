@@ -33,7 +33,7 @@ const courseService = {
       LEFT JOIN Users u ON c.CreatedBy = u.Id
       ${whereClause}
       ORDER BY c.CreatedAt DESC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      LIMIT @limit OFFSET @offset
     `);
 
     return { courses: result.recordset, total: countResult.recordset[0].total };
@@ -83,8 +83,7 @@ const courseService = {
       .input('createdBy', sql.UniqueIdentifier, data.createdBy)
       .query(`
         INSERT INTO Courses (Title, Description, LevelId, CreatedBy)
-        OUTPUT INSERTED.*
-        VALUES (@title, @description, @levelId, @createdBy)
+        VALUES (@title, @description, @levelId, @createdBy) RETURNING *
       `);
     return result.recordset[0];
   },
@@ -101,8 +100,8 @@ const courseService = {
         SET Title = COALESCE(@title, Title),
             Description = COALESCE(@description, Description),
             LevelId = COALESCE(@levelId, LevelId)
-        OUTPUT INSERTED.*
         WHERE Id = @courseId
+        RETURNING *
       `);
     return result.recordset[0] || null;
   },

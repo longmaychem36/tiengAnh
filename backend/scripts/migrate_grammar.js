@@ -1,8 +1,8 @@
 // ============================================
 // Migration: Create Grammar Tables
 // ============================================
-require('dotenv').config();
-const { connectDB, getPool, sql } = require('./src/config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { connectDB, getPool, sql } = require('../src/config/database');
 
 async function migrate() {
   await connectDB();
@@ -24,7 +24,7 @@ async function migrate() {
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='GrammarTopics' AND xtype='U')
     CREATE TABLE GrammarTopics (
-      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
       CategoryId INT,
       Title NVARCHAR(200) NOT NULL,
       TitleVI NVARCHAR(200),
@@ -37,7 +37,7 @@ async function migrate() {
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='GrammarQuiz' AND xtype='U')
     CREATE TABLE GrammarQuiz (
-      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
       TopicId UNIQUEIDENTIFIER,
       Question NVARCHAR(MAX) NOT NULL,
       OptionA NVARCHAR(255),

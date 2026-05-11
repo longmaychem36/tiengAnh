@@ -2,8 +2,8 @@
 // Promote a user to SuperAdmin
 // Usage: node promote_superadmin.js <email>
 // ============================================
-require('dotenv').config();
-const { connectDB, getPool, sql } = require('./src/config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { connectDB, getPool, sql } = require('../src/config/database');
 
 async function promote() {
   const email = process.argv[2];

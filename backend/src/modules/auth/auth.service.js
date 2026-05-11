@@ -33,8 +33,7 @@ const authService = {
       .input('passwordHash', sql.NVarChar, passwordHash)
       .query(`
         INSERT INTO Users (Username, Email, PasswordHash, Role)
-        OUTPUT INSERTED.Id, INSERTED.Username, INSERTED.Email, INSERTED.Role, INSERTED.CreatedAt
-        VALUES (@username, @email, @passwordHash, 'user')
+        VALUES (@username, @email, @passwordHash, 'user') RETURNING Id, Username, Email, Role, CreatedAt
       `);
 
     const user = result.recordset[0];
@@ -44,7 +43,7 @@ const authService = {
       .input('userId', sql.UniqueIdentifier, user.Id)
       .query(`
         INSERT INTO UserStats (UserId, Exp, Level, StreakDays, LastLogin)
-        VALUES (@userId, 0, 1, 0, GETDATE())
+        VALUES (@userId, 0, 1, 0, NOW())
       `);
 
     // Generate JWT
@@ -102,10 +101,10 @@ const authService = {
       .input('userId', sql.UniqueIdentifier, user.Id)
       .query(`
         UPDATE UserStats 
-        SET LastLogin = GETDATE(),
+        SET LastLogin = NOW(),
             StreakDays = CASE 
-              WHEN DATEDIFF(DAY, LastLogin, GETDATE()) = 1 THEN StreakDays + 1
-              WHEN DATEDIFF(DAY, LastLogin, GETDATE()) = 0 THEN StreakDays
+              WHEN DATE_PART('day', NOW() - LastLogin)::int = 1 THEN StreakDays + 1
+              WHEN DATE_PART('day', NOW() - LastLogin)::int = 0 THEN StreakDays
               ELSE 1
             END
         WHERE UserId = @userId

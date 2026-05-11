@@ -43,18 +43,11 @@ function GamePlay() {
   const sentenceAnswersRef = useRef([]);
   const [sentenceFeedback, setSentenceFeedback] = useState(null);
 
-  // Speaking
-  const [speakAnswers, setSpeakAnswers] = useState([]);
-  const speakAnswersRef = useRef([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recognizedText, setRecognizedText] = useState('');
-  const [lastAudioUrl, setLastAudioUrl] = useState(null);
-  const recognitionRef = useRef(null);
+
 
   useEffect(() => { matchedPairsRef.current = matchedPairs; }, [matchedPairs]);
   useEffect(() => { listenAnswersRef.current = listenAnswers; }, [listenAnswers]);
   useEffect(() => { sentenceAnswersRef.current = sentenceAnswers; }, [sentenceAnswers]);
-  useEffect(() => { speakAnswersRef.current = speakAnswers; }, [speakAnswers]);
 
   useEffect(() => {
     gameApi.getQuestions(levelId)
@@ -99,9 +92,6 @@ function GamePlay() {
       levelData.questions.forEach(q => { if (!answers.find(a => a.questionId === q.Id)) answers.push({ questionId: q.Id, answer: '__skip__' }); });
     } else if (gt === 'sentence') {
       answers = [...sentenceAnswersRef.current];
-      levelData.questions.forEach(q => { if (!answers.find(a => a.questionId === q.Id)) answers.push({ questionId: q.Id, answer: '__skip__' }); });
-    } else if (gt === 'speaking') {
-      answers = [...speakAnswersRef.current];
       levelData.questions.forEach(q => { if (!answers.find(a => a.questionId === q.Id)) answers.push({ questionId: q.Id, answer: '__skip__' }); });
     }
 

@@ -1,8 +1,8 @@
 // ============================================
 // Seed Stage 4-5: Typing Game + Sentence Builder
 // ============================================
-require('dotenv').config();
-const { connectDB, getPool, sql } = require('./src/config/database');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const { connectDB, getPool, sql } = require('../src/config/database');
 
 async function seed() {
   await connectDB();
@@ -13,7 +13,7 @@ async function seed() {
       .input('n', sql.NVarChar, name).input('d', sql.NVarChar, desc)
       .input('t', sql.NVarChar, type).input('i', sql.NVarChar, icon)
       .input('o', sql.Int, order).input('u', sql.NVarChar, unlock)
-      .query('INSERT INTO GameSets (Name,Description,GameType,Icon,OrderIndex,UnlockCondition) OUTPUT INSERTED.Id VALUES (@n,@d,@t,@i,@o,@u)');
+      .query('INSERT INTO GameSets (Name,Description,GameType,Icon,OrderIndex,UnlockCondition) VALUES (@n,@d,@t,@i,@o,@u) RETURNING Id');
     return r.recordset[0].Id;
   }
   async function insertLevel(setId, num, name, diff, time, pass, locked) {
@@ -21,7 +21,7 @@ async function seed() {
       .input('s', sql.UniqueIdentifier, setId).input('n', sql.Int, num)
       .input('nm', sql.NVarChar, name).input('d', sql.NVarChar, diff)
       .input('t', sql.Int, time).input('p', sql.Int, pass).input('l', sql.Int, locked ? 1 : 0)
-      .query('INSERT INTO GameLevels (SetId,LevelNumber,Name,Difficulty,TimeLimit,PassScore,IsLocked) OUTPUT INSERTED.Id VALUES (@s,@n,@nm,@d,@t,@p,@l)');
+      .query('INSERT INTO GameLevels (SetId,LevelNumber,Name,Difficulty,TimeLimit,PassScore,IsLocked) VALUES (@s,@n,@nm,@d,@t,@p,@l) RETURNING Id');
     return r.recordset[0].Id;
   }
   async function insertQ(levelId, type, en, vi, audio, image, answer, options, order) {
