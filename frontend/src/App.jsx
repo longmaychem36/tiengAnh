@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Layout from './components/layout/Layout';
+import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
 // Pages
@@ -28,6 +29,7 @@ import WritingList from './components/writing/WritingList';
 import WritingLesson from './components/writing/WritingLesson';
 
 // Admin pages
+import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminCourses from './pages/admin/AdminCourses';
 import AdminLessons from './pages/admin/AdminLessons';
 import AdminGames from './pages/admin/AdminGames';
@@ -45,10 +47,10 @@ function App() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<Home />} />
-      <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+      <Route path="/login" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to="/dashboard" />) : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
 
-      {/* Protected routes — wrapped in Layout */}
+      {/* Protected routes — wrapped in Layout (for regular users) */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/courses" element={<CoursesHub />} />
@@ -69,25 +71,18 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/progress" element={<Progress />} />
         <Route path="/grammar" element={<Grammar />} />
-        
-        {/* Admin routes (admin + superadmin) */}
-        {isAdmin && (
-          <>
-            <Route path="/admin/courses" element={<AdminCourses />} />
-            <Route path="/admin/courses/:courseId/lessons" element={<AdminLessons />} />
-            <Route path="/admin/speaking" element={<AdminSpeaking />} />
-            <Route path="/admin/writing" element={<AdminWriting />} />
-            <Route path="/admin/grammar" element={<AdminGrammar />} />
-            <Route path="/admin/games" element={<AdminGames />} />
-          </>
-        )}
+      </Route>
 
-        {/* SuperAdmin routes */}
-        {isSuperAdmin && (
-          <>
-            <Route path="/admin/users" element={<AdminUsers />} />
-          </>
-        )}
+      {/* Admin routes — separate AdminLayout */}
+      <Route element={<AdminLayout />}>
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/courses" element={<AdminCourses />} />
+        <Route path="/admin/courses/:courseId/lessons" element={<AdminLessons />} />
+        <Route path="/admin/speaking" element={<AdminSpeaking />} />
+        <Route path="/admin/writing" element={<AdminWriting />} />
+        <Route path="/admin/grammar" element={<AdminGrammar />} />
+        <Route path="/admin/games" element={<AdminGames />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
       </Route>
 
       {/* 404 */}

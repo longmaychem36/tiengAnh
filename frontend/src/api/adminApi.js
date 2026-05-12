@@ -1,6 +1,9 @@
 import axiosClient from './axiosClient';
 
 export const adminApi = {
+  // Dashboard
+  getDashboardStats: () => axiosClient.get('/admin/dashboard/stats'),
+
   // Game Sets
   createSet: (data) => axiosClient.post('/admin/games/sets', data),
   updateSet: (id, data) => axiosClient.put(`/admin/games/sets/${id}`, data),

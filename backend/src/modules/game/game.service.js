@@ -1,80 +1,76 @@
 // ============================================
-// Mini Game Module — Service (New: Set → Level → Question)
+// Mini Game Module — Service (PostgreSQL, Mixed Game Support)
 // ============================================
-const { sql, getPool } = require('../../config/database');
+const { getPool } = require('../../config/database');
 const { EXP_REWARDS } = require('../../utils/constants');
 
 const gameService = {
   // ==================
-  // GET all game sets (with optional user progress for set-level unlock)
+  // GET all game sets (with user progress)
   // ==================
   async getSets(userId) {
     const pool = getPool();
-    const result = await pool.request().query(`
-      SELECT gs.*, 
-        (SELECT COUNT(*) FROM GameLevels WHERE SetId = gs.Id) as LevelCount
+    const result = await pool.query(`
+      SELECT gs.*,
+        (SELECT COUNT(*) FROM GameLevels WHERE SetId = gs.Id) as "LevelCount"
       FROM GameSets gs
       ORDER BY gs.OrderIndex ASC
     `);
 
+    const sets = result.rows.map(r => ({
+      ...r,
+      Id: r.id, Name: r.name, Description: r.description, Icon: r.icon,
+      GameType: r.gametype, OrderIndex: r.orderindex, LevelCount: parseInt(r.LevelCount)
+    }));
+
     if (userId) {
-      // For each set, count completed levels
-      for (const set of result.recordset) {
-        const progressRes = await pool.request()
-          .input('setId', sql.UniqueIdentifier, set.Id)
-          .input('userId', sql.UniqueIdentifier, userId)
-          .query(`
-            SELECT COUNT(*) as completedLevels,
-                   COALESCE(SUM(ugp.Stars), 0) as totalStars
-            FROM GameLevels gl
-            INNER JOIN UserGameProgress ugp ON gl.Id = ugp.LevelId AND ugp.UserId = @userId AND ugp.IsCompleted = true
-            WHERE gl.SetId = @setId
-          `);
-        set.CompletedLevels = progressRes.recordset[0].completedLevels;
-        set.TotalStars = progressRes.recordset[0].totalStars;
+      for (const set of sets) {
+        const progressRes = await pool.query(`
+          SELECT COUNT(*) as completedlevels,
+                 COALESCE(SUM(ugp.stars), 0) as totalstars
+          FROM GameLevels gl
+          INNER JOIN UserGameProgress ugp ON gl.Id = ugp.LevelId AND ugp.UserId = $1 AND ugp.IsCompleted = true
+          WHERE gl.SetId = $2
+        `, [userId, set.Id]);
+        set.CompletedLevels = parseInt(progressRes.rows[0].completedlevels);
+        set.TotalStars = parseInt(progressRes.rows[0].totalstars);
         set.MaxStars = set.LevelCount * 3;
         set.IsSetCompleted = set.CompletedLevels >= set.LevelCount;
       }
     }
 
-    return result.recordset;
+    return sets;
   },
 
   // ==================
-  // GET levels by set (with user progress)
+  // GET levels by set (with user progress & dynamic unlock)
   // ==================
   async getLevelsBySet(setId, userId) {
     const pool = getPool();
-    const req = pool.request().input('setId', sql.UniqueIdentifier, setId);
 
-    let progressJoin = '';
-    if (userId) {
-      req.input('userId', sql.UniqueIdentifier, userId);
-      progressJoin = `LEFT JOIN UserGameProgress ugp ON gl.Id = ugp.LevelId AND ugp.UserId = @userId`;
-    }
-
-    const result = await req.query(`
-      SELECT gl.Id, gl.SetId, gl.LevelNumber, gl.Name, gl.Difficulty, 
+    const result = await pool.query(`
+      SELECT gl.Id, gl.SetId, gl.LevelNumber, gl.Name, gl.Difficulty,
              gl.TimeLimit, gl.PassScore, gl.IsLocked,
-             (SELECT COUNT(*) FROM MiniGameQuestions WHERE LevelId = gl.Id) as QuestionCount
-             ${userId ? `, ugp.Score as UserScore, ugp.Stars as UserStars, ugp.IsCompleted as UserCompleted, ugp.BestTime, ugp.Attempts` : ''}
+             (SELECT COUNT(*) FROM MiniGameQuestions WHERE LevelId = gl.Id) as "QuestionCount"
+             ${userId ? `, ugp.Score as "UserScore", ugp.Stars as "UserStars", ugp.IsCompleted as "UserCompleted", ugp.BestTime, ugp.Attempts` : ''}
       FROM GameLevels gl
-      ${progressJoin}
-      WHERE gl.SetId = @setId
+      ${userId ? `LEFT JOIN UserGameProgress ugp ON gl.Id = ugp.LevelId AND ugp.UserId = $2` : ''}
+      WHERE gl.SetId = $1
       ORDER BY gl.LevelNumber ASC
-    `);
+    `, userId ? [setId, userId] : [setId]);
 
-    const levels = result.recordset;
+    const levels = result.rows.map(r => ({
+      Id: r.id, SetId: r.setid, LevelNumber: r.levelnumber, Name: r.name,
+      Difficulty: r.difficulty, TimeLimit: r.timelimit, PassScore: r.passscore,
+      IsLocked: r.islocked, QuestionCount: parseInt(r.QuestionCount),
+      UserScore: r.UserScore || 0, UserStars: r.UserStars || 0,
+      UserCompleted: r.UserCompleted || false,
+    }));
 
     // Dynamic unlock: level N is unlocked if level N-1 is completed
     if (userId) {
       for (let i = 0; i < levels.length; i++) {
-        if (i === 0) {
-          levels[i].IsLocked = false; // First level always unlocked
-        } else {
-          const prev = levels[i - 1];
-          levels[i].IsLocked = !prev.UserCompleted;
-        }
+        levels[i].IsLocked = i === 0 ? false : !levels[i - 1].UserCompleted;
       }
     }
 
@@ -82,172 +78,141 @@ const gameService = {
   },
 
   // ==================
-  // GET questions for a level
+  // GET questions for a level (shuffle, limit 10)
   // ==================
   async getQuestions(levelId) {
     const pool = getPool();
 
-    // Get level info
-    const levelRes = await pool.request()
-      .input('levelId', sql.UniqueIdentifier, levelId)
-      .query(`
-        SELECT gl.*, gs.GameType, gs.Name as SetName
-        FROM GameLevels gl
-        JOIN GameSets gs ON gl.SetId = gs.Id
-        WHERE gl.Id = @levelId
-      `);
-    if (levelRes.recordset.length === 0) return null;
-    const level = levelRes.recordset[0];
+    const levelRes = await pool.query(`
+      SELECT gl.*, gs.GameType, gs.Name as "SetName"
+      FROM GameLevels gl
+      JOIN GameSets gs ON gl.SetId = gs.Id
+      WHERE gl.Id = $1
+    `, [levelId]);
+    if (levelRes.rows.length === 0) return null;
 
-    // Get questions
-    const questionsRes = await pool.request()
-      .input('levelId', sql.UniqueIdentifier, levelId)
-      .query(`
-        SELECT Id, QuestionType, ContentEN, ContentVI, AudioUrl, ImageUrl, CorrectAnswer, Options, OrderIndex
-        FROM MiniGameQuestions
-        WHERE LevelId = @levelId
-        ORDER BY OrderIndex ASC
-      `);
+    const row = levelRes.rows[0];
+    const level = {
+      Id: row.id, SetId: row.setid, LevelNumber: row.levelnumber, Name: row.name,
+      Difficulty: row.difficulty, TimeLimit: row.timelimit, PassScore: row.passscore,
+      IsLocked: row.islocked, GameType: row.gametype, SetName: row.setname
+    };
 
-    const questions = questionsRes.recordset.map(q => ({
-      ...q,
-      Options: q.Options ? JSON.parse(q.Options) : null
+    // Get questions — shuffle via random(), limit 10
+    const questionsRes = await pool.query(`
+      SELECT Id, QuestionType, ContentEN, ContentVI, AudioUrl, ImageUrl, CorrectAnswer, Options, OrderIndex
+      FROM MiniGameQuestions
+      WHERE LevelId = $1
+      ORDER BY RANDOM()
+      LIMIT 10
+    `, [levelId]);
+
+    const questions = questionsRes.rows.map(q => ({
+      Id: q.id,
+      QuestionType: q.questiontype,
+      ContentEN: q.contenten,
+      ContentVI: q.contentvi,
+      AudioUrl: q.audiourl,
+      ImageUrl: q.imageurl,
+      CorrectAnswer: q.correctanswer,
+      Options: q.options ? JSON.parse(q.options) : null,
+      OrderIndex: q.orderindex
     }));
 
     return { level, questions };
   },
 
   // ==================
-  // POST submit answers for a level
+  // POST submit answers
   // ==================
   async submitLevel(userId, levelId, answers, duration) {
     const pool = getPool();
 
-    // Get level + questions
     const data = await this.getQuestions(levelId);
     if (!data) throw new Error('Level not found');
-
     const { level, questions } = data;
 
-    // Score calculation
+    // Re-fetch all questions (not just random 10) to score accurately
+    const allQRes = await pool.query(`
+      SELECT Id, QuestionType, CorrectAnswer, Options FROM MiniGameQuestions WHERE LevelId = $1
+    `, [levelId]);
+    const allQuestions = allQRes.rows.map(q => ({
+      Id: q.id, QuestionType: q.questiontype, CorrectAnswer: q.correctanswer,
+      Options: q.options ? JSON.parse(q.options) : null
+    }));
+
     let correctCount = 0;
     const results = [];
 
-    for (const q of questions) {
+    for (const q of allQuestions) {
       const userAnswer = answers.find(a => a.questionId === q.Id);
-      let isCorrect = false;
+      if (!userAnswer) continue;
 
-      if (userAnswer) {
-        isCorrect = userAnswer.answer.toLowerCase().trim() === q.CorrectAnswer.toLowerCase().trim();
+      let isCorrect = false;
+      const ua = (userAnswer.answer || '').toLowerCase().trim();
+      const ca = (q.CorrectAnswer || '').toLowerCase().trim();
+
+      if (q.QuestionType === 'matching') {
+        isCorrect = ua === ca;
+      } else if (q.QuestionType === 'listening') {
+        isCorrect = ua === ca;
+      } else if (q.QuestionType === 'listenbuild') {
+        // Compare word by word, trim punctuation
+        isCorrect = ua.replace(/[.,!?]/g, '') === ca.replace(/[.,!?]/g, '');
+      } else if (q.QuestionType === 'truefalse') {
+        isCorrect = ua === ca;
+      } else {
+        isCorrect = ua === ca;
       }
 
       if (isCorrect) correctCount++;
-      results.push({
-        questionId: q.Id,
-        correct: isCorrect,
-        correctAnswer: q.CorrectAnswer,
-        userAnswer: userAnswer?.answer || null
-      });
+      results.push({ questionId: q.Id, correct: isCorrect, correctAnswer: q.CorrectAnswer, userAnswer: userAnswer.answer });
     }
 
-    const totalQuestions = questions.length;
+    const totalQuestions = answers.length || allQuestions.length;
     const scorePercent = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
     const passed = scorePercent >= level.PassScore;
+    let stars = scorePercent >= 90 ? 3 : scorePercent >= 70 ? 2 : scorePercent >= 50 ? 1 : 0;
 
-    // Calculate stars
-    let stars = 0;
-    if (scorePercent >= 90) stars = 3;
-    else if (scorePercent >= 70) stars = 2;
-    else if (scorePercent >= 50) stars = 1;
+    // UPSERT progress
+    await pool.query(`
+      INSERT INTO UserGameProgress (UserId, LevelId, Score, Stars, IsCompleted, BestTime, Attempts ${passed ? ', CompletedAt' : ''})
+      VALUES ($1, $2, $3, $4, $5, $6, 1 ${passed ? ', NOW()' : ''})
+      ON CONFLICT (UserId, LevelId) DO UPDATE SET
+        Score = GREATEST(UserGameProgress.Score, EXCLUDED.Score),
+        Stars = GREATEST(UserGameProgress.Stars, EXCLUDED.Stars),
+        IsCompleted = UserGameProgress.IsCompleted OR EXCLUDED.IsCompleted,
+        BestTime = CASE WHEN UserGameProgress.BestTime = 0 OR EXCLUDED.BestTime < UserGameProgress.BestTime THEN EXCLUDED.BestTime ELSE UserGameProgress.BestTime END,
+        Attempts = UserGameProgress.Attempts + 1
+        ${passed ? ', CompletedAt = COALESCE(UserGameProgress.CompletedAt, NOW())' : ''}
+    `, [userId, levelId, scorePercent, stars, passed, duration || 0]);
 
-    // Save/update progress
-    const existingProgress = await pool.request()
-      .input('userId', sql.UniqueIdentifier, userId)
-      .input('levelId', sql.UniqueIdentifier, levelId)
-      .query('SELECT * FROM UserGameProgress WHERE UserId = @userId AND LevelId = @levelId');
-
-    const completedInt = passed ? true : false;
-
-    if (existingProgress.recordset.length > 0) {
-      const old = existingProgress.recordset[0];
-      const finalCompleted = (old.IsCompleted || passed) ? true : false;
-      await pool.request()
-        .input('userId', sql.UniqueIdentifier, userId)
-        .input('levelId', sql.UniqueIdentifier, levelId)
-        .input('score', sql.Int, Math.max(old.Score, scorePercent))
-        .input('stars', sql.Int, Math.max(old.Stars, stars))
-        .input('completed', sql.Bit, finalCompleted)
-        .input('bestTime', sql.Int, (old.BestTime && old.BestTime < duration && old.BestTime > 0) ? old.BestTime : (duration || 0))
-        .input('attempts', sql.Int, old.Attempts + 1)
-        .query(`UPDATE UserGameProgress 
-                SET Score = @score, Stars = @stars, IsCompleted = @completed, 
-                    BestTime = @bestTime, Attempts = @attempts
-                    ${passed ? ', CompletedAt = NOW()' : ''}
-                WHERE UserId = @userId AND LevelId = @levelId`);
-    } else {
-      await pool.request()
-        .input('userId', sql.UniqueIdentifier, userId)
-        .input('levelId', sql.UniqueIdentifier, levelId)
-        .input('score', sql.Int, scorePercent)
-        .input('stars', sql.Int, stars)
-        .input('completed', sql.Bit, completedInt)
-        .input('bestTime', sql.Int, duration || 0)
-        .query(`INSERT INTO UserGameProgress (UserId,LevelId,Score,Stars,IsCompleted,BestTime,Attempts${passed ? ',CompletedAt' : ''}) 
-                VALUES (@userId,@levelId,@score,@stars,@completed,@bestTime,1${passed ? ',NOW()' : ''})`);
-    }
-
-    // Award EXP (safe — create UserStats row if missing)
+    // Award EXP
     let expEarned = 0;
     if (passed) {
       expEarned = EXP_REWARDS.GAME_WIN || 25;
       if (scorePercent >= 90) expEarned = Math.round(expEarned * 1.5);
-
       try {
-        // Ensure UserStats row exists
-        await pool.request()
-          .input('userId', sql.UniqueIdentifier, userId)
-          .query(`
-            INSERT INTO UserStats (UserId, Exp, Level, StreakDays) 
-            SELECT @userId, 0, 1, 0 
-            WHERE NOT EXISTS (SELECT 1 FROM UserStats WHERE UserId = @userId)
-          `);
-
-        await pool.request()
-          .input('userId', sql.UniqueIdentifier, userId)
-          .input('exp', sql.Int, expEarned)
-          .query(`
-            UPDATE UserStats
-            SET Exp = Exp + @exp,
-                Level = CASE
-                  WHEN Exp + @exp >= 10000 THEN 10
-                  WHEN Exp + @exp >= 7500 THEN 9
-                  WHEN Exp + @exp >= 5500 THEN 8
-                  WHEN Exp + @exp >= 4000 THEN 7
-                  WHEN Exp + @exp >= 2800 THEN 6
-                  WHEN Exp + @exp >= 1800 THEN 5
-                  WHEN Exp + @exp >= 1000 THEN 4
-                  WHEN Exp + @exp >= 500 THEN 3
-                  WHEN Exp + @exp >= 250 THEN 2
-                  WHEN Exp + @exp >= 100 THEN 1
-                  ELSE Level
-                END
-            WHERE UserId = @userId
-          `);
-      } catch (expErr) {
-        console.error('EXP award error (non-fatal):', expErr.message);
-      }
+        await pool.query(`
+          INSERT INTO UserStats (UserId, Exp, Level, StreakDays)
+          VALUES ($1, 0, 1, 0)
+          ON CONFLICT (UserId) DO NOTHING
+        `, [userId]);
+        await pool.query(`
+          UPDATE UserStats SET Exp = Exp + $2,
+            Level = CASE
+              WHEN Exp + $2 >= 10000 THEN 10 WHEN Exp + $2 >= 7500 THEN 9
+              WHEN Exp + $2 >= 5500 THEN 8  WHEN Exp + $2 >= 4000 THEN 7
+              WHEN Exp + $2 >= 2800 THEN 6  WHEN Exp + $2 >= 1800 THEN 5
+              WHEN Exp + $2 >= 1000 THEN 4  WHEN Exp + $2 >= 500 THEN 3
+              WHEN Exp + $2 >= 250 THEN 2   WHEN Exp + $2 >= 100 THEN 1
+              ELSE Level END
+          WHERE UserId = $1
+        `, [userId, expEarned]);
+      } catch (e) { console.error('EXP error (non-fatal):', e.message); }
     }
 
-    return {
-      score: scorePercent,
-      stars,
-      passed,
-      correctCount,
-      totalQuestions,
-      expEarned,
-      duration: duration || 0,
-      results
-    };
+    return { score: scorePercent, stars, passed, correctCount, totalQuestions, expEarned, duration: duration || 0, results };
   }
 };
 

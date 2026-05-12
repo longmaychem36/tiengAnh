@@ -15,21 +15,21 @@ const writingController = {
         GROUP BY l.Id, l.Title, l.Description, l.OrderIndex
         ORDER BY l.OrderIndex ASC
       `;
-      const result = await pool.request().query(query);
+      const result = await pool.query(query);
       
-      const progressQuery = `SELECT LessonId FROM WritingProgress WHERE UserId = @userId AND Status = 'completed'`;
-      const progressResult = await pool.request().input('userId', sql.UniqueIdentifier, req.user.id).query(progressQuery);
-      const completedLessons = progressResult.recordset.map(r => r.LessonId);
+      const progressQuery = `SELECT LessonId FROM WritingProgress WHERE UserId = $1 AND Status = 'completed'`;
+      const progressResult = await pool.query(progressQuery, [req.user.id]);
+      const completedLessons = progressResult.rows.map(r => r.lessonid);
 
-      const lessons = result.recordset.map((row, index) => {
-        const isCompleted = completedLessons.includes(row.Id);
-        const isLocked = index > 0 && !completedLessons.includes(result.recordset[index - 1].Id);
+      const lessons = result.rows.map((row, index) => {
+        const isCompleted = completedLessons.includes(row.id);
+        const isLocked = index > 0 && !completedLessons.includes(result.rows[index - 1].id);
         
         return {
-          id: row.Id,
-          title: row.Title,
-          description: row.Description,
-          exerciseCount: row.ExerciseCount,
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          exerciseCount: row.exercisecount,
           isCompleted,
           isLocked
         };
@@ -46,31 +46,31 @@ const writingController = {
       const { id } = req.params;
       const pool = getPool();
       
-      const lessonResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`SELECT Id, Title FROM WritingLessons WHERE Id = @id`);
-      if (lessonResult.recordset.length === 0) return badRequest(res, 'Lesson not found');
+      const lessonResult = await pool.query(`SELECT Id, Title FROM WritingLessons WHERE Id = $1`, [id]);
+      if (lessonResult.rows.length === 0) return badRequest(res, 'Lesson not found');
 
-      const exerResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`
+      const exerResult = await pool.query(`
         SELECT Id, ContentVI, CorrectAnswerEN
         FROM WritingExercises
-        WHERE LessonId = @id
+        WHERE LessonId = $1
         ORDER BY OrderIndex ASC
-      `);
+      `, [id]);
 
       const exercises = [];
-      for (let row of exerResult.recordset) {
-        const vocabRes = await pool.request().input('exId', sql.UniqueIdentifier, row.Id).query(`
-          SELECT Word, Meaning FROM WritingVocab WHERE ExerciseId = @exId
-        `);
+      for (let row of exerResult.rows) {
+        const vocabRes = await pool.query(`
+          SELECT Word, Meaning FROM WritingVocab WHERE ExerciseId = $1
+        `, [row.id]);
         exercises.push({
-          id: row.Id,
-          contentVI: row.ContentVI,
-          correctAnswerEN: row.CorrectAnswerEN, // Send this so client can display it later
-          vocab: vocabRes.recordset.map(v => ({ word: v.Word, meaning: v.Meaning }))
+          id: row.id,
+          contentVI: row.contentvi,
+          correctAnswerEN: row.correctansweren,
+          vocab: vocabRes.rows.map(v => ({ word: v.word, meaning: v.meaning }))
         });
       }
 
       return success(res, { 
-        lesson: { id: lessonResult.recordset[0].Id, title: lessonResult.recordset[0].Title },
+        lesson: { id: lessonResult.rows[0].id, title: lessonResult.rows[0].title },
         exercises 
       });
     } catch (err) {
@@ -130,15 +130,12 @@ const writingController = {
       const { lessonId, completed } = req.body;
       const pool = getPool();
       
-      await pool.request()
-        .input('userId', sql.UniqueIdentifier, req.user.id)
-        .input('lessonId', sql.UniqueIdentifier, lessonId)
-        .query(`
-          IF EXISTS (SELECT 1 FROM WritingProgress WHERE UserId = @userId AND LessonId = @lessonId)
-            UPDATE WritingProgress SET Status = 'completed', UpdatedAt = NOW() WHERE UserId = @userId AND LessonId = @lessonId
-          ELSE
-            INSERT INTO WritingProgress (UserId, LessonId, Score, Status) VALUES (@userId, @lessonId, 100, 'completed')
-        `);
+      const existRes = await pool.query(`SELECT 1 FROM WritingProgress WHERE UserId = $1 AND LessonId = $2`, [req.user.id, lessonId]);
+      if (existRes.rows.length > 0) {
+        await pool.query(`UPDATE WritingProgress SET Status = 'completed', UpdatedAt = NOW() WHERE UserId = $1 AND LessonId = $2`, [req.user.id, lessonId]);
+      } else {
+        await pool.query(`INSERT INTO WritingProgress (Id, UserId, LessonId, Score, Status) VALUES (gen_random_uuid(), $1, $2, 100, 'completed')`, [req.user.id, lessonId]);
+      }
         
       return success(res, { message: 'Progress saved' });
     } catch (err) {

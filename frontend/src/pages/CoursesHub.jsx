@@ -1,9 +1,9 @@
 // ============================================
-// Courses Hub — 4 Skills Overview
+// Courses Hub — 4 Skills + Mini Games
 // ============================================
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiHeadphones, FiMic, FiBookOpen, FiEdit3, FiLock } from 'react-icons/fi';
+import { FiHeadphones, FiMic, FiBookOpen, FiEdit3, FiLock, FiZap } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 function CoursesHub() {
@@ -13,7 +13,8 @@ function CoursesHub() {
     { id: 'listening', name: 'Nghe (Listening)', icon: FiHeadphones, desc: 'Luyện nghe hiểu qua các đoạn hội thoại và bài test', color: '#3b82f6', ready: false },
     { id: 'speaking', name: 'Nói (Speaking)', icon: FiMic, desc: 'Luyện phát âm chuẩn AI theo cấp độ từ cơ bản đến nâng cao', color: '#10b981', ready: true },
     { id: 'reading', name: 'Đọc (Reading)', icon: FiBookOpen, desc: 'Nâng cao vốn từ vựng và khả năng đọc hiểu', color: '#f59e0b', ready: false },
-    { id: 'writing', name: 'Viết (Writing)', icon: FiEdit3, desc: 'Luyện ghép câu, ngữ pháp và viết đoạn văn', color: '#ef4444', ready: true }
+    { id: 'writing', name: 'Viết (Writing)', icon: FiEdit3, desc: 'Luyện ghép câu, ngữ pháp và viết đoạn văn', color: '#ef4444', ready: true },
+    { id: 'games', name: 'Mini Games', icon: FiZap, desc: 'Kết hợp 4 loại game: Nối từ, Nghe chọn, Nghe xếp câu, Đúng/Sai để ôn luyện vui nhộn', color: '#8b5cf6', ready: true },
   ];
 
   const handleSelectSkill = (skill) => {
@@ -21,11 +22,9 @@ function CoursesHub() {
       toast('Khoá học này đang được phát triển!', { icon: '🔒' });
       return;
     }
-    if (skill.id === 'speaking') {
-      navigate('/speaking/lessons');
-    } else if (skill.id === 'writing') {
-      navigate('/writing/lessons');
-    }
+    if (skill.id === 'speaking') navigate('/speaking/lessons');
+    else if (skill.id === 'writing') navigate('/writing/lessons');
+    else if (skill.id === 'games') navigate('/games');
   };
 
   return (

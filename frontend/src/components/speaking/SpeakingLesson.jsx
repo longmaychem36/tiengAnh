@@ -94,35 +94,30 @@ const SpeakingLesson = () => {
   }, [currentIndex, currentSentence, loading, showSettings]);
 
   /**
-   * New flow: receives audio blob from Recorder
-   * 1. Upload audio → Whisper server transcribes
-   * 2. Use transcript → analyze against target texts
+   * Optimized flow: single request for transcribe + analyze
+   * Audio blob → Backend → Whisper server (transcribe + analyze) → Result
    */
   const handleRecordingComplete = async (audioBlob) => {
     setIsAnalyzing(true);
     
     try {
-      // Step 1: Transcribe audio using Whisper
-      const transcribeRes = await speakingApi.transcribeAudio(audioBlob);
-      const transcript = transcribeRes.data.transcript;
+      // Single combined request: transcribe + analyze in one round-trip
+      const targetTexts = currentSentence.options.map(o => o.text);
+      const res = await speakingApi.transcribeAndAnalyze(audioBlob, targetTexts);
 
-      if (!transcript || transcript.trim() === '') {
+      const data = res.data;
+
+      if (!data.transcript || data.transcript.trim() === '') {
         toast.error('Không nhận diện được giọng nói. Vui lòng nói to và rõ ràng hơn.');
         setIsAnalyzing(false);
         return;
       }
 
-      // Step 2: Analyze transcript against target texts
-      const analyzeRes = await speakingApi.analyzeText({
-        targetTexts: currentSentence.options.map(o => o.text),
-        transcript: transcript
-      });
-      
       const newResult = {
-        score: analyzeRes.data.score,
-        transcript: analyzeRes.data.transcript,
-        feedback: analyzeRes.data.feedback,
-        matchedText: analyzeRes.data.matchedText
+        score: data.score,
+        transcript: data.transcript,
+        feedback: data.feedback,
+        matchedText: data.matchedText
       };
       
       setResult(newResult);
@@ -135,7 +130,7 @@ const SpeakingLesson = () => {
       }
     } catch (err) {
       console.error(err);
-      const errorMsg = err.response?.data?.message || 'Lỗi nhận diện giọng nói';
+      const errorMsg = err.response?.data?.message || err.message || 'Lỗi nhận diện giọng nói';
       toast.error(errorMsg);
       setResult({
         score: 0,

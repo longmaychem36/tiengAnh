@@ -42,6 +42,9 @@ router.use(authMiddleware);
 // Whisper transcription endpoint
 router.post('/transcribe', audioUpload.single('audio'), speakingController.transcribeAudio);
 
+// Combined transcribe + analyze (faster: 1 round-trip instead of 2)
+router.post('/transcribe-analyze', audioUpload.single('audio'), speakingController.transcribeAndAnalyze);
+
 // Existing endpoints
 router.get('/lessons', speakingController.getLessons);
 router.get('/lessons/:id', speakingController.getLessonDetails);

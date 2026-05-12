@@ -70,6 +70,65 @@ const speakingController = {
     }
   },
 
+  /**
+   * Combined transcribe + analyze in one request.
+   * Saves a network round-trip by doing both on the Whisper server.
+   */
+  async transcribeAndAnalyze(req, res, next) {
+    try {
+      if (!req.file) return badRequest(res, 'Audio file is required');
+      
+      const { targetTexts } = req.body;
+      if (!targetTexts) return badRequest(res, 'targetTexts is required');
+
+      const filePath = path.resolve(req.file.path);
+
+      try {
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(filePath), {
+          filename: req.file.filename || 'audio.webm',
+          contentType: req.file.mimetype || 'audio/webm'
+        });
+        // Send target texts as pipe-separated string
+        const textsArray = typeof targetTexts === 'string' ? JSON.parse(targetTexts) : targetTexts;
+        formData.append('targetTexts', JSON.stringify(textsArray));
+
+        const response = await axios.post(`${WHISPER_SERVER_URL}/transcribe-and-analyze`, formData, {
+          headers: { ...formData.getHeaders() },
+          timeout: 30000,
+          maxContentLength: 50 * 1024 * 1024
+        });
+
+        const result = response.data;
+
+        if (result.error) {
+          console.error('Whisper Server Error:', result.error);
+          return res.status(500).json({ success: false, message: result.error });
+        }
+
+        return success(res, {
+          transcript: result.transcript || result.text,
+          score: result.score,
+          feedback: result.feedback,
+          matchedText: result.matchedText,
+          processingTime: result.processingTime
+        });
+      } catch (err) {
+        console.error('Failed to communicate with Whisper Server:', err.message);
+        return res.status(500).json({
+          success: false,
+          message: 'Whisper server đang offline. Vui lòng chạy: python whisper_server.py'
+        });
+      } finally {
+        try {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch (e) {}
+      }
+    } catch (err) {
+      next(err);
+    }
+  },
+
   // ==========================================
   // LESSON ENDPOINTS
   // ==========================================
@@ -154,15 +213,13 @@ const speakingController = {
       const { lessonId, completed } = req.body;
       const pool = getPool();
       
-      await pool.request()
-        .input('userId', sql.UniqueIdentifier, req.user.id)
-        .input('lessonId', sql.UniqueIdentifier, lessonId)
-        .query(`
-          IF EXISTS (SELECT 1 FROM SpeakingProgress WHERE UserId = @userId AND LessonId = @lessonId)
-            UPDATE SpeakingProgress SET Status = 'completed', UpdatedAt = NOW() WHERE UserId = @userId AND LessonId = @lessonId
-          ELSE
-            INSERT INTO SpeakingProgress (UserId, LessonId, Score, Status) VALUES (@userId, @lessonId, 100, 'completed')
-        `);
+      // PostgreSQL UPSERT — insert or update on conflict
+      await pool.query(`
+        INSERT INTO SpeakingProgress (UserId, LessonId, Score, Status, UpdatedAt)
+        VALUES ($1, $2, 100, 'completed', NOW())
+        ON CONFLICT (UserId, LessonId)
+        DO UPDATE SET Status = 'completed', UpdatedAt = NOW()
+      `, [req.user.id, lessonId]);
         
       return success(res, { message: 'Progress saved' });
     } catch (err) {

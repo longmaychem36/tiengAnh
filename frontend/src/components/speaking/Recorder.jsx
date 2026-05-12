@@ -54,6 +54,9 @@ const Recorder = ({ onRecordingComplete, isAnalyzing }) => {
     }
   };
 
+  const autoStopRef = useRef(null);
+  const MAX_RECORD_SECONDS = 8; // Auto-stop after 8s for faster processing
+
   const startRecording = async () => {
     if (isAnalyzing) return;
     
@@ -110,6 +113,7 @@ const Recorder = ({ onRecordingComplete, isAnalyzing }) => {
         toast.error('Lỗi ghi âm, vui lòng thử lại.');
         stopMediaStream();
         setIsRecording(false);
+        if (autoStopRef.current) clearTimeout(autoStopRef.current);
       };
 
       mediaRecorderRef.current = mediaRecorder;
@@ -118,6 +122,13 @@ const Recorder = ({ onRecordingComplete, isAnalyzing }) => {
 
       // Start audio visualization
       startVisualization(stream);
+
+      // Auto-stop after MAX_RECORD_SECONDS
+      autoStopRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          stopRecording();
+        }
+      }, MAX_RECORD_SECONDS * 1000);
 
     } catch (err) {
       console.error('Failed to access microphone:', err);
@@ -134,6 +145,12 @@ const Recorder = ({ onRecordingComplete, isAnalyzing }) => {
   const stopRecording = () => {
     if (!mediaRecorderRef.current || !isRecording) return;
     
+    // Clear auto-stop timer
+    if (autoStopRef.current) {
+      clearTimeout(autoStopRef.current);
+      autoStopRef.current = null;
+    }
+
     try {
       if (mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
