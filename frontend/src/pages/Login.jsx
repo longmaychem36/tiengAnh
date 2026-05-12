@@ -18,9 +18,14 @@ function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(form);
+      const userData = await login(form);
       toast.success('Welcome back! 🎉');
-      navigate('/dashboard');
+      // Redirect admin/superadmin to admin dashboard
+      if (userData.role === 'admin' || userData.role === 'superadmin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       toast.error(err.message || 'Login failed');
     } finally {

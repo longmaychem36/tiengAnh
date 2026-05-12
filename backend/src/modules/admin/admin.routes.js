@@ -307,6 +307,45 @@ router.delete('/games/questions/:id', requireRole('admin'), async (req, res, nex
   } catch (err) { next(err); }
 });
 
+// ========== DASHBOARD STATS (admin + superadmin) ==========
+router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { getPool } = require('../../config/database');
+    const pool = getPool();
+    const queries = await Promise.all([
+      pool.query('SELECT count(*) as count FROM Users'),
+      pool.query("SELECT count(*) as count FROM Users WHERE isactive = true"),
+      pool.query("SELECT count(*) as count FROM Users WHERE createdat >= NOW() - INTERVAL '7 days'"),
+      pool.query('SELECT count(*) as count FROM Courses'),
+      pool.query('SELECT count(*) as count FROM GameSets'),
+      pool.query('SELECT count(*) as count FROM GameLevels'),
+      pool.query('SELECT count(*) as count FROM MiniGameQuestions'),
+      pool.query('SELECT count(*) as count FROM SpeakingLessons'),
+      pool.query('SELECT count(*) as count FROM SpeakingQuestions'),
+      pool.query('SELECT count(*) as count FROM WritingLessons'),
+      pool.query('SELECT count(*) as count FROM WritingExercises'),
+      pool.query('SELECT count(*) as count FROM GrammarCategories'),
+      pool.query('SELECT count(*) as count FROM GrammarTopics'),
+    ]);
+    const stats = {
+      totalUsers: parseInt(queries[0].rows[0].count),
+      activeUsers: parseInt(queries[1].rows[0].count),
+      newUsers7d: parseInt(queries[2].rows[0].count),
+      totalCourses: parseInt(queries[3].rows[0].count),
+      totalGameSets: parseInt(queries[4].rows[0].count),
+      totalGameLevels: parseInt(queries[5].rows[0].count),
+      totalQuestions: parseInt(queries[6].rows[0].count),
+      totalSpeakingLessons: parseInt(queries[7].rows[0].count),
+      totalSpeakingQuestions: parseInt(queries[8].rows[0].count),
+      totalWritingLessons: parseInt(queries[9].rows[0].count),
+      totalWritingExercises: parseInt(queries[10].rows[0].count),
+      totalGrammarCategories: parseInt(queries[11].rows[0].count),
+      totalGrammarTopics: parseInt(queries[12].rows[0].count),
+    };
+    return success(res, stats);
+  } catch (err) { next(err); }
+});
+
 // ========== USER MANAGEMENT (superadmin only) ==========
 
 router.get('/users', superAdminOnly(), async (req, res, next) => {

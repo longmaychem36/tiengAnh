@@ -56,6 +56,18 @@ function AdminGames() {
   const loadSets = async () => {
     try { const res = await gameApi.getSets(); setSets(res.data || []); } catch { toast.error('Lỗi tải sets'); }
   };
+
+  // ========== SET CRUD (superadmin only) ==========
+  const [showSetForm, setShowSetForm] = useState(false);
+  const [setData, setSetData] = useState({});
+  const openSetForm = () => { setSetData({ name: '', description: '', icon: '🎮', gameType: 'mixed', orderIndex: sets.length }); setShowSetForm(true); };
+  const saveSet = async () => {
+    try { await adminApi.createSet(setData); toast.success('Đã tạo game set!'); setShowSetForm(false); loadSets(); } catch { toast.error('Lỗi tạo set'); }
+  };
+  const deleteSet = async (id) => {
+    if (!confirm('Xóa game set này? Tất cả level và câu hỏi sẽ bị xóa!')) return;
+    try { await adminApi.deleteSet(id); toast.success('Đã xóa!'); loadSets(); } catch { toast.error('Lỗi xóa set'); }
+  };
   const loadLevels = async (set) => {
     setActiveSet(set); setView('levels');
     try { const res = await gameApi.getLevels(set.Id); setLevels(res.data || []); } catch { toast.error('Lỗi tải levels'); }
@@ -88,76 +100,45 @@ function AdminGames() {
   };
 
   // ========== QUESTION CRUD ==========
-  const getDefaultQType = () => {
-    const t = activeSet?.GameType;
-    if (t === 'matching') return 'match_pair';
-    if (t === 'listening') return 'listen_choose';
-    if (t === 'sentence') return 'order_sentence';
-    return 'match_pair';
-    return 'match_pair';
-  };
+  // For mixed sets, questionType is chosen per-question
+  const getDefaultQType = () => 'matching';
   const openQuestionForm = (q = null) => {
     setEditItem(q);
-    let optionsText = '';
-    
-    if (q) {
-      if (activeSet?.GameType === 'sentence' || activeSet?.GameType === 'listening') {
-        const wordsToExclude = activeSet.GameType === 'sentence' 
-          ? (q.CorrectAnswer ? q.CorrectAnswer.split(' ').map(s => s.trim().toLowerCase()).filter(Boolean) : [])
-          : [q.CorrectAnswer?.toLowerCase()];
-        const distractors = q.Options ? q.Options.filter(opt => !wordsToExclude.includes(opt.toLowerCase())) : [];
-        optionsText = distractors.join(', ');
-      } else {
-        optionsText = q.Options ? q.Options.join(', ') : '';
-      }
-    }
-
-    setFormData(q ? { 
-        contentEN: q.ContentEN || '', 
-        contentVI: q.ContentVI || '', 
-        audioUrl: q.AudioUrl || '', 
-        imageUrl: q.ImageUrl || '', 
-        correctAnswer: q.CorrectAnswer || '', 
-        options: optionsText, 
-        orderIndex: q.OrderIndex 
-      }
-      : { contentEN: '', contentVI: '', audioUrl: '', imageUrl: '', correctAnswer: '', options: '', orderIndex: questions.length });
+    const optionsText = q?.Options ? q.Options.join(', ') : '';
+    setFormData(q
+      ? { questionType: q.QuestionType || 'matching', contentEN: q.ContentEN || '', contentVI: q.ContentVI || '', audioUrl: q.AudioUrl || '', correctAnswer: q.CorrectAnswer || '', options: optionsText, orderIndex: q.OrderIndex }
+      : { questionType: 'matching', contentEN: '', contentVI: '', audioUrl: '', correctAnswer: '', options: '', orderIndex: questions.length });
     setShowForm(true);
   };
   const saveQuestion = async () => {
     try {
-      let finalOptions = formData.options ? formData.options.split(',').map(s => s.trim()).filter(Boolean) : null;
+      const qType = formData.questionType || 'matching';
+      let finalOptions = formData.options ? formData.options.split(',').map(s => s.trim()).filter(Boolean) : [];
       let finalCorrectAnswer = formData.correctAnswer;
       let finalContentEN = formData.contentEN;
 
-      if (activeSet?.GameType === 'matching') {
+      if (qType === 'matching') {
         finalCorrectAnswer = formData.contentEN;
-      } else if (activeSet?.GameType === 'sentence') {
-        const words = finalCorrectAnswer ? finalCorrectAnswer.split(' ').map(s => s.trim()).filter(Boolean) : [];
-        const distractors = finalOptions || [];
-        finalOptions = [...words, ...distractors];
-        finalContentEN = finalCorrectAnswer; 
-      } else if (activeSet?.GameType === 'listening') {
-        finalContentEN = finalCorrectAnswer; // Use correct answer for TTS
-        finalOptions = finalOptions || [];
-        if (finalCorrectAnswer && !finalOptions.includes(finalCorrectAnswer)) {
-           finalOptions.push(finalCorrectAnswer);
-        }
+        finalOptions = [];
+      } else if (qType === 'listenbuild') {
+        // Options = words of the sentence + distractors
+        const sentenceWords = finalCorrectAnswer.split(' ').map(s => s.trim()).filter(Boolean);
+        const extra = finalOptions.filter(o => !sentenceWords.includes(o));
+        finalOptions = [...sentenceWords, ...extra];
+        finalContentEN = finalCorrectAnswer;
+      } else if (qType === 'listening') {
+        finalContentEN = finalCorrectAnswer;
+        if (finalCorrectAnswer && !finalOptions.includes(finalCorrectAnswer)) finalOptions.push(finalCorrectAnswer);
+      } else if (qType === 'truefalse') {
+        finalOptions = [];
+        finalCorrectAnswer = formData.correctAnswer === 'true' ? 'true' : 'false';
       }
 
-      const d = { 
-        ...formData, 
-        contentEN: finalContentEN,
-        levelId: activeLevel.Id, 
-        questionType: getDefaultQType(), 
-        options: finalOptions,
-        correctAnswer: finalCorrectAnswer
-      };
-      
+      const d = { ...formData, contentEN: finalContentEN, levelId: activeLevel.Id, questionType: qType, options: finalOptions, correctAnswer: finalCorrectAnswer };
       if (editItem) { await adminApi.updateQuestion(editItem.Id, d); toast.success('Đã cập nhật!'); }
       else { await adminApi.createQuestion(d); toast.success('Đã tạo!'); }
       setShowForm(false); loadQuestions(activeLevel);
-    } catch { toast.error('Lỗi lưu câu hỏi'); }
+    } catch (e) { toast.error('Lỗi lưu câu hỏi: ' + e.message); }
   };
   const deleteQuestion = async (id) => {
     if (!confirm('Xóa câu hỏi này?')) return;
@@ -176,45 +157,35 @@ function AdminGames() {
   );
 
   const getQuestionFields = () => {
-    const t = activeSet?.GameType;
-    
-    if (t === 'matching') {
-      return [
-        { key: 'contentEN', label: 'Từ tiếng Anh', placeholder: 'Ví dụ: Hello' },
-        { key: 'contentVI', label: 'Nghĩa tiếng Việt', placeholder: 'Ví dụ: Xin chào' },
-        { key: 'orderIndex', label: 'Thứ tự hiển thị', type: 'number' }
-      ];
-    }
-    
-    if (t === 'listening') {
-      return [
-        { key: 'correctAnswer', label: 'Đáp án đúng (Từ/câu sẽ được đọc)', placeholder: 'Ví dụ: Hello' },
-        { key: 'options', label: 'Các đáp án sai để gây nhiễu (cách nhau bằng dấu phẩy)', placeholder: 'Help, Hold, Hill' },
-        { key: 'audioUrl', label: 'Link File Audio (Tuỳ chọn, bỏ trống sẽ dùng giọng AI đọc tự động)' },
-        { key: 'orderIndex', label: 'Thứ tự hiển thị', type: 'number' }
-      ];
-    }
-
-    if (t === 'sentence') {
-      return [
-        { key: 'contentVI', label: 'Câu gợi ý (Tiếng Việt)', placeholder: 'Ví dụ: Tôi đi học' },
-        { key: 'correctAnswer', label: 'Câu đáp án (Tiếng Anh)', placeholder: 'Ví dụ: I go to school' },
-        { key: 'options', label: 'Các từ sai để gây nhiễu (Tuỳ chọn, cách nhau bằng dấu phẩy)', placeholder: 'goes, going' },
-        { key: 'orderIndex', label: 'Thứ tự hiển thị', type: 'number' }
-      ];
-    }
-
-
-
-    return [
-      { key: 'contentEN', label: 'Nội dung (EN)' },
-      { key: 'contentVI', label: 'Nghĩa (VI)' },
-      { key: 'correctAnswer', label: 'Đáp án đúng' },
-      { key: 'options', label: 'Các lựa chọn (cách nhau bằng dấu phẩy)' },
-      { key: 'audioUrl', label: 'Audio URL' },
-      { key: 'imageUrl', label: 'Image URL' },
-      { key: 'orderIndex', label: 'Thứ tự', type: 'number' }
+    const qType = formData.questionType || 'matching';
+    const base = [
+      { key: 'questionType', label: 'Loại câu hỏi', type: 'select', options: ['matching', 'listening', 'listenbuild', 'truefalse'] },
+      { key: 'orderIndex', label: 'Thứ tự hiển thị', type: 'number' },
     ];
+    if (qType === 'matching') return [
+      ...base,
+      { key: 'contentEN', label: 'Từ tiếng Anh', placeholder: 'Hello' },
+      { key: 'contentVI', label: 'Nghĩa tiếng Việt', placeholder: 'Xin chào' },
+    ];
+    if (qType === 'listening') return [
+      ...base,
+      { key: 'correctAnswer', label: 'Câu/từ sẽ được đọc (đáp án đúng)', placeholder: 'Good morning' },
+      { key: 'contentVI', label: 'Nghĩa tiếng Việt (tuỳ chọn)', placeholder: 'Chào buổi sáng' },
+      { key: 'options', label: 'Các đáp án sai, cách nhau bằng dấu phẩy', placeholder: 'Good night, Good evening' },
+    ];
+    if (qType === 'listenbuild') return [
+      ...base,
+      { key: 'correctAnswer', label: 'Câu tiếng Anh hoàn chỉnh (sẽ được đọc)', placeholder: 'I go to school' },
+      { key: 'contentVI', label: 'Nghĩa tiếng Việt (gợi ý)', placeholder: 'Tôi đi học' },
+      { key: 'options', label: 'Từ gây nhiễu thêm (tuỳ chọn, cách nhau bằng dấu phẩy)', placeholder: 'goes, going' },
+    ];
+    if (qType === 'truefalse') return [
+      ...base,
+      { key: 'contentEN', label: 'Câu tiếng Anh', placeholder: 'Hello' },
+      { key: 'contentVI', label: 'Bản dịch tiếng Việt (đúng hoặc sai)', placeholder: 'Xin chào' },
+      { key: 'correctAnswer', label: 'Đáp án', type: 'select', options: ['true', 'false'] },
+    ];
+    return base;
   };
 
   const cardStyle = { padding: 'var(--space-4) var(--space-5)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', background: 'white', marginBottom: 'var(--space-3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
@@ -227,6 +198,9 @@ function AdminGames() {
           <h1>Quản lý Mini Games</h1>
           <p style={{ color: 'var(--color-text-muted)' }}>Tạo, sửa, xóa bộ game, level và câu hỏi</p>
         </div>
+        {isSuperAdmin && view === 'sets' && (
+          <button className="btn btn-primary btn-sm" onClick={openSetForm}><FiPlus /> Tạo Game Set</button>
+        )}
       </div>
 
       <Breadcrumb />
@@ -239,11 +213,12 @@ function AdminGames() {
               <div onClick={() => loadLevels(set)} style={{ cursor: 'pointer', flex: 1 }}>
                 <span style={{ fontSize: 24, marginRight: 12 }}>{set.Icon}</span>
                 <b>{set.Name}</b>
-                <span style={{ marginLeft: 12, fontSize: 'var(--font-size-xs)', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>{set.GameType}</span>
+                <span style={{ marginLeft: 12, fontSize: 'var(--font-size-xs)', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: set.GameType === 'mixed' ? '#ede9fe' : 'var(--color-primary-light)', color: set.GameType === 'mixed' ? '#7c3aed' : 'var(--color-primary)' }}>{set.GameType}</span>
                 <span style={{ marginLeft: 8, color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>{set.LevelCount} levels</span>
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
                 <button style={btnIcon} onClick={() => loadLevels(set)}><FiChevronRight size={16} /></button>
+                {isSuperAdmin && <button style={btnIcon} onClick={() => deleteSet(set.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>}
               </div>
             </div>
           ))}
@@ -283,25 +258,27 @@ function AdminGames() {
             <button className="btn btn-primary btn-sm" onClick={() => openQuestionForm()}><FiPlus /> Thêm câu hỏi</button>
           </div>
           {questions.length === 0 && <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: 'var(--space-8)' }}>Chưa có câu hỏi nào.</p>}
-          {questions.map((q, i) => (
+          {questions.map((q, i) => {
+            const typeLabels = { matching: '🔗', listening: '🎧', listenbuild: '🎵', truefalse: '✅' };
+            const mainText = q.QuestionType === 'truefalse' || q.QuestionType === 'listenbuild' ? q.CorrectAnswer : (q.ContentEN || q.CorrectAnswer);
+            return (
             <div key={q.Id} style={{ ...cardStyle, alignItems: 'flex-start' }}>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                   <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 'var(--font-size-sm)' }}>#{i + 1}</span>
-                  <b>{activeSet?.GameType === 'sentence' ? q.ContentVI : (activeSet?.GameType === 'listening' ? q.CorrectAnswer : q.ContentEN)}</b>
+                  <span style={{ fontSize: 'var(--font-size-xs)', background: '#f1f5f9', padding: '2px 8px', borderRadius: 99 }}>{typeLabels[q.QuestionType] || '❓'} {q.QuestionType}</span>
+                  <b>{mainText}</b>
                 </div>
-                {activeSet?.GameType === 'sentence' && <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>→ {q.CorrectAnswer}</div>}
-                {activeSet?.GameType === 'matching' && q.ContentVI && <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>→ {q.ContentVI}</div>}
-                {activeSet?.GameType === 'listening' && q.ContentVI && <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>Ý nghĩa: {q.ContentVI}</div>}
-                {activeSet?.GameType === 'listening' && q.ContentEN && q.ContentEN !== q.CorrectAnswer && <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 2 }}>Từ phát âm: {q.ContentEN}</div>}
-                {q.Options && <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 2 }}>Options: {q.Options.join(' | ')}</div>}
+                {q.ContentVI && <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>→ {q.ContentVI}</div>}
+                {q.Options && q.Options.length > 0 && <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 2 }}>Options: {q.Options.join(' | ')}</div>}
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
                 <button style={btnIcon} onClick={() => openQuestionForm(q)}><FiEdit2 size={16} style={{ color: 'var(--color-primary)' }} /></button>
                 <button style={btnIcon} onClick={() => deleteQuestion(q.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </>
       )}
 
@@ -316,6 +293,22 @@ function AdminGames() {
       )}
       {showForm && view === 'questions' && (
         <FormModal title={editItem ? 'Sửa câu hỏi' : 'Thêm câu hỏi'} onSave={saveQuestion} formData={formData} setFormData={setFormData} setShowForm={setShowForm} fields={getQuestionFields()} />
+      )}
+      {showSetForm && isSuperAdmin && (
+        <FormModal
+          title="Tạo Game Set mới"
+          onSave={saveSet}
+          formData={setData}
+          setFormData={setSetData}
+          setShowForm={setShowSetForm}
+          fields={[
+            { key: 'name', label: 'Tên bộ game', placeholder: 'VD: Tổng hợp nâng cao' },
+            { key: 'description', label: 'Mô tả', placeholder: 'Kết hợp 4 loại mini game...' },
+            { key: 'icon', label: 'Icon (emoji)', placeholder: '🎮' },
+            { key: 'gameType', label: 'Loại game', type: 'select', options: ['mixed'] },
+            { key: 'orderIndex', label: 'Thứ tự hiển thị', type: 'number' },
+          ]}
+        />
       )}
     </div>
   );

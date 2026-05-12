@@ -5,7 +5,7 @@ import { NavLink } from 'react-router-dom';
 import {
   FiHome, FiBook, FiBookOpen, FiSearch,
   FiPlay, FiBarChart2, FiUser, FiAward,
-  FiUsers, FiSettings, FiShield, FiMic
+  FiSettings, FiShield
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -15,29 +15,13 @@ const navItems = [
   { to: '/grammar', icon: FiBookOpen, label: 'Grammar' },
   { to: '/dictionary', icon: FiSearch, label: 'Dictionary' },
   { to: '/collections', icon: FiBookOpen, label: 'Collections' },
-  { to: '/games', icon: FiPlay, label: 'Mini Games' },
   { to: '/progress', icon: FiBarChart2, label: 'Progress' },
   { to: '/profile', icon: FiUser, label: 'Profile' },
-];
-
-// Admin can manage content
-const adminItems = [
-  { to: '/admin/courses', icon: FiBook, label: 'QL Khóa học' },
-  { to: '/admin/speaking', icon: FiMic, label: 'QL Speaking' },
-  { to: '/admin/writing', icon: FiBook, label: 'QL Writing' },
-  { to: '/admin/grammar', icon: FiBookOpen, label: 'QL Grammar' },
-  { to: '/admin/games', icon: FiPlay, label: 'QL Mini Games' },
-];
-
-// SuperAdmin can manage users + system
-const superAdminItems = [
-  { to: '/admin/users', icon: FiUsers, label: 'QL Người dùng' },
 ];
 
 function Sidebar() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
-  const isSuperAdmin = user?.role === 'superadmin';
 
   const NavItem = ({ to, icon: Icon, label, isAdminLink }) => (
     <NavLink
@@ -102,7 +86,7 @@ function Sidebar() {
         </div>
         {navItems.map(item => <NavItem key={item.to} {...item} />)}
 
-        {/* Admin section — visible to admin + superadmin */}
+        {/* Admin panel link */}
         {isAdmin && (
           <>
             <div style={{ marginTop: 'var(--space-6)', marginBottom: 'var(--space-2)' }}>
@@ -110,19 +94,7 @@ function Sidebar() {
                 <FiShield size={12} /> Admin
               </span>
             </div>
-            {adminItems.map(item => <NavItem key={item.to} {...item} isAdminLink />)}
-          </>
-        )}
-
-        {/* SuperAdmin section — only superadmin */}
-        {isSuperAdmin && (
-          <>
-            <div style={{ marginTop: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>
-              <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 var(--space-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <FiShield size={12} /> Super Admin
-              </span>
-            </div>
-            {superAdminItems.map(item => <NavItem key={item.to} {...item} isAdminLink />)}
+            <NavItem to="/admin" icon={FiSettings} label="Bảng điều khiển" isAdminLink />
           </>
         )}
       </nav>

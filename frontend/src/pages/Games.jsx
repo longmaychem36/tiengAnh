@@ -159,20 +159,18 @@ function Games() {
   const typeColors = {
     matching: { bg: 'linear-gradient(135deg, #6366f1, #8b5cf6)', ring: '#c4b5fd' },
     listening: { bg: 'linear-gradient(135deg, #f59e0b, #ef4444)', ring: '#fcd34d' },
-    sentence: { bg: 'linear-gradient(135deg, #ec4899, #8b5cf6)', ring: '#f9a8d4' }
+    sentence: { bg: 'linear-gradient(135deg, #ec4899, #8b5cf6)', ring: '#f9a8d4' },
+    mixed: { bg: 'linear-gradient(135deg, #8b5cf6, #3b82f6)', ring: '#c4b5fd' },
   };
 
   return (
     <div>
       <div className="page-header" style={{ marginBottom: 'var(--space-8)' }}>
         <h1 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <FiPlay style={{ color: 'var(--color-primary)' }} /> 
-          {typeFilter === 'listening' ? 'Khoá Học Nghe' : 
-           typeFilter === 'matching' ? 'Khoá Học Đọc' : 
-           typeFilter === 'sentence' ? 'Khoá Học Viết' : 'Mini Games'}
+          🎮 Mini Games
         </h1>
         <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-lg)', marginTop: 'var(--space-2)' }}>
-          {typeFilter ? 'Hoàn thành các chặng đường để chinh phục kỹ năng.' : 'Hoàn thành các bộ game để nhận thật nhiều EXP và phần thưởng.'}
+          Kết hợp 4 loại game: Nối từ, Nghe chọn, Nghe xếp câu, Đúng/Sai để ôn luyện vui nhộn.
         </p>
       </div>
 

@@ -1,114 +1,111 @@
 // ============================================
-// Admin Game Management — Service
+// Admin Game Management — Service (PostgreSQL)
 // ============================================
-const { sql, getPool } = require('../../config/database');
+const { getPool } = require('../../config/database');
 
 const adminGameService = {
   // ========== GAME SETS ==========
   async createSet(data) {
     const pool = getPool();
-    const { name, description, gameType, icon, orderIndex, unlockCondition } = data;
-    const r = await pool.request()
-      .input('n', sql.NVarChar, name).input('d', sql.NVarChar, description || '')
-      .input('t', sql.NVarChar, gameType).input('i', sql.NVarChar, icon || '🎮')
-      .input('o', sql.Int, orderIndex || 0).input('u', sql.NVarChar, unlockCondition || 'none')
-      .query('INSERT INTO GameSets (Name,Description,GameType,Icon,OrderIndex,UnlockCondition) VALUES (@n,@d,@t,@i,@o,@u) RETURNING *');
-    return r.recordset[0];
+    const { name, description, gameType, icon, orderIndex } = data;
+    const r = await pool.query(
+      `INSERT INTO GameSets (Id, Name, Description, GameType, Icon, OrderIndex)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING *`,
+      [name, description || '', gameType || 'mixed', icon || '🎮', orderIndex || 0]
+    );
+    return r.rows[0];
   },
 
   async updateSet(id, data) {
     const pool = getPool();
-    const { name, description, gameType, icon, orderIndex, unlockCondition } = data;
-    await pool.request()
-      .input('id', sql.UniqueIdentifier, id)
-      .input('n', sql.NVarChar, name).input('d', sql.NVarChar, description || '')
-      .input('t', sql.NVarChar, gameType).input('i', sql.NVarChar, icon || '🎮')
-      .input('o', sql.Int, orderIndex || 0).input('u', sql.NVarChar, unlockCondition || 'none')
-      .query('UPDATE GameSets SET Name=@n,Description=@d,GameType=@t,Icon=@i,OrderIndex=@o,UnlockCondition=@u WHERE Id=@id');
+    const { name, description, gameType, icon, orderIndex } = data;
+    await pool.query(
+      `UPDATE GameSets SET Name=$1, Description=$2, GameType=$3, Icon=$4, OrderIndex=$5 WHERE Id=$6`,
+      [name, description || '', gameType || 'mixed', icon || '🎮', orderIndex || 0, id]
+    );
     return { Id: id, ...data };
   },
 
   async deleteSet(id) {
     const pool = getPool();
-    // Cascade: delete questions → levels → set
-    await pool.request().input('id', sql.UniqueIdentifier, id)
-      .query('DELETE FROM MiniGameQuestions WHERE LevelId IN (SELECT Id FROM GameLevels WHERE SetId=@id)');
-    await pool.request().input('id', sql.UniqueIdentifier, id)
-      .query('DELETE FROM UserGameProgress WHERE LevelId IN (SELECT Id FROM GameLevels WHERE SetId=@id)');
-    await pool.request().input('id', sql.UniqueIdentifier, id)
-      .query('DELETE FROM GameLevels WHERE SetId=@id');
-    await pool.request().input('id', sql.UniqueIdentifier, id)
-      .query('DELETE FROM GameSets WHERE Id=@id');
+    await pool.query(`DELETE FROM MiniGameQuestions WHERE LevelId IN (SELECT Id FROM GameLevels WHERE SetId=$1)`, [id]);
+    await pool.query(`DELETE FROM UserGameProgress WHERE LevelId IN (SELECT Id FROM GameLevels WHERE SetId=$1)`, [id]);
+    await pool.query(`DELETE FROM GameLevels WHERE SetId=$1`, [id]);
+    await pool.query(`DELETE FROM GameSets WHERE Id=$1`, [id]);
   },
 
   // ========== LEVELS ==========
   async createLevel(data) {
     const pool = getPool();
-    const { setId, levelNumber, name, difficulty, timeLimit, passScore, isLocked } = data;
-    const r = await pool.request()
-      .input('s', sql.UniqueIdentifier, setId).input('n', sql.Int, levelNumber)
-      .input('nm', sql.NVarChar, name).input('d', sql.NVarChar, difficulty || 'easy')
-      .input('t', sql.Int, timeLimit || 60).input('p', sql.Int, passScore || 70)
-      .input('l', sql.Bit, isLocked ? true : false)
-      .query('INSERT INTO GameLevels (SetId,LevelNumber,Name,Difficulty,TimeLimit,PassScore,IsLocked) VALUES (@s,@n,@nm,@d,@t,@p,@l) RETURNING *');
-    return r.recordset[0];
+    const { setId, levelNumber, name, difficulty, timeLimit, passScore } = data;
+    const r = await pool.query(
+      `INSERT INTO GameLevels (Id, SetId, LevelNumber, Name, Difficulty, TimeLimit, PassScore, IsLocked)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, false) RETURNING *`,
+      [setId, levelNumber || 1, name, difficulty || 'easy', timeLimit || 60, passScore || 70]
+    );
+    return r.rows[0];
   },
 
   async updateLevel(id, data) {
     const pool = getPool();
     const { name, difficulty, timeLimit, passScore } = data;
-    await pool.request()
-      .input('id', sql.UniqueIdentifier, id)
-      .input('nm', sql.NVarChar, name).input('d', sql.NVarChar, difficulty || 'easy')
-      .input('t', sql.Int, timeLimit || 60).input('p', sql.Int, passScore || 70)
-      .query('UPDATE GameLevels SET Name=@nm,Difficulty=@d,TimeLimit=@t,PassScore=@p WHERE Id=@id');
+    await pool.query(
+      `UPDATE GameLevels SET Name=$1, Difficulty=$2, TimeLimit=$3, PassScore=$4 WHERE Id=$5`,
+      [name, difficulty || 'easy', timeLimit || 60, passScore || 70, id]
+    );
   },
 
   async deleteLevel(id) {
     const pool = getPool();
-    await pool.request().input('id', sql.UniqueIdentifier, id).query('DELETE FROM MiniGameQuestions WHERE LevelId=@id');
-    await pool.request().input('id', sql.UniqueIdentifier, id).query('DELETE FROM UserGameProgress WHERE LevelId=@id');
-    await pool.request().input('id', sql.UniqueIdentifier, id).query('DELETE FROM GameLevels WHERE Id=@id');
+    await pool.query(`DELETE FROM MiniGameQuestions WHERE LevelId=$1`, [id]);
+    await pool.query(`DELETE FROM UserGameProgress WHERE LevelId=$1`, [id]);
+    await pool.query(`DELETE FROM GameLevels WHERE Id=$1`, [id]);
   },
 
   // ========== QUESTIONS ==========
   async getQuestionsByLevel(levelId) {
     const pool = getPool();
-    const r = await pool.request().input('lid', sql.UniqueIdentifier, levelId)
-      .query('SELECT * FROM MiniGameQuestions WHERE LevelId=@lid ORDER BY OrderIndex ASC');
-    return r.recordset.map(q => ({ ...q, Options: q.Options ? JSON.parse(q.Options) : null }));
+    const r = await pool.query(
+      `SELECT Id, QuestionType, ContentEN, ContentVI, AudioUrl, ImageUrl, CorrectAnswer, Options, OrderIndex
+       FROM MiniGameQuestions WHERE LevelId=$1 ORDER BY OrderIndex ASC`,
+      [levelId]
+    );
+    return r.rows.map(q => ({
+      Id: q.id, QuestionType: q.questiontype, ContentEN: q.contenten,
+      ContentVI: q.contentvi, AudioUrl: q.audiourl, ImageUrl: q.imageurl,
+      CorrectAnswer: q.correctanswer, Options: q.options ? JSON.parse(q.options) : null,
+      OrderIndex: q.orderindex
+    }));
   },
 
   async createQuestion(data) {
     const pool = getPool();
     const { levelId, questionType, contentEN, contentVI, audioUrl, imageUrl, correctAnswer, options, orderIndex } = data;
-    const r = await pool.request()
-      .input('lid', sql.UniqueIdentifier, levelId).input('t', sql.NVarChar, questionType)
-      .input('en', sql.NVarChar, contentEN).input('vi', sql.NVarChar, contentVI || '')
-      .input('au', sql.NVarChar, audioUrl || null).input('im', sql.NVarChar, imageUrl || null)
-      .input('a', sql.NVarChar, correctAnswer)
-      .input('o', sql.NVarChar, options ? JSON.stringify(options) : null)
-      .input('oi', sql.Int, orderIndex || 0)
-      .query('INSERT INTO MiniGameQuestions (LevelId,QuestionType,ContentEN,ContentVI,AudioUrl,ImageUrl,CorrectAnswer,Options,OrderIndex) VALUES (@lid,@t,@en,@vi,@au,@im,@a,@o,@oi) RETURNING *');
-    return r.recordset[0];
+    const r = await pool.query(
+      `INSERT INTO MiniGameQuestions (Id, LevelId, QuestionType, ContentEN, ContentVI, AudioUrl, ImageUrl, CorrectAnswer, Options, OrderIndex)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [levelId, questionType || 'matching', contentEN || '', contentVI || '',
+       audioUrl || null, imageUrl || null, correctAnswer,
+       options ? JSON.stringify(options) : null, orderIndex || 0]
+    );
+    return r.rows[0];
   },
 
   async updateQuestion(id, data) {
     const pool = getPool();
-    const { contentEN, contentVI, audioUrl, imageUrl, correctAnswer, options, orderIndex } = data;
-    await pool.request()
-      .input('id', sql.UniqueIdentifier, id)
-      .input('en', sql.NVarChar, contentEN).input('vi', sql.NVarChar, contentVI || '')
-      .input('au', sql.NVarChar, audioUrl || null).input('im', sql.NVarChar, imageUrl || null)
-      .input('a', sql.NVarChar, correctAnswer)
-      .input('o', sql.NVarChar, options ? JSON.stringify(options) : null)
-      .input('oi', sql.Int, orderIndex || 0)
-      .query('UPDATE MiniGameQuestions SET ContentEN=@en,ContentVI=@vi,AudioUrl=@au,ImageUrl=@im,CorrectAnswer=@a,Options=@o,OrderIndex=@oi WHERE Id=@id');
+    const { questionType, contentEN, contentVI, audioUrl, imageUrl, correctAnswer, options, orderIndex } = data;
+    await pool.query(
+      `UPDATE MiniGameQuestions SET QuestionType=$1, ContentEN=$2, ContentVI=$3,
+       AudioUrl=$4, ImageUrl=$5, CorrectAnswer=$6, Options=$7, OrderIndex=$8 WHERE Id=$9`,
+      [questionType || 'matching', contentEN || '', contentVI || '',
+       audioUrl || null, imageUrl || null, correctAnswer,
+       options ? JSON.stringify(options) : null, orderIndex || 0, id]
+    );
   },
 
   async deleteQuestion(id) {
     const pool = getPool();
-    await pool.request().input('id', sql.UniqueIdentifier, id).query('DELETE FROM MiniGameQuestions WHERE Id=@id');
+    await pool.query(`DELETE FROM MiniGameQuestions WHERE Id=$1`, [id]);
   }
 };
 
