@@ -26,6 +26,7 @@ const mediaRoutes = require('./modules/media/media.routes');
 const collectionRoutes = require('./modules/collection/collection.routes');
 const grammarRoutes = require('./modules/grammar/grammar.routes');
 const writingRoutes = require('./modules/writing/writing.routes');
+const billingRoutes = require('./modules/billing/billing.routes');
 const app = express();
 
 // ==================
@@ -70,6 +71,7 @@ app.use('/api/v1/media', mediaRoutes);
 app.use('/api/v1/collections', collectionRoutes);
 app.use('/api/v1/grammar', grammarRoutes);
 app.use('/api/v1/writing', writingRoutes);
+app.use('/api/v1/billing', billingRoutes);
 
 // Admin routes (role-guarded internally)
 const adminRoutes = require('./modules/admin/admin.routes');

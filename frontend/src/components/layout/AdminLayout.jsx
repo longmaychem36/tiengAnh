@@ -34,7 +34,7 @@ function AdminLayout() {
                 width: 34, height: 34, borderRadius: '50%',
                 background: user.role === 'superadmin'
                   ? 'linear-gradient(135deg, #f59e0b, #ef4444)'
-                  : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  : 'linear-gradient(135deg, #c2185b, #8a4b35)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: 'white', fontWeight: 700, fontSize: '0.85rem'
               }}>

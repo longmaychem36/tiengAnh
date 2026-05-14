@@ -25,6 +25,8 @@ import SkillCourse from './pages/SkillCourse';
 // New Speaking Module
 import SpeakingList from './components/speaking/SpeakingList';
 import SpeakingLesson from './components/speaking/SpeakingLesson';
+import SpeakingOptions from './components/speaking/SpeakingOptions';
+import SpeakingAiBuilder from './components/speaking/SpeakingAiBuilder';
 import WritingList from './components/writing/WritingList';
 import WritingLesson from './components/writing/WritingLesson';
 
@@ -58,8 +60,11 @@ function App() {
         <Route path="/courses/:id" element={<CourseDetail />} />
         
         {/* Speaking & Writing Module */}
+        <Route path="/speaking/options" element={<SpeakingOptions />} />
+        <Route path="/speaking/ai" element={<SpeakingAiBuilder />} />
         <Route path="/speaking/lessons" element={<SpeakingList />} />
         <Route path="/speaking/lessons/:id" element={<SpeakingLesson />} />
+        <Route path="/speaking/personalized/:sessionId" element={<SpeakingLesson />} />
         <Route path="/writing/lessons" element={<WritingList />} />
         <Route path="/writing/lessons/:id" element={<WritingLesson />} />
         

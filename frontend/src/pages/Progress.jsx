@@ -1,138 +1,273 @@
 // ============================================
 // Progress Page
 // ============================================
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiBook, FiCheckCircle, FiTarget, FiPlay } from 'react-icons/fi';
+import {
+  FiAward, FiBarChart2, FiBookOpen, FiCheckCircle,
+  FiClock, FiPlay, FiStar, FiTarget, FiTrendingUp
+} from 'react-icons/fi';
 import { progressApi, gamificationApi } from '../api/progressApi';
 import Loading from '../components/common/Loading';
 import { calcPercentage } from '../utils/helpers';
 
+const levelMilestones = [0, 100, 250, 500, 1000, 1800, 2800, 4000, 5500, 7500, 10000];
+
+function number(value) {
+  return Number(value || 0);
+}
+
 function Progress() {
   const [overall, setOverall] = useState(null);
+  const [gameStats, setGameStats] = useState(null);
   const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       progressApi.getOverall().catch(() => ({ data: null })),
+      gamificationApi.getStats().catch(() => ({ data: null })),
       gamificationApi.getMyAchievements().catch(() => ({ data: [] }))
-    ]).then(([progressRes, achieveRes]) => {
+    ]).then(([progressRes, statsRes, achieveRes]) => {
       setOverall(progressRes.data);
+      setGameStats(statsRes.data);
       setAchievements(achieveRes.data || []);
     }).finally(() => setLoading(false));
   }, []);
 
+  const computed = useMemo(() => {
+    const completedLessons = number(overall?.CompletedLessons);
+    const totalLessons = number(overall?.TotalLessons);
+    const masteredVocab = number(overall?.MasteredVocab);
+    const totalVocab = number(overall?.TotalVocab);
+    const gamesPlayed = number(overall?.GamesPlayed);
+    const avgScore = Math.round(number(overall?.AvgScore));
+    const exp = number(gameStats?.Exp);
+    const level = number(gameStats?.Level) || 1;
+    const streak = number(gameStats?.StreakDays);
+    const levelProgress = Math.max(0, Math.min(100, number(gameStats?.levelProgress)));
+    const nextLevelExp = levelMilestones[level] || levelMilestones[levelMilestones.length - 1];
+    const prevLevelExp = levelMilestones[level - 1] || 0;
+    const currentLevelExp = Math.max(0, exp - prevLevelExp);
+    const requiredLevelExp = Math.max(1, nextLevelExp - prevLevelExp);
+
+    return {
+      completedLessons,
+      totalLessons,
+      lessonPct: calcPercentage(completedLessons, totalLessons),
+      masteredVocab,
+      totalVocab,
+      vocabPct: calcPercentage(masteredVocab, totalVocab),
+      gamesPlayed,
+      avgScore,
+      exp,
+      level,
+      streak,
+      levelProgress,
+      currentLevelExp,
+      requiredLevelExp,
+      expToNextLevel: Math.max(0, nextLevelExp - exp)
+    };
+  }, [overall, gameStats]);
+
   if (loading) return <Loading />;
 
-  const stats = [
+  const summaryCards = [
     {
-      icon: <FiBook size={24} />,
-      label: 'Lessons Completed',
-      value: overall?.CompletedLessons || 0,
-      total: overall?.TotalLessons || 0,
-      color: '#6366f1'
+      icon: <FiBookOpen />,
+      label: 'Bài học hoàn thành',
+      value: computed.completedLessons,
+      helper: `${computed.completedLessons}/${computed.totalLessons || 0} bài đã ghi nhận`,
+      progress: computed.lessonPct
     },
     {
-      icon: <FiCheckCircle size={24} />,
-      label: 'Words Mastered',
-      value: overall?.MasteredVocab || 0,
-      total: overall?.TotalVocab || 0,
-      color: '#10b981'
+      icon: <FiCheckCircle />,
+      label: 'Từ vựng đã nắm',
+      value: computed.masteredVocab,
+      helper: `${computed.masteredVocab}/${computed.totalVocab || 0} từ trong sổ học`,
+      progress: computed.vocabPct
     },
     {
-      icon: <FiPlay size={24} />,
-      label: 'Games Played',
-      value: overall?.GamesPlayed || 0,
-      total: null,
-      color: '#ec4899'
+      icon: <FiPlay />,
+      label: 'Lượt chơi mini game',
+      value: computed.gamesPlayed,
+      helper: 'Số phiên luyện tập đã ghi nhận',
+      progress: null
     },
     {
-      icon: <FiTarget size={24} />,
-      label: 'Average Score',
-      value: `${overall?.AvgScore || 0}%`,
-      total: null,
-      color: '#f59e0b'
+      icon: <FiTarget />,
+      label: 'Điểm trung bình',
+      value: `${computed.avgScore}%`,
+      helper: 'Tính trên các bài có chấm điểm',
+      progress: computed.avgScore
     }
   ];
 
   return (
-    <div>
-      <div className="page-header">
-        <h1>📊 Learning Progress</h1>
-        <p>Track your journey and achievements</p>
-      </div>
+    <div className="progress-page">
+      <motion.section initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="progress-hero">
+        <div>
+          <span className="progress-eyebrow">Tiến độ học tập</span>
+          <h1>Theo dõi hành trình học của bạn</h1>
+          <p>Xem EXP, cấp độ, chuỗi ngày học, bài đã hoàn thành và các huy hiệu đã mở khóa trong hệ thống.</p>
+        </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-4" style={{ marginBottom: 'var(--space-8)' }}>
-        {stats.map((stat, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-            <div className="card" style={{ textAlign: 'center' }}>
-              <div style={{
-                width: 52, height: 52,
-                borderRadius: 'var(--radius-xl)',
-                background: `${stat.color}12`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: stat.color,
-                margin: '0 auto var(--space-3)'
-              }}>
-                {stat.icon}
-              </div>
-              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: stat.color }}>
-                {stat.value}
-              </div>
-              <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                {stat.label}
-              </div>
-              {stat.total !== null && (
-                <div style={{ marginTop: 'var(--space-3)' }}>
-                  <div className="progress-bar" style={{ height: 6 }}>
-                    <div className="progress-bar-fill" style={{
-                      width: `${calcPercentage(typeof stat.value === 'number' ? stat.value : 0, stat.total)}%`,
-                      background: stat.color
-                    }} />
-                  </div>
-                  <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                    {typeof stat.value === 'number' ? stat.value : 0} / {stat.total}
-                  </div>
+        <div className="progress-level-card">
+          <div className="progress-level-top">
+            <span>Cấp độ hiện tại</span>
+            <strong>Lv.{computed.level}</strong>
+          </div>
+          <div className="progress-level-ring" style={{ '--level-progress': `${computed.levelProgress}%` }}>
+            <span>{computed.levelProgress}%</span>
+          </div>
+          <div className="progress-exp-row">
+            <span>{computed.currentLevelExp}/{computed.requiredLevelExp} EXP</span>
+            <span>Còn {computed.expToNextLevel} EXP</span>
+          </div>
+        </div>
+      </motion.section>
+
+      <section className="progress-focus-grid">
+        <div className="progress-focus-card">
+          <HiStreakIcon />
+          <span>Chuỗi ngày</span>
+          <strong>{computed.streak} ngày</strong>
+        </div>
+        <div className="progress-focus-card">
+          <FiStar />
+          <span>Tổng EXP</span>
+          <strong>{computed.exp}</strong>
+        </div>
+        <div className="progress-focus-card">
+          <FiAward />
+          <span>Huy hiệu</span>
+          <strong>{achievements.length}</strong>
+        </div>
+      </section>
+
+      <section className="progress-section">
+        <div className="progress-section-title">
+          <h2>Tổng quan luyện tập</h2>
+          <p>Các chỉ số này được lấy từ bài học, từ vựng, mini game và điểm số đã lưu.</p>
+        </div>
+
+        <div className="progress-summary-grid">
+          {summaryCards.map((item, index) => (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.06 }}
+              className="progress-summary-card"
+            >
+              <div className="progress-summary-icon">{item.icon}</div>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              <small>{item.helper}</small>
+              {item.progress !== null && (
+                <div className="progress-warm-bar">
+                  <span style={{ width: `${Math.max(0, Math.min(100, item.progress))}%` }} />
                 </div>
               )}
-            </div>
-          </motion.div>
-        ))}
-      </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
 
-      {/* Achievements */}
-      <div>
-        <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>
-          🏆 Achievements ({achievements.length})
-        </h2>
+      <section className="progress-section progress-layout">
+        <div className="progress-panel">
+          <div className="progress-section-title is-compact">
+            <h2>Phân bổ học tập</h2>
+            <p>Tỷ lệ hoàn thành theo từng mảng chính.</p>
+          </div>
+
+          <div className="progress-breakdown">
+            <ProgressLine label="Bài học" value={computed.lessonPct} detail={`${computed.completedLessons}/${computed.totalLessons || 0}`} />
+            <ProgressLine label="Từ vựng" value={computed.vocabPct} detail={`${computed.masteredVocab}/${computed.totalVocab || 0}`} />
+            <ProgressLine label="Điểm số" value={computed.avgScore} detail={`${computed.avgScore}%`} />
+            <ProgressLine label="Cấp độ" value={computed.levelProgress} detail={`Lv.${computed.level}`} />
+          </div>
+        </div>
+
+        <div className="progress-panel">
+          <div className="progress-section-title is-compact">
+            <h2>Gợi ý tiếp theo</h2>
+            <p>Dựa trên các chỉ số đang có.</p>
+          </div>
+
+          <div className="progress-next-list">
+            <NextItem icon={<FiBookOpen />} title="Hoàn thành thêm bài học" text="Mỗi bài hoàn thành giúp tăng EXP và ổn định lộ trình." />
+            <NextItem icon={<FiPlay />} title="Chơi mini game ngắn" text="Dùng mini game để ôn lại nhanh khi không có nhiều thời gian." />
+            <NextItem icon={<FiClock />} title="Giữ chuỗi ngày học" text="Đăng nhập và luyện tập đều để giữ nhịp học hằng ngày." />
+          </div>
+        </div>
+      </section>
+
+      <section className="progress-section">
+        <div className="progress-section-title">
+          <h2>Huy hiệu đã mở khóa</h2>
+          <p>{achievements.length} thành tích trong tài khoản của bạn.</p>
+        </div>
+
         {achievements.length > 0 ? (
-          <div className="grid grid-3">
-            {achievements.map((a, i) => (
-              <motion.div key={a.Id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}>
-                <div className="card" style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '36px', marginBottom: 'var(--space-2)' }}>🏅</div>
-                  <h3 style={{ fontWeight: 700, marginBottom: 'var(--space-1)' }}>{a.Name}</h3>
-                  <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>
-                    {a.Description}
-                  </p>
-                  <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-                    Unlocked: {new Date(a.UnlockedAt).toLocaleDateString('vi-VN')}
-                  </span>
-                </div>
+          <div className="progress-achievement-grid">
+            {achievements.map((achievement, index) => (
+              <motion.div
+                key={achievement.Id || `${achievement.Name}-${index}`}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.04 }}
+                className="progress-achievement-card"
+              >
+                <div className="progress-achievement-medal"><FiAward /></div>
+                <h3>{achievement.Name}</h3>
+                <p>{achievement.Description}</p>
+                <span>Mở khóa: {achievement.UnlockedAt ? new Date(achievement.UnlockedAt).toLocaleDateString('vi-VN') : 'Chưa rõ'}</span>
               </motion.div>
             ))}
           </div>
         ) : (
-          <div className="card" style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--color-text-muted)' }}>
-            <div style={{ fontSize: '48px', marginBottom: 'var(--space-4)' }}>🎯</div>
-            <p>Complete lessons and games to unlock achievements!</p>
+          <div className="progress-empty">
+            <FiAward />
+            <strong>Chưa có huy hiệu</strong>
+            <p>Hoàn thành bài học, luyện từ vựng và chơi mini game để mở khóa thành tích đầu tiên.</p>
           </div>
         )}
+      </section>
+    </div>
+  );
+}
+
+function ProgressLine({ label, value, detail }) {
+  const safeValue = Math.max(0, Math.min(100, number(value)));
+
+  return (
+    <div className="progress-line">
+      <div>
+        <strong>{label}</strong>
+        <span>{detail}</span>
+      </div>
+      <div className="progress-warm-bar">
+        <span style={{ width: `${safeValue}%` }} />
       </div>
     </div>
   );
+}
+
+function NextItem({ icon, title, text }) {
+  return (
+    <div className="progress-next-item">
+      <span>{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <p>{text}</p>
+      </div>
+    </div>
+  );
+}
+
+function HiStreakIcon() {
+  return <FiTrendingUp />;
 }
 
 export default Progress;

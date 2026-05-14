@@ -7,8 +7,184 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
+const billingService = require('../billing/billing.service');
 
 const WHISPER_SERVER_URL = process.env.WHISPER_SERVER_URL || 'http://127.0.0.1:5001';
+
+const contractions = {
+  "i'm": 'i am',
+  "you're": 'you are',
+  "he's": 'he is',
+  "she's": 'she is',
+  "it's": 'it is',
+  "we're": 'we are',
+  "they're": 'they are',
+  "i've": 'i have',
+  "you've": 'you have',
+  "we've": 'we have',
+  "they've": 'they have',
+  "i'll": 'i will',
+  "you'll": 'you will',
+  "we'll": 'we will',
+  "they'll": 'they will',
+  "don't": 'do not',
+  "doesn't": 'does not',
+  "didn't": 'did not',
+  "can't": 'can not',
+  "cannot": 'can not',
+  "won't": 'will not',
+  "isn't": 'is not',
+  "aren't": 'are not',
+  "wasn't": 'was not',
+  "weren't": 'were not',
+  "there's": 'there is',
+  "that's": 'that is',
+  "what's": 'what is'
+};
+
+const fillerWords = new Set(['um', 'uh', 'erm', 'ah', 'hmm']);
+const lightWords = new Set(['a', 'an', 'the', 'to', 'of', 'in', 'on', 'at', 'for', 'and', 'or']);
+
+function normalizeSpeakingText(text = '') {
+  let normalized = String(text).toLowerCase().trim();
+  Object.entries(contractions).forEach(([short, expanded]) => {
+    normalized = normalized.replace(new RegExp(`\\b${short.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g'), expanded);
+  });
+  return normalized
+    .replace(/[^a-z0-9\s']/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word && !fillerWords.has(word));
+}
+
+function lightStem(word) {
+  if (word.length > 4 && word.endsWith('ies')) return `${word.slice(0, -3)}y`;
+  if (word.length > 4 && word.endsWith('es')) return word.slice(0, -2);
+  if (word.length > 3 && word.endsWith('s')) return word.slice(0, -1);
+  return word;
+}
+
+function levenshtein(a, b) {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  let previous = Array.from({ length: a.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= b.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= a.length; j += 1) {
+      const cost = a[j - 1] === b[i - 1] ? 0 : 1;
+      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
+    }
+    previous = current;
+  }
+  return previous[a.length];
+}
+
+function wordSimilarity(target, user) {
+  if (target === user) return 1;
+  if (lightStem(target) === lightStem(user)) return 0.96;
+  const maxLen = Math.max(target.length, user.length, 1);
+  const ratio = 1 - (levenshtein(target, user) / maxLen);
+  if (maxLen <= 3) return ratio >= 0.67 ? ratio : 0;
+  return ratio >= 0.72 ? ratio : 0;
+}
+
+function wordWeight(word) {
+  return lightWords.has(word) ? 0.45 : 1;
+}
+
+function scoreSpeakingTarget(targetText, transcript) {
+  const targetWords = normalizeSpeakingText(targetText);
+  const userWords = normalizeSpeakingText(transcript);
+  const targetLen = targetWords.length;
+  const userLen = userWords.length;
+
+  if (targetLen === 0) {
+    return { score: 0, missingWords: [], extraWords: userWords };
+  }
+
+  const dp = Array.from({ length: targetLen + 1 }, () => Array(userLen + 1).fill(0));
+  const back = Array.from({ length: targetLen + 1 }, () => Array(userLen + 1).fill(null));
+
+  for (let i = 1; i <= targetLen; i += 1) {
+    for (let j = 1; j <= userLen; j += 1) {
+      let best = dp[i - 1][j];
+      let move = 'skipTarget';
+
+      if (dp[i][j - 1] > best) {
+        best = dp[i][j - 1];
+        move = 'skipUser';
+      }
+
+      const similarity = wordSimilarity(targetWords[i - 1], userWords[j - 1]);
+      if (similarity > 0) {
+        const candidate = dp[i - 1][j - 1] + (similarity * wordWeight(targetWords[i - 1]));
+        if (candidate > best) {
+          best = candidate;
+          move = 'match';
+        }
+      }
+
+      dp[i][j] = best;
+      back[i][j] = move;
+    }
+  }
+
+  const matchedTarget = new Set();
+  const matchedUser = new Set();
+  let i = targetLen;
+  let j = userLen;
+
+  while (i > 0 && j > 0) {
+    const move = back[i][j];
+    if (move === 'match') {
+      matchedTarget.add(i - 1);
+      matchedUser.add(j - 1);
+      i -= 1;
+      j -= 1;
+    } else if (move === 'skipUser') {
+      j -= 1;
+    } else {
+      i -= 1;
+    }
+  }
+
+  const targetWeight = targetWords.reduce((sum, word) => sum + wordWeight(word), 0) || 1;
+  const userWeight = userWords.reduce((sum, word) => sum + wordWeight(word), 0) || 1;
+  const matchedWeight = dp[targetLen][userLen];
+  const recall = matchedWeight / targetWeight;
+  const precision = matchedWeight / userWeight;
+  const f1 = precision + recall === 0 ? 0 : (2 * precision * recall) / (precision + recall);
+  const lengthRatio = Math.min(userLen, targetLen) / Math.max(userLen, targetLen, 1);
+  const score = Math.round(Math.max(0, Math.min(1, (0.72 * recall) + (0.20 * f1) + (0.08 * lengthRatio))) * 100);
+
+  return {
+    score,
+    missingWords: targetWords.filter((word, index) => !matchedTarget.has(index) && wordWeight(word) >= 1).slice(0, 5),
+    extraWords: userWords.filter((word, index) => !matchedUser.has(index) && wordWeight(word) >= 1).slice(0, 5)
+  };
+}
+
+function analyzeTranscript(transcript, targetTexts) {
+  let best = { score: 0, matchedText: null, missingWords: [], extraWords: [] };
+
+  targetTexts.forEach((targetText) => {
+    if (!targetText) return;
+    const result = scoreSpeakingTarget(targetText, transcript);
+    if (result.score > best.score) {
+      best = { ...result, matchedText: targetText };
+    }
+  });
+
+  let feedback;
+  if (best.score >= 85) feedback = 'Rất tốt! Bạn nói khá sát câu mẫu.';
+  else if (best.score >= 65) feedback = 'Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự.';
+  else feedback = 'Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm.';
+
+  if (best.missingWords.length > 0 && best.score < 90) {
+    feedback += ` Cần chú ý: ${best.missingWords.join(', ')}.`;
+  }
+
+  return { ...best, feedback };
+}
 
 const speakingController = {
   /**
@@ -111,6 +287,8 @@ const speakingController = {
           score: result.score,
           feedback: result.feedback,
           matchedText: result.matchedText,
+          missingWords: result.missingWords || [],
+          extraWords: result.extraWords || [],
           processingTime: result.processingTime
         });
       } catch (err) {
@@ -125,6 +303,54 @@ const speakingController = {
         } catch (e) {}
       }
     } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * Generate a temporary personalized speaking lesson with NVIDIA AI.
+   * Generated questions are stored in process memory only, not in database.
+   */
+  async createPersonalizedLesson(req, res, next) {
+    try {
+      const canUseAi = req.user.role === 'admin'
+        || req.user.role === 'superadmin'
+        || await billingService.isPlusUser(req.user.id);
+
+      if (!canUseAi) {
+        return res.status(403).json({
+          success: false,
+          message: 'Vui lòng nâng cấp Plus để sử dụng tính năng này.'
+        });
+      }
+
+      const data = await speakingService.createPersonalizedLesson(req.user.id, req.body);
+      return success(res, data, 'Personalized speaking lesson generated');
+    } catch (err) {
+      if (err.statusCode) {
+        return res.status(err.statusCode).json({
+          success: false,
+          message: err.message
+        });
+      }
+      next(err);
+    }
+  },
+
+  /**
+   * Read a temporary personalized speaking lesson from memory.
+   */
+  async getPersonalizedLesson(req, res, next) {
+    try {
+      const data = speakingService.getPersonalizedLesson(req.user.id, req.params.sessionId);
+      return success(res, data);
+    } catch (err) {
+      if (err.statusCode) {
+        return res.status(err.statusCode).json({
+          success: false,
+          message: err.message
+        });
+      }
       next(err);
     }
   },
@@ -235,57 +461,15 @@ const speakingController = {
         return badRequest(res, 'targetTexts (array) and transcript are required');
       }
 
-      // Calculate Levenshtein distance on words
-      const levenshtein = (a, b) => {
-        if(a.length === 0) return b.length;
-        if(b.length === 0) return a.length;
-        let matrix = [];
-        for(let i = 0; i <= b.length; i++) matrix[i] = [i];
-        for(let j = 0; j <= a.length; j++) matrix[0][j] = j;
-        for(let i = 1; i <= b.length; i++){
-          for(let j = 1; j <= a.length; j++){
-            if(b.charAt(i-1) == a.charAt(j-1)) matrix[i][j] = matrix[i-1][j-1];
-            else matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1));
-          }
-        }
-        return matrix[b.length][a.length];
-      };
-
-      const isSimilar = (target, user) => {
-        if (target === user) return true;
-        if (target.includes(user) || user.includes(target)) return true;
-        const dist = levenshtein(target, user);
-        if (target.length <= 3 && dist <= 1) return true;
-        if (target.length > 3 && dist <= 2) return true;
-        return false;
-      };
-
-      const userWords = transcript.toLowerCase().replace(/[.,?!]/g, '').split(' ').filter(Boolean);
-      
-      let maxScore = 0;
-      let bestMatch = null;
-
-      for (let targetText of targetTexts) {
-        const targetWords = targetText.toLowerCase().replace(/[.,?!]/g, '').split(' ').filter(Boolean);
-        let matchCount = 0;
-        targetWords.forEach(tw => { 
-          if (userWords.some(uw => isSimilar(tw, uw))) matchCount++; 
-        });
-        const currentScore = Math.round((matchCount / (targetWords.length || 1)) * 100);
-        if (currentScore > maxScore) {
-          maxScore = currentScore;
-          bestMatch = targetText;
-        }
-      }
-
-      const score = maxScore;
-      let feedback = score >= 60 ? 'Thật tuyệt vời, bạn nói rất tốt!' : 'Chưa được chính xác lắm, hãy thử lại nhé!';
+      const result = analyzeTranscript(transcript, targetTexts);
 
       return success(res, {
-        transcript: transcript,
-        score: score,
-        feedback: feedback,
-        matchedText: bestMatch
+        transcript,
+        score: result.score,
+        feedback: result.feedback,
+        matchedText: result.matchedText,
+        missingWords: result.missingWords,
+        extraWords: result.extraWords
       });
 
     } catch (err) {

@@ -4,6 +4,19 @@
 const bcrypt = require('bcryptjs');
 const { sql, getPool } = require('../../config/database');
 const { generateToken } = require('../../config/jwt');
+const billingService = require('../billing/billing.service');
+
+function getPlanInfo(user = {}) {
+  const plan = (user.Plan || user.plan || 'free').toLowerCase();
+  const plusExpiresAt = user.PlusExpiresAt || user.plusexpiresat || null;
+  const isPlus = plan === 'plus' && (!plusExpiresAt || new Date(plusExpiresAt).getTime() > Date.now());
+
+  return {
+    plan: isPlus ? 'plus' : 'free',
+    isPlus,
+    plusExpiresAt
+  };
+}
 
 const authService = {
   /**
@@ -11,6 +24,7 @@ const authService = {
    */
   async register({ username, email, password }) {
     const pool = getPool();
+    await billingService.ensureBillingSchema();
 
     // Check if user already exists
     const existing = await pool.request()
@@ -32,8 +46,8 @@ const authService = {
       .input('email', sql.NVarChar, email)
       .input('passwordHash', sql.NVarChar, passwordHash)
       .query(`
-        INSERT INTO Users (Username, Email, PasswordHash, Role)
-        VALUES (@username, @email, @passwordHash, 'user') RETURNING Id, Username, Email, Role, CreatedAt
+        INSERT INTO Users (Username, Email, PasswordHash, Role, Plan)
+        VALUES (@username, @email, @passwordHash, 'user', 'free') RETURNING Id, Username, Email, Role, Plan, PlusExpiresAt, CreatedAt
       `);
 
     const user = result.recordset[0];
@@ -59,6 +73,7 @@ const authService = {
         username: user.Username,
         email: user.Email,
         role: user.Role,
+        ...getPlanInfo(user),
         createdAt: user.CreatedAt
       },
       token
@@ -70,12 +85,13 @@ const authService = {
    */
   async login({ email, password }) {
     const pool = getPool();
+    await billingService.ensureBillingSchema();
 
     // Find user
     const result = await pool.request()
       .input('email', sql.NVarChar, email)
       .query(`
-        SELECT u.Id, u.Username, u.Email, u.PasswordHash, u.Role, u.LevelId, u.CreatedAt,
+        SELECT u.Id, u.Username, u.Email, u.PasswordHash, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.CreatedAt,
                ll.Code as LevelCode, ll.Name as LevelName,
                us.Exp, us.Level as GameLevel, us.StreakDays
         FROM Users u
@@ -123,6 +139,7 @@ const authService = {
         username: user.Username,
         email: user.Email,
         role: user.Role,
+        ...getPlanInfo(user),
         level: user.LevelCode ? { code: user.LevelCode, name: user.LevelName } : null,
         stats: {
           exp: user.Exp || 0,
@@ -140,11 +157,12 @@ const authService = {
    */
   async getUserById(userId) {
     const pool = getPool();
+    await billingService.ensureBillingSchema();
 
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
       .query(`
-        SELECT u.Id, u.Username, u.Email, u.Role, u.LevelId, u.CreatedAt,
+        SELECT u.Id, u.Username, u.Email, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.CreatedAt,
                ll.Code as LevelCode, ll.Name as LevelName,
                us.Exp, us.Level as GameLevel, us.StreakDays, us.LastLogin
         FROM Users u
@@ -161,6 +179,7 @@ const authService = {
       username: user.Username,
       email: user.Email,
       role: user.Role,
+      ...getPlanInfo(user),
       level: user.LevelCode ? { code: user.LevelCode, name: user.LevelName } : null,
       stats: {
         exp: user.Exp || 0,

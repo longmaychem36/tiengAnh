@@ -29,9 +29,9 @@ from faster_whisper import WhisperModel
 import time
 
 # ==========================================
-# Configuration - optimized for SPEED
+# Configuration - balanced accuracy/speed
 # ==========================================
-MODEL_SIZE = os.environ.get("WHISPER_MODEL", "tiny")   # tiny = 2-3x faster than base
+MODEL_SIZE = os.environ.get("WHISPER_MODEL", "base")
 DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE", "int8")
 PORT = int(os.environ.get("WHISPER_PORT", 5001))
@@ -191,50 +191,147 @@ def transcribe_and_analyze():
 
 
 def analyze_transcript(transcript, target_texts):
-    """Analyze transcript against target texts using word-level similarity"""
-    def levenshtein(a, b):
-        if len(a) == 0: return len(b)
-        if len(b) == 0: return len(a)
-        matrix = [[0]*(len(a)+1) for _ in range(len(b)+1)]
-        for i in range(len(b)+1): matrix[i][0] = i
-        for j in range(len(a)+1): matrix[0][j] = j
-        for i in range(1, len(b)+1):
-            for j in range(1, len(a)+1):
-                if b[i-1] == a[j-1]:
-                    matrix[i][j] = matrix[i-1][j-1]
-                else:
-                    matrix[i][j] = min(matrix[i-1][j-1]+1, matrix[i][j-1]+1, matrix[i-1][j]+1)
-        return matrix[len(b)][len(a)]
-
-    def is_similar(target, user):
-        if target == user: return True
-        if target in user or user in target: return True
-        dist = levenshtein(target, user)
-        if len(target) <= 3 and dist <= 1: return True
-        if len(target) > 3 and dist <= 2: return True
-        return False
-
+    """Analyze transcript against targets with ordered fuzzy word alignment."""
     import re
-    user_words = re.sub(r'[.,?!]', '', transcript.lower()).split()
 
-    max_score = 0
-    best_match = None
+    contractions = {
+        "i'm": "i am", "you're": "you are", "he's": "he is", "she's": "she is",
+        "it's": "it is", "we're": "we are", "they're": "they are",
+        "i've": "i have", "you've": "you have", "we've": "we have", "they've": "they have",
+        "i'll": "i will", "you'll": "you will", "we'll": "we will", "they'll": "they will",
+        "don't": "do not", "doesn't": "does not", "didn't": "did not",
+        "can't": "can not", "cannot": "can not", "won't": "will not",
+        "isn't": "is not", "aren't": "are not", "wasn't": "was not", "weren't": "were not",
+        "there's": "there is", "that's": "that is", "what's": "what is"
+    }
+    filler_words = {"um", "uh", "erm", "ah", "hmm"}
+    light_words = {"a", "an", "the", "to", "of", "in", "on", "at", "for", "and", "or"}
+
+    def normalize(text):
+        text = (text or "").lower().strip()
+        for short, expanded in contractions.items():
+            text = re.sub(rf"\b{re.escape(short)}\b", expanded, text)
+        text = re.sub(r"[^a-z0-9\s']", " ", text)
+        words = [w for w in text.split() if w and w not in filler_words]
+        return words
+
+    def light_stem(word):
+        if len(word) > 4 and word.endswith("ies"):
+            return word[:-3] + "y"
+        if len(word) > 4 and word.endswith("es"):
+            return word[:-2]
+        if len(word) > 3 and word.endswith("s"):
+            return word[:-1]
+        return word
+
+    def levenshtein(a, b):
+        if not a: return len(b)
+        if not b: return len(a)
+        prev = list(range(len(a) + 1))
+        for i, bc in enumerate(b, 1):
+            curr = [i]
+            for j, ac in enumerate(a, 1):
+                cost = 0 if ac == bc else 1
+                curr.append(min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost))
+            prev = curr
+        return prev[-1]
+
+    def word_similarity(a, b):
+        if a == b:
+            return 1.0
+        if light_stem(a) == light_stem(b):
+            return 0.96
+        max_len = max(len(a), len(b), 1)
+        ratio = 1 - (levenshtein(a, b) / max_len)
+        if max_len <= 3:
+            return ratio if ratio >= 0.67 else 0.0
+        return ratio if ratio >= 0.72 else 0.0
+
+    def word_weight(word):
+        return 0.45 if word in light_words else 1.0
+
+    def align_score(target_words, user_words):
+        target_len = len(target_words)
+        user_len = len(user_words)
+        if target_len == 0:
+            return {"score": 0, "matched": [], "missing": [], "extra": user_words}
+
+        dp = [[0.0] * (user_len + 1) for _ in range(target_len + 1)]
+        back = [[None] * (user_len + 1) for _ in range(target_len + 1)]
+
+        for i in range(1, target_len + 1):
+            for j in range(1, user_len + 1):
+                best = dp[i - 1][j]
+                move = "skip_target"
+                if dp[i][j - 1] > best:
+                    best = dp[i][j - 1]
+                    move = "skip_user"
+
+                sim = word_similarity(target_words[i - 1], user_words[j - 1])
+                if sim > 0:
+                    candidate = dp[i - 1][j - 1] + (sim * word_weight(target_words[i - 1]))
+                    if candidate > best:
+                        best = candidate
+                        move = "match"
+
+                dp[i][j] = best
+                back[i][j] = move
+
+        matched_target = set()
+        matched_user = set()
+        i, j = target_len, user_len
+        while i > 0 and j > 0:
+            move = back[i][j]
+            if move == "match":
+                matched_target.add(i - 1)
+                matched_user.add(j - 1)
+                i -= 1
+                j -= 1
+            elif move == "skip_user":
+                j -= 1
+            else:
+                i -= 1
+
+        target_weight = sum(word_weight(w) for w in target_words) or 1
+        user_weight = sum(word_weight(w) for w in user_words) or 1
+        matched_weight = dp[target_len][user_len]
+        recall = matched_weight / target_weight
+        precision = matched_weight / user_weight
+        f1 = 0 if precision + recall == 0 else (2 * precision * recall) / (precision + recall)
+        length_ratio = min(len(user_words), target_len) / max(len(user_words), target_len, 1)
+        score = round(max(0, min(1, (0.72 * recall) + (0.20 * f1) + (0.08 * length_ratio))) * 100)
+
+        missing = [w for idx, w in enumerate(target_words) if idx not in matched_target and word_weight(w) >= 1]
+        extra = [w for idx, w in enumerate(user_words) if idx not in matched_user and word_weight(w) >= 1]
+        return {"score": score, "missing": missing[:5], "extra": extra[:5]}
+
+    user_words = normalize(transcript)
+    best = {"score": 0, "matchedText": None, "missing": [], "extra": []}
 
     for target_text in target_texts:
-        if not target_text: continue
-        target_words = re.sub(r'[.,?!]', '', target_text.lower()).split()
-        match_count = sum(1 for tw in target_words if any(is_similar(tw, uw) for uw in user_words))
-        score = round((match_count / max(len(target_words), 1)) * 100)
-        if score > max_score:
-            max_score = score
-            best_match = target_text
+        if not target_text:
+            continue
+        target_words = normalize(target_text)
+        result = align_score(target_words, user_words)
+        if result["score"] > best["score"]:
+            best = {**result, "matchedText": target_text}
 
-    feedback = "Thật tuyệt vời, bạn nói rất tốt!" if max_score >= 60 else "Chưa được chính xác lắm, hãy thử lại nhé!"
+    if best["score"] >= 85:
+        feedback = "Rất tốt! Bạn nói khá sát câu mẫu."
+    elif best["score"] >= 65:
+        feedback = "Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự."
+    else:
+        feedback = "Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm."
+
+    if best["missing"] and best["score"] < 90:
+        feedback += " Cần chú ý: " + ", ".join(best["missing"]) + "."
 
     return {
-        "score": max_score,
+        "score": best["score"],
         "feedback": feedback,
-        "matchedText": best_match
+        "matchedText": best["matchedText"],
+        "missingWords": best["missing"],
+        "extraWords": best["extra"]
     }
 
 
