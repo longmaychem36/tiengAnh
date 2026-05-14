@@ -10,8 +10,9 @@ import Recorder from './Recorder';
 import Loading from '../common/Loading';
 
 const SpeakingLesson = () => {
-  const { id } = useParams();
+  const { id, sessionId } = useParams();
   const navigate = useNavigate();
+  const isPersonalized = Boolean(sessionId);
 
   const [loading, setLoading] = useState(true);
   const [lessonData, setLessonData] = useState(null);
@@ -54,17 +55,21 @@ const SpeakingLesson = () => {
   };
 
   useEffect(() => {
-    speakingApi.getLessonDetails(id)
+    const request = isPersonalized
+      ? speakingApi.getPersonalizedLesson(sessionId)
+      : speakingApi.getLessonDetails(id);
+
+    request
       .then(res => {
         setLessonData(res.data.lesson);
         setSentences(res.data.sentences || []);
       })
       .catch(err => {
-        toast.error('Lỗi tải chủ đề');
+        toast.error(isPersonalized ? 'Bài luyện AI đã hết hạn hoặc không tồn tại' : 'Lỗi tải chủ đề');
         console.error(err);
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, sessionId, isPersonalized]);
 
   const currentSentence = sentences[currentIndex];
 
@@ -117,7 +122,9 @@ const SpeakingLesson = () => {
         score: data.score,
         transcript: data.transcript,
         feedback: data.feedback,
-        matchedText: data.matchedText
+        matchedText: data.matchedText,
+        missingWords: data.missingWords || [],
+        extraWords: data.extraWords || []
       };
       
       setResult(newResult);
@@ -154,6 +161,11 @@ const SpeakingLesson = () => {
       } else {
         // Topic complete!
         setLoading(true);
+        if (isPersonalized) {
+          toast.success('Bạn đã hoàn thành bài luyện nói AI!');
+          navigate('/speaking/options');
+          return prevIndex;
+        }
         speakingApi.saveProgress({ lessonId: id, completed: true })
           .then(() => {
             toast.success('Chúc mừng! Bạn đã hoàn thành chủ đề!');
@@ -178,7 +190,7 @@ const SpeakingLesson = () => {
       
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/speaking/lessons')} style={{ padding: 0 }}>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate(isPersonalized ? '/speaking/options' : '/speaking/lessons')} style={{ padding: 0 }}>
           <FiArrowLeft /> Thoát
         </button>
         <button className="btn btn-ghost btn-sm" onClick={() => setShowSettings(true)} style={{ color: 'var(--color-text-secondary)' }}>
@@ -187,6 +199,22 @@ const SpeakingLesson = () => {
       </div>
 
       <ProgressBar current={currentIndex + 1} total={sentences.length} />
+
+      {lessonData && (
+        <div style={{ marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+          <div>
+            <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, margin: 0 }}>{lessonData.title}</h1>
+            {lessonData.description && (
+              <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>{lessonData.description}</div>
+            )}
+          </div>
+          {isPersonalized && (
+            <span style={{ padding: '6px 10px', borderRadius: 'var(--radius-full)', background: '#dbeafe', color: '#1d4ed8', fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>
+              AI tạm thời
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Main Card */}
       <div className="card" style={{ padding: 'var(--space-8)', textAlign: 'center', minHeight: 400, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -284,6 +312,22 @@ const SpeakingLesson = () => {
                       "{result.transcript || '...'}"
                     </strong>
                   </div>
+
+                  {result.feedback && (
+                    <div style={{ marginTop: 'var(--space-3)', color: 'var(--color-text-secondary)', fontWeight: 700 }}>
+                      {result.feedback}
+                    </div>
+                  )}
+
+                  {result.missingWords?.length > 0 && (
+                    <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                      {result.missingWords.map((word) => (
+                        <span key={word} style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', background: '#fef3c7', color: '#92400e', fontSize: 'var(--font-size-xs)', fontWeight: 800 }}>
+                          thiếu: {word}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions: only show if failed, otherwise auto-advancing */}

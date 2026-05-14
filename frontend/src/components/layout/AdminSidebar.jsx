@@ -39,7 +39,7 @@ function AdminSidebar() {
         fontSize: '0.875rem',
         fontWeight: isActive ? 600 : 500,
         color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
-        background: isActive ? 'rgba(99,102,241,0.35)' : 'transparent',
+        background: isActive ? 'rgba(194,24,91,0.32)' : 'transparent',
         transition: 'all 150ms ease',
         textDecoration: 'none',
         letterSpacing: '0.01em'
@@ -56,7 +56,7 @@ function AdminSidebar() {
       <div className="admin-sidebar-logo">
         <div style={{
           width: 38, height: 38, borderRadius: '10px',
-          background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+          background: 'linear-gradient(135deg, #c2185b, #8a4b35)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: 'white', fontWeight: 800, fontSize: '18px'
         }}>E</div>
@@ -97,13 +97,13 @@ function AdminSidebar() {
         <div style={{
           padding: '10px', borderRadius: '10px', marginBottom: '8px',
           background: isSuperAdmin
-            ? 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.15))'
-            : 'rgba(99,102,241,0.15)',
+            ? 'linear-gradient(135deg, rgba(200,133,30,0.16), rgba(201,74,85,0.16))'
+            : 'rgba(194,24,91,0.14)',
           textAlign: 'center'
         }}>
           <span style={{
             fontSize: '0.75rem', fontWeight: 700,
-            color: isSuperAdmin ? '#fbbf24' : '#a5b4fc'
+            color: isSuperAdmin ? '#fbbf24' : '#f8bfd5'
           }}>
             {isSuperAdmin ? '👑 Super Admin' : '🛡️ Admin'}
           </span>

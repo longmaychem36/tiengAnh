@@ -32,5 +32,13 @@ export const speakingApi = {
   analyzeText: (data) => axiosClient.post('/speaking/analyze', data),
   
   // Save progress
-  saveProgress: (data) => axiosClient.post('/speaking/progress', data)
+  saveProgress: (data) => axiosClient.post('/speaking/progress', data),
+
+  // Generate a temporary AI lesson in backend memory only
+  generatePersonalizedLesson: (data) => axiosClient.post('/speaking/personalized', data, {
+    timeout: 60000
+  }),
+
+  // Read a temporary AI lesson from backend memory
+  getPersonalizedLesson: (sessionId) => axiosClient.get(`/speaking/personalized/${sessionId}`)
 };

@@ -45,6 +45,10 @@ router.post('/transcribe', audioUpload.single('audio'), speakingController.trans
 // Combined transcribe + analyze (faster: 1 round-trip instead of 2)
 router.post('/transcribe-analyze', audioUpload.single('audio'), speakingController.transcribeAndAnalyze);
 
+// Temporary AI-generated personalized speaking lesson (stored in memory only)
+router.post('/personalized', speakingController.createPersonalizedLesson);
+router.get('/personalized/:sessionId', speakingController.getPersonalizedLesson);
+
 // Existing endpoints
 router.get('/lessons', speakingController.getLessons);
 router.get('/lessons/:id', speakingController.getLessonDetails);
