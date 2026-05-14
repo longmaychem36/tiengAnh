@@ -26,9 +26,11 @@ const dictionaryService = {
     const pool = getPool();
     const { offset } = parsePagination({ page, limit });
 
-    let whereClause = 'WHERE d.Word LIKE @query OR d.MeaningVI LIKE @query';
+    const normalizedQuery = query.trim();
+    const likeQuery = `%${normalizedQuery}%`;
+    let whereClause = 'WHERE (d.Word ILIKE @query OR d.MeaningVI ILIKE @query OR d.MeaningEN ILIKE @query)';
     const request = pool.request()
-      .input('query', sql.NVarChar, `%${query}%`)
+      .input('query', sql.NVarChar, likeQuery)
       .input('offset', sql.Int, offset)
       .input('limit', sql.Int, parseInt(limit));
 
@@ -37,10 +39,10 @@ const dictionaryService = {
       request.input('levelId', sql.Int, parseInt(levelId));
     }
 
-    const countReq = pool.request().input('query', sql.NVarChar, `%${query}%`);
+    const countReq = pool.request().input('query', sql.NVarChar, likeQuery);
     if (levelId) countReq.input('levelId', sql.Int, parseInt(levelId));
     const countResult = await countReq.query(
-      `SELECT COUNT(*) as total FROM DictionaryEntries d ${whereClause}`
+      `SELECT COUNT(*)::int as total FROM DictionaryEntries d ${whereClause}`
     );
 
     const result = await request.query(`
@@ -58,7 +60,7 @@ const dictionaryService = {
     let total = countResult.recordset[0].total;
     let suggestions = [];
 
-    const trimmedQuery = query.trim();
+    const trimmedQuery = normalizedQuery;
 
     // Exact match check
     const exactMatch = entries.find(e => e.Word.toLowerCase() === trimmedQuery.toLowerCase() || (e.MeaningVI && e.MeaningVI.toLowerCase().includes(trimmedQuery.toLowerCase())));
@@ -261,7 +263,7 @@ const dictionaryService = {
       // Source 3: Local DB — fuzzy match with LIKE
       const fuzzyResult = await pool.request()
         .input('fuzzy', sql.NVarChar, `${word.substring(0, Math.max(2, Math.floor(word.length * 0.6)))}%`)
-        .query('SELECT Word FROM DictionaryEntries WHERE Word LIKE @fuzzy ORDER BY Word LIMIT 5');
+        .query('SELECT Word FROM DictionaryEntries WHERE Word ILIKE @fuzzy ORDER BY Word LIMIT 5');
       fuzzyResult.recordset.forEach(r => {
         if (!suggestions.includes(r.Word) && r.Word.toLowerCase() !== word.toLowerCase()) {
           suggestions.push(r.Word);
@@ -351,17 +353,19 @@ const dictionaryService = {
   /**
    * Autocomplete — fast keyword suggestions as user types
    */
-  async autocomplete(query, limit = 8) {
+  async autocomplete(query, limit = 8, direction = 'en-vi') {
     const pool = getPool();
+    const searchColumn = direction === 'vi-en' ? 'MeaningVI' : 'Word';
+    const secondaryColumn = direction === 'vi-en' ? 'Word' : 'MeaningVI';
     const result = await pool.request()
       .input('q', sql.NVarChar, `${query}%`)
       .input('limit', sql.Int, limit)
       .query(`
         SELECT Word, PartOfSpeech, MeaningVI
         FROM DictionaryEntries
-        WHERE Word LIKE @q OR MeaningVI LIKE @q
+        WHERE ${searchColumn} ILIKE @q OR ${secondaryColumn} ILIKE @q
         ORDER BY 
-          CASE WHEN Word LIKE @q THEN 0 ELSE 1 END,
+          CASE WHEN ${searchColumn} ILIKE @q THEN 0 ELSE 1 END,
           LENGTH(Word) ASC, 
           Word ASC
         LIMIT @limit
@@ -369,7 +373,7 @@ const dictionaryService = {
     
     // Also try Datamuse for words not in local DB
     let external = [];
-    if (result.recordset.length < limit && query.length >= 2) {
+    if (direction === 'en-vi' && result.recordset.length < limit && query.length >= 2) {
       try {
         const res = await safeFetch(`https://api.datamuse.com/sug?s=${encodeURIComponent(query)}&max=${limit}`, 3000);
         if (res && res.ok) {

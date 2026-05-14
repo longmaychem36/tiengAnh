@@ -40,13 +40,13 @@ async function run() {
         // but let's check if we need to delete children manually or if CASCADE works.
         // In cosodulieu.sql, GameLevels and MiniGameQuestions don't have CASCADE on delete.
         
-        const levelsRes = await pool.query(`SELECT id FROM GameLevels WHERE SetId = '${setId}'`);
+        const levelsRes = await pool.query('SELECT id FROM GameLevels WHERE SetId = $1', [setId]);
         for (const level of levelsRes.rows) {
-          await pool.query(`DELETE FROM MiniGameQuestions WHERE LevelId = '${level.id}'`);
+          await pool.query('DELETE FROM MiniGameQuestions WHERE LevelId = $1', [level.id]);
+          await pool.query('DELETE FROM UserGameProgress WHERE LevelId = $1', [level.id]);
         }
-        await pool.query(`DELETE FROM GameLevels WHERE SetId = '${setId}'`);
-        await pool.query(`DELETE FROM UserGameProgress WHERE LevelId IN (SELECT id FROM GameLevels WHERE SetId = '${setId}')`); // Just in case
-        await pool.query(`DELETE FROM GameSets WHERE Id = '${setId}'`);
+        await pool.query('DELETE FROM GameLevels WHERE SetId = $1', [setId]);
+        await pool.query('DELETE FROM GameSets WHERE Id = $1', [setId]);
       }
       console.log("Legacy 'speaking' game set removed.");
     } else {

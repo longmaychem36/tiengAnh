@@ -1,16 +1,31 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-const sql = require('mssql');
-const config = require('../src/config/database');
+const { connectDB, getPool, closeDB } = require('../src/config/database');
 
 async function run() {
-  const pool = await config.connectDB();
-  await pool.request().query(`
-    UPDATE GameSets 
-    SET Name = N'Khoá Học Nói - Cấp Độ Phát Âm',
-        Description = N'Lộ trình luyện nói từ cơ bản đến nâng cao (Âm đơn, Từ vựng, Cụm từ, Câu hoàn chỉnh)'
-    WHERE GameType = 'speaking'
-  `);
-  console.log('Updated Speaking Course to Pronunciation Levels');
-  process.exit(0);
+  try {
+    await connectDB();
+    const pool = getPool();
+
+    await pool.query(
+      `
+        UPDATE GameSets
+        SET Name = $1,
+            Description = $2
+        WHERE GameType = 'speaking'
+      `,
+      [
+        'Khoa hoc Noi - Cap do Phat am',
+        'Lo trinh luyen noi tu co ban den nang cao (am don, tu vung, cum tu, cau hoan chinh)',
+      ]
+    );
+
+    console.log('Updated speaking game set.');
+  } catch (err) {
+    console.error('Update failed:', err);
+    process.exitCode = 1;
+  } finally {
+    await closeDB();
+  }
 }
+
 run();

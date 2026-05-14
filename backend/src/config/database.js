@@ -1,12 +1,12 @@
 // ============================================
 // PostgreSQL Database Configuration
-// Compatibility layer mimicking mssql API
+// PostgreSQL pool with legacy request/input compatibility
 // ============================================
 const { Pool } = require('pg');
 
 let pool = null;
 
-// Dummy sql type constants (for backward compatibility with mssql code)
+// Dummy sql type constants for older request/input call sites
 const sql = {
   NVarChar: 'NVarChar',
   VarChar: 'VarChar',
@@ -20,7 +20,7 @@ const sql = {
 };
 
 /**
- * Request builder that mimics mssql's pool.request().input().query() pattern
+ * Request builder that supports the older pool.request().input().query() pattern
  */
 class PgRequest {
   constructor(pgPool) {

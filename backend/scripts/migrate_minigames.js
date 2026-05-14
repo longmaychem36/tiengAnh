@@ -1,95 +1,80 @@
-// ============================================
-// Migration: New Mini Game Tables (Set → Level → Question)
-// ============================================
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-const { connectDB, getPool, sql } = require('../src/config/database');
+const { connectDB, getPool, closeDB } = require('../src/config/database');
 
 async function migrate() {
-  await connectDB();
-  const pool = getPool();
+  try {
+    await connectDB();
+    const pool = getPool();
 
-  console.log('🗑️  Dropping old game data...');
-  try { await pool.request().query('DELETE FROM UserGameSession'); } catch(e) {}
-  try { await pool.request().query('DELETE FROM GameOptions'); } catch(e) {}
-  try { await pool.request().query('DELETE FROM GameQuestions'); } catch(e) {}
-  try { await pool.request().query('DELETE FROM Games'); } catch(e) {}
-  console.log('✅ Old data cleared.\n');
+    await pool.query('DROP TABLE IF EXISTS UserGameSession CASCADE');
+    await pool.query('DROP TABLE IF EXISTS GameOptions CASCADE');
+    await pool.query('DROP TABLE IF EXISTS GameQuestions CASCADE');
+    await pool.query('DROP TABLE IF EXISTS Games CASCADE');
 
-  console.log('📦 Creating new Mini Game tables...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS GameSets (
+        Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        Name varchar(200) NOT NULL,
+        Description varchar(500),
+        GameType varchar(50) NOT NULL,
+        Icon varchar(10) DEFAULT 'game',
+        OrderIndex integer DEFAULT 0,
+        UnlockCondition varchar(200) DEFAULT 'none',
+        CreatedAt timestamptz DEFAULT now()
+      )
+    `);
 
-  // GameSets — Groups of levels (e.g. "Beginner Matching", "Advanced Listening")
-  await pool.request().query(`
-    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='GameSets' AND xtype='U')
-    CREATE TABLE GameSets (
-      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
-      Name NVARCHAR(200) NOT NULL,
-      Description NVARCHAR(500),
-      GameType NVARCHAR(50) NOT NULL,  -- 'matching', 'listening', 'typing', 'sentence'
-      Icon NVARCHAR(10) DEFAULT '🎮',
-      OrderIndex INT DEFAULT 0,
-      UnlockCondition NVARCHAR(200) DEFAULT 'none', -- 'none' | 'complete_previous'
-      CreatedAt DATETIME DEFAULT NOW()
-    )
-  `);
-  console.log('  ✅ GameSets');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS GameLevels (
+        Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        SetId uuid NOT NULL REFERENCES GameSets(Id) ON DELETE CASCADE,
+        LevelNumber integer NOT NULL,
+        Name varchar(200),
+        Difficulty varchar(20) DEFAULT 'easy',
+        TimeLimit integer DEFAULT 60,
+        PassScore integer DEFAULT 70,
+        IsLocked boolean DEFAULT false,
+        CreatedAt timestamptz DEFAULT now()
+      )
+    `);
 
-  // GameLevels — Individual levels within a set
-  await pool.request().query(`
-    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='GameLevels' AND xtype='U')
-    CREATE TABLE GameLevels (
-      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
-      SetId UNIQUEIDENTIFIER NOT NULL,
-      LevelNumber INT NOT NULL,
-      Name NVARCHAR(200),
-      Difficulty NVARCHAR(20) DEFAULT 'easy', -- easy, medium, hard
-      TimeLimit INT DEFAULT 60,  -- seconds
-      PassScore INT DEFAULT 70,  -- minimum % to pass
-      IsLocked BIT DEFAULT 0,
-      CreatedAt DATETIME DEFAULT NOW(),
-      FOREIGN KEY (SetId) REFERENCES GameSets(Id) ON DELETE CASCADE
-    )
-  `);
-  console.log('  ✅ GameLevels');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS MiniGameQuestions (
+        Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        LevelId uuid NOT NULL REFERENCES GameLevels(Id) ON DELETE CASCADE,
+        QuestionType varchar(50) NOT NULL,
+        ContentEN varchar(500),
+        ContentVI varchar(500),
+        AudioUrl varchar(500),
+        ImageUrl varchar(500),
+        CorrectAnswer varchar(500),
+        Options text,
+        OrderIndex integer DEFAULT 0
+      )
+    `);
 
-  // MiniGameQuestions — Questions for each level
-  await pool.request().query(`
-    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='MiniGameQuestions' AND xtype='U')
-    CREATE TABLE MiniGameQuestions (
-      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
-      LevelId UNIQUEIDENTIFIER NOT NULL,
-      QuestionType NVARCHAR(50) NOT NULL, -- 'match_pair', 'listen_choose', 'type_answer', 'order_sentence'
-      ContentEN NVARCHAR(500),   -- English content (word, sentence, etc.)
-      ContentVI NVARCHAR(500),   -- Vietnamese content
-      AudioUrl NVARCHAR(500),    -- For listening games
-      ImageUrl NVARCHAR(500),    -- For matching with images
-      CorrectAnswer NVARCHAR(500),
-      Options NVARCHAR(MAX),     -- JSON array of options for MCQ
-      OrderIndex INT DEFAULT 0,
-      FOREIGN KEY (LevelId) REFERENCES GameLevels(Id) ON DELETE CASCADE
-    )
-  `);
-  console.log('  ✅ MiniGameQuestions');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS UserGameProgress (
+        Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        UserId uuid NOT NULL REFERENCES Users(Id),
+        LevelId uuid NOT NULL REFERENCES GameLevels(Id) ON DELETE CASCADE,
+        Score integer DEFAULT 0,
+        Stars integer DEFAULT 0,
+        IsCompleted boolean DEFAULT false,
+        BestTime integer DEFAULT 0,
+        Attempts integer DEFAULT 0,
+        CompletedAt timestamptz,
+        CONSTRAINT uq_ugp_user_level UNIQUE (UserId, LevelId)
+      )
+    `);
 
-  // UserGameProgress — Track user progress per level
-  await pool.request().query(`
-    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='UserGameProgress' AND xtype='U')
-    CREATE TABLE UserGameProgress (
-      Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
-      UserId UNIQUEIDENTIFIER NOT NULL,
-      LevelId UNIQUEIDENTIFIER NOT NULL,
-      Score INT DEFAULT 0,
-      Stars INT DEFAULT 0,         -- 0-3 stars
-      IsCompleted BIT DEFAULT 0,
-      BestTime INT DEFAULT 0,      -- best completion time in seconds
-      Attempts INT DEFAULT 0,
-      CompletedAt DATETIME,
-      FOREIGN KEY (LevelId) REFERENCES GameLevels(Id) ON DELETE CASCADE
-    )
-  `);
-  console.log('  ✅ UserGameProgress');
-
-  console.log('\n🎉 All new Mini Game tables created!');
-  process.exit(0);
+    console.log('Mini game migration completed.');
+  } catch (err) {
+    console.error('Migration failed:', err);
+    process.exitCode = 1;
+  } finally {
+    await closeDB();
+  }
 }
 
-migrate().catch(err => { console.error('❌', err.message); process.exit(1); });
+migrate();

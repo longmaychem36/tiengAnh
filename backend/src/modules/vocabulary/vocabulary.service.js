@@ -19,17 +19,15 @@ const vocabularyService = {
 
   async markLearned(userId, vocabId, status) {
     const pool = getPool();
-    // Upsert using MERGE
     await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
       .input('vocabId', sql.UniqueIdentifier, vocabId)
       .input('status', sql.NVarChar, status)
       .query(`
-        MERGE UserVocabulary AS target
-        USING (SELECT @userId as UserId, @vocabId as VocabId) AS source
-        ON target.UserId = source.UserId AND target.VocabId = source.VocabId
-        WHEN MATCHED THEN UPDATE SET Status = @status
-        WHEN NOT MATCHED THEN INSERT (UserId, VocabId, Status) VALUES (@userId, @vocabId, @status);
+        INSERT INTO UserVocabulary (UserId, VocabId, Status)
+        VALUES (@userId, @vocabId, @status)
+        ON CONFLICT (UserId, VocabId)
+        DO UPDATE SET Status = EXCLUDED.Status
       `);
     return { userId, vocabId, status };
   },

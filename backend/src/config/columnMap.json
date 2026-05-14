@@ -72,5 +72,13 @@
   "stars": "Stars",
   "audio_uk": "Audio_uk",
   "audio_us": "Audio_us",
-  "levelcount": "LevelCount"
+  "levelcount": "LevelCount",
+  "totallessons": "TotalLessons",
+  "completedlessons": "CompletedLessons",
+  "totalvocab": "TotalVocab",
+  "masteredvocab": "MasteredVocab",
+  "gamesplayed": "GamesPlayed",
+  "avgscore": "AvgScore",
+  "masteredwords": "MasteredWords",
+  "achievementsunlocked": "AchievementsUnlocked"
 }
