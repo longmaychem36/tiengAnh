@@ -12,7 +12,6 @@ const dictionaryController = require('./dictionary.controller');
 router.get('/search', dictionaryController.search);
 router.get('/autocomplete', dictionaryController.autocomplete);
 router.post('/translate', dictionaryController.translateSentence);
-router.get('/:id', dictionaryController.getById);
 
 // Protected routes
 router.get('/history/me', authMiddleware, dictionaryController.getHistory);
@@ -21,5 +20,7 @@ router.post('/', authMiddleware, authorize('admin'), [
   body('meaningVI').notEmpty().withMessage('Vietnamese meaning is required'),
   validate
 ], dictionaryController.create);
+
+router.get('/:id', dictionaryController.getById);
 
 module.exports = router;

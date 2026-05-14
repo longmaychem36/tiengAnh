@@ -1,48 +1,40 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-const sql = require('mssql/msnodesqlv8');
-const dbConfig = {
-  connectionString: `Driver={SQL Server};Server=localhost\\SQLEXPRESS;Database=EnglishLearningSystem;Trusted_Connection=yes;`
-};
+const { connectDB, getPool, closeDB } = require('../src/config/database');
 
 async function runMigration() {
   try {
-    const pool = await sql.connect(dbConfig);
-    console.log('Connected. Running migration...');
-    
-    // Create UserCollections
-    await pool.request().query(`
-      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='UserCollections' and xtype='U')
-      CREATE TABLE UserCollections (
-        Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
-        UserId UNIQUEIDENTIFIER NOT NULL,
-        Name NVARCHAR(255) NOT NULL,
-        Description NVARCHAR(MAX),
-        CreatedAt DATETIME DEFAULT NOW(),
-        FOREIGN KEY (UserId) REFERENCES Users(Id)
+    await connectDB();
+    const pool = getPool();
+    console.log('Connected. Running PostgreSQL collections migration...');
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS UserCollections (
+        Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        UserId uuid NOT NULL REFERENCES Users(Id),
+        Name varchar(255) NOT NULL,
+        Description text,
+        CreatedAt timestamptz DEFAULT now()
       )
     `);
 
-    // Create UserCollectionWords
-    await pool.request().query(`
-      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='UserCollectionWords' and xtype='U')
-      CREATE TABLE UserCollectionWords (
-        Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
-        CollectionId UNIQUEIDENTIFIER NOT NULL,
-        DictionaryEntryId UNIQUEIDENTIFIER NULL,
-        CustomWord NVARCHAR(255) NULL,
-        CustomMeaning NVARCHAR(MAX) NULL,
-        CustomExample NVARCHAR(MAX) NULL,
-        AddedAt DATETIME DEFAULT NOW(),
-        FOREIGN KEY (CollectionId) REFERENCES UserCollections(Id) ON DELETE CASCADE,
-        FOREIGN KEY (DictionaryEntryId) REFERENCES DictionaryEntries(Id) ON DELETE NO ACTION
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS UserCollectionWords (
+        Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        CollectionId uuid NOT NULL REFERENCES UserCollections(Id) ON DELETE CASCADE,
+        DictionaryEntryId uuid REFERENCES DictionaryEntries(Id) ON DELETE SET NULL,
+        CustomWord varchar(255),
+        CustomMeaning text,
+        CustomExample text,
+        AddedAt timestamptz DEFAULT now()
       )
     `);
 
     console.log('Migration successful.');
-    process.exit(0);
   } catch (err) {
     console.error('Migration failed:', err);
-    process.exit(1);
+    process.exitCode = 1;
+  } finally {
+    await closeDB();
   }
 }
 

@@ -1,63 +1,58 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-const { connectDB, getPool } = require('../src/config/database');
+const { connectDB, getPool, closeDB } = require('../src/config/database');
 
 async function migrate() {
   try {
     await connectDB();
     const pool = getPool();
-    
-    // Check if WritingLessons exists
-    const checkRes = await pool.request().query(`
-      SELECT TABLE_NAME 
-      FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_NAME = 'WritingLessons'
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS WritingLessons (
+        Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        Title varchar(255),
+        Description text,
+        OrderIndex integer,
+        CreatedAt timestamptz DEFAULT now()
+      )
     `);
-    
-    if (checkRes.recordset.length === 0) {
-      console.log('Creating Writing tables...');
-      await pool.request().query(`
-        CREATE TABLE WritingLessons (
-            Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
-            Title NVARCHAR(255),
-            Description NVARCHAR(MAX),
-            OrderIndex INT,
-            CreatedAt DATETIME DEFAULT NOW()
-        );
 
-        CREATE TABLE WritingExercises (
-            Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
-            LessonId UNIQUEIDENTIFIER,
-            ContentVI NVARCHAR(MAX),
-            CorrectAnswerEN NVARCHAR(MAX),
-            OrderIndex INT,
-            FOREIGN KEY (LessonId) REFERENCES WritingLessons(Id) ON DELETE CASCADE
-        );
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS WritingExercises (
+        Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        LessonId uuid REFERENCES WritingLessons(Id) ON DELETE CASCADE,
+        ContentVI text,
+        CorrectAnswerEN text,
+        OrderIndex integer
+      )
+    `);
 
-        CREATE TABLE WritingVocab (
-            Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT gen_random_uuid(),
-            ExerciseId UNIQUEIDENTIFIER,
-            Word NVARCHAR(100),
-            Meaning NVARCHAR(255),
-            FOREIGN KEY (ExerciseId) REFERENCES WritingExercises(Id) ON DELETE CASCADE
-        );
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS WritingVocab (
+        Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        ExerciseId uuid REFERENCES WritingExercises(Id) ON DELETE CASCADE,
+        Word varchar(100),
+        Meaning varchar(255)
+      )
+    `);
 
-        CREATE TABLE WritingProgress (
-            UserId UNIQUEIDENTIFIER,
-            LessonId UNIQUEIDENTIFIER,
-            Status NVARCHAR(50),
-            Score FLOAT,
-            UpdatedAt DATETIME DEFAULT NOW(),
-            PRIMARY KEY(UserId, LessonId)
-        );
-      `);
-      console.log('Migration completed.');
-    } else {
-      console.log('Migration already applied.');
-    }
-    process.exit(0);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS WritingProgress (
+        UserId uuid,
+        LessonId uuid,
+        Status varchar(50),
+        Score double precision,
+        UpdatedAt timestamptz DEFAULT now(),
+        PRIMARY KEY (UserId, LessonId)
+      )
+    `);
+
+    console.log('Writing migration completed.');
   } catch (err) {
     console.error('Migration failed:', err);
-    process.exit(1);
+    process.exitCode = 1;
+  } finally {
+    await closeDB();
   }
 }
+
 migrate();

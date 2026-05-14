@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 import { collectionApi } from '../api/collectionApi';
 import Loading from '../components/common/Loading';
 
+const getErrorMessage = (err, fallback) => err?.response?.data?.message || err?.message || fallback;
+
 function Collections() {
   const [collections, setCollections] = useState([]);
   const [selectedCol, setSelectedCol] = useState(null);
@@ -29,14 +31,14 @@ function Collections() {
     setLoading(true);
     collectionApi.getMyCollections()
       .then(res => setCollections(res.data || []))
-      .catch(() => toast.error('Failed to load collections'))
+      .catch(err => toast.error(getErrorMessage(err, 'Failed to load collections')))
       .finally(() => setLoading(false));
   };
 
   const loadWords = (colId) => {
     collectionApi.getWords(colId)
       .then(res => setWords(res.data || []))
-      .catch(() => toast.error('Failed to load words'));
+      .catch(err => toast.error(getErrorMessage(err, 'Failed to load words')));
   };
 
   const handleSelectCol = (col) => {
@@ -53,8 +55,8 @@ function Collections() {
       setShowColModal(false);
       setColForm({ name: '', description: '' });
       loadCollections();
-    } catch {
-      toast.error('Failed to create collection');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to create collection'));
     }
   };
 
@@ -66,8 +68,8 @@ function Collections() {
       toast.success('Deleted');
       if (selectedCol?.Id === id) setSelectedCol(null);
       loadCollections();
-    } catch {
-      toast.error('Failed to delete');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to delete'));
     }
   };
 
@@ -81,8 +83,8 @@ function Collections() {
       setWordForm({ customWord: '', customMeaning: '', customExample: '' });
       loadWords(selectedCol.Id);
       loadCollections(); // refresh counts
-    } catch {
-      toast.error('Failed to add word');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to add word'));
     }
   };
 
@@ -93,8 +95,8 @@ function Collections() {
       toast.success('Removed');
       loadWords(selectedCol.Id);
       loadCollections();
-    } catch {
-      toast.error('Failed to remove word');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to remove word'));
     }
   };
 

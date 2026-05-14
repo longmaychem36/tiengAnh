@@ -24,8 +24,8 @@ class CollectionRepository extends BaseRepository {
     const pool = getPool();
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, collection.userId)
-      .input('name', sql.NVarChar(255), collection.name)
-      .input('description', sql.NVarChar(sql.MAX), collection.description || null)
+      .input('name', sql.NVarChar, collection.name)
+      .input('description', sql.NVarChar, collection.description || null)
       .query(`
         INSERT INTO UserCollections (UserId, Name, Description)
         VALUES (@userId, @name, @description) RETURNING *
@@ -53,9 +53,9 @@ class CollectionRepository extends BaseRepository {
     const result = await pool.request()
       .input('collectionId', sql.UniqueIdentifier, wordData.collectionId)
       .input('dictionaryEntryId', sql.UniqueIdentifier, wordData.dictionaryEntryId || null)
-      .input('customWord', sql.NVarChar(255), wordData.customWord || null)
-      .input('customMeaning', sql.NVarChar(sql.MAX), wordData.customMeaning || null)
-      .input('customExample', sql.NVarChar(sql.MAX), wordData.customExample || null)
+      .input('customWord', sql.NVarChar, wordData.customWord || null)
+      .input('customMeaning', sql.NVarChar, wordData.customMeaning || null)
+      .input('customExample', sql.NVarChar, wordData.customExample || null)
       .query(`
         INSERT INTO UserCollectionWords (CollectionId, DictionaryEntryId, CustomWord, CustomMeaning, CustomExample)
         VALUES (@collectionId, @dictionaryEntryId, @customWord, @customMeaning, @customExample) RETURNING *
@@ -68,6 +68,19 @@ class CollectionRepository extends BaseRepository {
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, wordId)
       .query(`DELETE FROM UserCollectionWords WHERE Id = @id`);
+    return result.rowsAffected[0] > 0;
+  }
+
+  async delete(collectionId) {
+    const pool = getPool();
+    await pool.request()
+      .input('id', sql.UniqueIdentifier, collectionId)
+      .query(`DELETE FROM UserCollectionWords WHERE CollectionId = @id`);
+
+    const result = await pool.request()
+      .input('id', sql.UniqueIdentifier, collectionId)
+      .query(`DELETE FROM UserCollections WHERE Id = @id`);
+
     return result.rowsAffected[0] > 0;
   }
 }

@@ -9,7 +9,7 @@ const dictionaryController = {
     try {
       const { q, page = 1, limit = 20, levelId, direction = 'en-vi' } = req.query;
       if (!q || q.trim().length === 0) {
-        return success(res, [], 'Please provide a search query');
+        return paginated(res, [], 0, page, limit, 'Please provide a search query', { suggestions: [] });
       }
       const result = await dictionaryService.search({ query: q, page, limit, levelId, direction });
 
@@ -61,9 +61,9 @@ const dictionaryController = {
 
   async autocomplete(req, res, next) {
     try {
-      const { q, limit = 8 } = req.query;
+      const { q, limit = 8, direction = 'en-vi' } = req.query;
       if (!q || q.trim().length < 1) return success(res, []);
-      const results = await dictionaryService.autocomplete(q.trim(), parseInt(limit));
+      const results = await dictionaryService.autocomplete(q.trim(), parseInt(limit), direction);
       return success(res, results);
     } catch (err) {
       next(err);

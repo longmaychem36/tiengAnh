@@ -300,7 +300,7 @@ const SpeakingLesson = () => {
                     color: isPassed ? '#047857' : '#b91c1c',
                     fontWeight: 800, fontSize: 'var(--font-size-xl)'
                   }}>
-                    {isPassed ? '🌟 Tuyệt vời! (Chuyển câu...)' : '💪 Chưa chính xác, thử lại nhé!'} 
+                    {isPassed ? '🌟 Đạt yêu cầu!' : '💪 Chưa chính xác, thử lại nhé!'} 
                     ({result.score}%)
                   </div>
                   
@@ -330,21 +330,20 @@ const SpeakingLesson = () => {
                   )}
                 </div>
 
-                {/* Actions: only show if failed, otherwise auto-advancing */}
-                {!isPassed && (
-                  <div style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', marginTop: 'var(--space-4)' }}>
+                <div style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', marginTop: 'var(--space-4)', flexWrap: 'wrap' }}>
+                  {!isPassed && (
                     <button className="btn btn-secondary" onClick={handleRetry} style={{ minWidth: 140 }}>
                       <FiRefreshCw /> Thử lại
                     </button>
-                    <button 
-                      className="btn btn-outline" 
-                      onClick={() => handleNext()} 
-                      style={{ minWidth: 100 }}
-                    >
-                      Bỏ qua <FiArrowRight />
-                    </button>
-                  </div>
-                )}
+                  )}
+                  <button 
+                    className={isPassed ? 'btn btn-primary' : 'btn btn-outline'} 
+                    onClick={() => handleNext()} 
+                    style={{ minWidth: 120 }}
+                  >
+                    {isPassed ? 'Tiếp tục' : 'Bỏ qua'} <FiArrowRight />
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

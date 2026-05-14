@@ -11,12 +11,12 @@ const progressService = {
       .input('userId', sql.UniqueIdentifier, userId)
       .query(`
         SELECT 
-          (SELECT COUNT(*) FROM UserProgress WHERE UserId = @userId) as TotalLessons,
-          (SELECT COUNT(*) FROM UserProgress WHERE UserId = @userId AND Status = 'completed') as CompletedLessons,
-          (SELECT COUNT(*) FROM UserVocabulary WHERE UserId = @userId) as TotalVocab,
-          (SELECT COUNT(*) FROM UserVocabulary WHERE UserId = @userId AND Status = 'mastered') as MasteredVocab,
-          (SELECT COUNT(*) FROM UserGameSession WHERE UserId = @userId) as GamesPlayed,
-          (SELECT COALESCE(AVG(Score), 0) FROM UserProgress WHERE UserId = @userId AND Score IS NOT NULL) as AvgScore
+          (SELECT COUNT(*)::int FROM UserProgress WHERE UserId = @userId) as TotalLessons,
+          (SELECT COUNT(*)::int FROM UserProgress WHERE UserId = @userId AND Status = 'completed') as CompletedLessons,
+          (SELECT COUNT(*)::int FROM UserVocabulary WHERE UserId = @userId) as TotalVocab,
+          (SELECT COUNT(*)::int FROM UserVocabulary WHERE UserId = @userId AND Status = 'mastered') as MasteredVocab,
+          (SELECT COALESCE(SUM(Attempts), 0)::int FROM UserGameProgress WHERE UserId = @userId) as GamesPlayed,
+          (SELECT COALESCE(AVG(Score), 0)::float FROM UserProgress WHERE UserId = @userId AND Score IS NOT NULL) as AvgScore
       `);
     return result.recordset[0];
   },
@@ -24,19 +24,29 @@ const progressService = {
   async updateLesson(userId, lessonId, status, score) {
     const pool = getPool();
 
-    // Upsert progress
-    await pool.request()
+    const updateResult = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
       .input('lessonId', sql.UniqueIdentifier, lessonId)
       .input('status', sql.NVarChar, status || 'in_progress')
       .input('score', sql.Int, score || null)
       .query(`
-        MERGE UserProgress AS target
-        USING (SELECT @userId as UserId, @lessonId as LessonId) AS source
-        ON target.UserId = source.UserId AND target.LessonId = source.LessonId
-        WHEN MATCHED THEN UPDATE SET Status = @status, Score = COALESCE(@score, target.Score)
-        WHEN NOT MATCHED THEN INSERT (UserId, LessonId, Status, Score) VALUES (@userId, @lessonId, @status, @score);
+        UPDATE UserProgress
+        SET Status = @status,
+            Score = COALESCE(@score, Score)
+        WHERE UserId = @userId AND LessonId = @lessonId
       `);
+
+    if (updateResult.rowsAffected[0] === 0) {
+      await pool.request()
+        .input('userId', sql.UniqueIdentifier, userId)
+        .input('lessonId', sql.UniqueIdentifier, lessonId)
+        .input('status', sql.NVarChar, status || 'in_progress')
+        .input('score', sql.Int, score || null)
+        .query(`
+          INSERT INTO UserProgress (UserId, LessonId, Status, Score)
+          VALUES (@userId, @lessonId, @status, @score)
+        `);
+    }
 
     // Award EXP if completed
     if (status === 'completed') {
