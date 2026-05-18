@@ -5,11 +5,15 @@ const axios = require('axios');
 const crypto = require('crypto');
 
 const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.3-70b-instruct';
+const NVIDIA_MODEL = process.env.SPEAKING_NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
+const SPEAKING_AI_TIMEOUT_MS = Number.parseInt(process.env.SPEAKING_AI_TIMEOUT_MS, 10) || 25000;
 const SESSION_TTL_MS = 60 * 60 * 1000;
 const MAX_SESSIONS_PER_USER = 5;
+const LESSON_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const MAX_LESSON_CACHE_ITEMS = 80;
 
 const personalizedSessions = new Map();
+const generatedLessonCache = new Map();
 
 function cleanupExpiredSessions() {
   const current = Date.now();
@@ -28,6 +32,33 @@ function limitUserSessions(userId) {
   sessions.slice(MAX_SESSIONS_PER_USER).forEach(([sessionId]) => {
     personalizedSessions.delete(sessionId);
   });
+}
+
+function getLessonCacheKey({ topic, level, questionCount, goal }) {
+  return JSON.stringify({
+    topic: topic.toLowerCase(),
+    level,
+    questionCount,
+    goal: goal.toLowerCase()
+  });
+}
+
+function cleanupLessonCache() {
+  const current = Date.now();
+  for (const [key, item] of generatedLessonCache.entries()) {
+    if (item.expiresAt <= current) generatedLessonCache.delete(key);
+  }
+
+  if (generatedLessonCache.size <= MAX_LESSON_CACHE_ITEMS) return;
+
+  const entries = [...generatedLessonCache.entries()].sort((a, b) => a[1].createdAt - b[1].createdAt);
+  entries.slice(0, generatedLessonCache.size - MAX_LESSON_CACHE_ITEMS).forEach(([key]) => {
+    generatedLessonCache.delete(key);
+  });
+}
+
+function cloneLesson(lesson) {
+  return JSON.parse(JSON.stringify(lesson));
 }
 
 function stripCodeFence(text) {
@@ -167,17 +198,13 @@ async function requestGeneratedLesson({ topic, level, questionCount, goal, stric
   }
 
   const systemPrompt = [
-    'You create short English speaking practice lessons for Vietnamese learners.',
-    'Return valid JSON only. Do not include markdown.',
-    'The JSON shape must be:',
-    '{"title":"...","description":"...","sentences":[{"question":"English question","translation":"Vietnamese translation","options":[{"text":"English answer","translation":"Vietnamese translation"}]}]}',
-    'Example English question: Do you have a room available?',
-    'Example English answer: I need a single room.',
-    'The fields question and options.text must be English only.',
-    'Vietnamese is allowed only in translation fields.',
-    'Each question must have exactly 3 natural answer options.',
-    'Keep all English sentences short enough for speaking practice.',
-    'Avoid unsafe, political, adult, medical, legal, or financial advice content.'
+    'Create short English speaking drills for Vietnamese learners.',
+    'Return JSON only, no markdown.',
+    'Shape: {"title":"","description":"","sentences":[{"question":"","translation":"","options":[{"text":"","translation":""}]}]}',
+    'question and options.text: English only.',
+    'translation fields: Vietnamese only.',
+    'Exactly 3 concise answer options per question.',
+    'Use practical role-play situations and avoid unsafe content.'
   ].join(' ');
 
   const userPrompt = [
@@ -185,11 +212,12 @@ async function requestGeneratedLesson({ topic, level, questionCount, goal, stric
     `Level: ${level}`,
     `Number of questions: ${questionCount}`,
     goal ? `Learner goal/context: ${goal}` : '',
-    'Generate a practical role-play style speaking lesson.',
-    'Questions should be in English. Translations should be in Vietnamese.',
-    'The learner will choose and speak one answer for each question.',
+    'Generate a practical role-play speaking lesson.',
+    'Keep each English question and answer under 12 words.',
     strictEnglish ? 'Important correction: do not put Vietnamese text in question or options.text. Those fields must be English.' : ''
   ].filter(Boolean).join('\n');
+
+  const maxTokens = Math.min(1200, Math.max(650, 240 + (questionCount * 130)));
 
   let response;
   try {
@@ -203,7 +231,7 @@ async function requestGeneratedLesson({ topic, level, questionCount, goal, stric
         ],
         temperature: 0.4,
         top_p: 0.9,
-        max_tokens: 1600,
+        max_tokens: maxTokens,
         response_format: { type: 'json_object' },
         stream: false
       },
@@ -212,7 +240,7 @@ async function requestGeneratedLesson({ topic, level, questionCount, goal, stric
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
-        timeout: 45000
+        timeout: SPEAKING_AI_TIMEOUT_MS
       }
     );
   } catch (err) {
@@ -234,6 +262,7 @@ async function requestGeneratedLesson({ topic, level, questionCount, goal, stric
 const speakingService = {
   async createPersonalizedLesson(userId, payload = {}) {
     cleanupExpiredSessions();
+    cleanupLessonCache();
 
     const topic = toSafeString(payload.topic).slice(0, 80);
     const goal = toSafeString(payload.goal).slice(0, 180);
@@ -246,21 +275,32 @@ const speakingService = {
       throw err;
     }
 
-    let lesson;
+    const cacheKey = getLessonCacheKey({ topic, level, questionCount, goal });
+    let lesson = generatedLessonCache.has(cacheKey)
+      ? cloneLesson(generatedLessonCache.get(cacheKey).lesson)
+      : null;
     let lastError;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const rawLesson = await requestGeneratedLesson({
-          topic,
-          level,
-          questionCount,
-          goal,
-          strictEnglish: attempt > 0
-        });
-        lesson = normalizeGeneratedLesson(rawLesson, topic, questionCount);
-        break;
-      } catch (err) {
-        lastError = err;
+
+    if (!lesson) {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const rawLesson = await requestGeneratedLesson({
+            topic,
+            level,
+            questionCount,
+            goal,
+            strictEnglish: attempt > 0
+          });
+          lesson = normalizeGeneratedLesson(rawLesson, topic, questionCount);
+          generatedLessonCache.set(cacheKey, {
+            lesson: cloneLesson(lesson),
+            createdAt: Date.now(),
+            expiresAt: Date.now() + LESSON_CACHE_TTL_MS
+          });
+          break;
+        } catch (err) {
+          lastError = err;
+        }
       }
     }
 

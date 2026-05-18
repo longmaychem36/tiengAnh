@@ -174,6 +174,8 @@ def transcribe_and_analyze():
             "score": result["score"],
             "feedback": result["feedback"],
             "matchedText": result["matchedText"],
+            "missingWords": result["missingWords"],
+            "extraWords": result["extraWords"],
             "duration": round(info.duration, 2),
             "processingTime": round(elapsed, 2)
         })
@@ -206,11 +208,116 @@ def analyze_transcript(transcript, target_texts):
     }
     filler_words = {"um", "uh", "erm", "ah", "hmm"}
     light_words = {"a", "an", "the", "to", "of", "in", "on", "at", "for", "and", "or"}
+    ones = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+    teens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+    tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+    ordinal_words = {
+        1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth",
+        6: "sixth", 7: "seventh", 8: "eighth", 9: "ninth", 10: "tenth",
+        11: "eleventh", 12: "twelfth", 13: "thirteenth", 14: "fourteenth",
+        15: "fifteenth", 16: "sixteenth", 17: "seventeenth", 18: "eighteenth",
+        19: "nineteenth", 20: "twentieth", 30: "thirtieth", 40: "fortieth",
+        50: "fiftieth", 60: "sixtieth", 70: "seventieth", 80: "eightieth",
+        90: "ninetieth"
+    }
+
+    def integer_to_words(value):
+        try:
+            number = int(value)
+        except:
+            return str(value)
+        if number < 0 or number > 999999:
+            return str(value)
+        if number < 10:
+            return ones[number]
+        if number < 20:
+            return teens[number - 10]
+        if number < 100:
+            ten, rest = divmod(number, 10)
+            return f"{tens[ten]} {ones[rest]}" if rest else tens[ten]
+        if number < 1000:
+            hundred, rest = divmod(number, 100)
+            return f"{ones[hundred]} hundred {integer_to_words(rest)}" if rest else f"{ones[hundred]} hundred"
+        thousand, rest = divmod(number, 1000)
+        return f"{integer_to_words(thousand)} thousand {integer_to_words(rest)}" if rest else f"{integer_to_words(thousand)} thousand"
+
+    def ordinal_to_words(value):
+        try:
+            number = int(value)
+        except:
+            return str(value)
+        if number <= 0 or number > 999999:
+            return str(value)
+        if number in ordinal_words:
+            return ordinal_words[number]
+        if number < 100:
+            ten = (number // 10) * 10
+            rest = number % 10
+            return f"{tens[ten // 10]} {ordinal_words[rest]}"
+        cardinal = integer_to_words(number).split()
+        last = cardinal[-1]
+        reverse_ones = {word: idx for idx, word in enumerate(ones)}
+        reverse_teens = {word: idx + 10 for idx, word in enumerate(teens)}
+        word_to_ordinal = {
+            **{word: ordinal_words.get(idx) for word, idx in reverse_ones.items()},
+            **{word: ordinal_words.get(idx) for word, idx in reverse_teens.items()},
+            "twenty": "twentieth", "thirty": "thirtieth", "forty": "fortieth",
+            "fifty": "fiftieth", "sixty": "sixtieth", "seventy": "seventieth",
+            "eighty": "eightieth", "ninety": "ninetieth",
+        }
+        cardinal[-1] = word_to_ordinal.get(last, f"{last}th")
+        return " ".join(cardinal)
+
+    def is_grouped_thousands(value):
+        return re.fullmatch(r"\d{1,3}(,\d{3})+", str(value)) is not None
+
+    def number_token_to_words(value):
+        token = str(value)
+        if "," in token and not is_grouped_thousands(token.split(".")[0]):
+            return " ".join(decimal_to_words(part) for part in token.split(","))
+        return decimal_to_words(token)
+
+    def decimal_to_words(value):
+        whole, _, decimal = str(value).replace(",", "").partition(".")
+        if not decimal:
+            return integer_to_words(whole)
+        digits = " ".join(ones[int(ch)] if ch.isdigit() else ch for ch in decimal)
+        return f"{integer_to_words(whole)} point {digits}"
+
+    def money_to_words(raw_value, singular, plural):
+        if "," in str(raw_value) and not is_grouped_thousands(str(raw_value).split(".")[0]):
+            return " ".join(decimal_to_words(part) for part in str(raw_value).split(",")) + f" {plural}"
+        clean = str(raw_value).replace(",", "")
+        whole_text, _, cents_text = clean.partition(".")
+        whole = int(whole_text or 0)
+        cents = int((cents_text + "00")[:2]) if cents_text else 0
+        major = f"{integer_to_words(whole)} {singular if whole == 1 else plural}" if whole > 0 else ""
+        minor = f"{integer_to_words(cents)} {'cent' if cents == 1 else 'cents'}" if cents > 0 else ""
+        return " ".join(part for part in [major, minor] if part) or f"zero {plural}"
+
+    def normalize_numbers_and_symbols(text):
+        money_units = {
+            "$": ("dollar", "dollars"),
+            "€": ("euro", "euros"),
+            "£": ("pound", "pounds"),
+            "¥": ("yen", "yen"),
+        }
+        for symbol, (singular, plural) in money_units.items():
+            escaped = re.escape(symbol)
+            text = re.sub(rf"{escaped}\s*(\d[\d,]*(?:\.\d+)?)", lambda m: money_to_words(m.group(1), singular, plural), text)
+            text = re.sub(rf"(\d[\d,]*(?:\.\d+)?)\s*{escaped}", lambda m: money_to_words(m.group(1), singular, plural), text)
+        text = re.sub(r"\bbucks?\b", "dollars", text)
+        text = re.sub(r"\b(\d[\d,]*)(st|nd|rd|th)\b", lambda m: ordinal_to_words(m.group(1).replace(",", "")), text)
+        text = re.sub(r"\b(\d[\d,]*(?:\.\d+)?)\s*%", lambda m: f"{number_token_to_words(m.group(1))} percent", text)
+        text = re.sub(r"\b(\d[\d,]*\.\d+)\b", lambda m: number_token_to_words(m.group(1)), text)
+        text = re.sub(r"\b\d[\d,]*\b", lambda m: number_token_to_words(m.group(0)), text)
+        return text
 
     def normalize(text):
         text = (text or "").lower().strip()
         for short, expanded in contractions.items():
             text = re.sub(rf"\b{re.escape(short)}\b", expanded, text)
+        text = normalize_numbers_and_symbols(text)
         text = re.sub(r"[^a-z0-9\s']", " ", text)
         words = [w for w in text.split() if w and w not in filler_words]
         return words

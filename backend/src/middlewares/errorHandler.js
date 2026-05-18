@@ -10,7 +10,7 @@ function errorHandler(err, req, res, next) {
   console.error('Error:', err.message);
   console.error('Stack:', err.stack);
 
-  // SQL Server specific errors
+  // Database and timeout errors
   if (err.code === 'EREQUEST' || err.code === 'ETIMEOUT') {
     return res.status(500).json({
       success: false,

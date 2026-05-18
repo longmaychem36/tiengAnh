@@ -27,8 +27,6 @@ function SkillCourse() {
   };
 
   useEffect(() => {
-    // We get sets, filter by type, then get levels of the first matching set.
-    // In a full production system, we might have multiple sets per skill. For now, we take the first.
     gameApi.getSets()
       .then(async (res) => {
         const sets = res.data || [];

@@ -4,9 +4,19 @@
 const axios = require('axios');
 const { success, badRequest } = require('../../utils/responseHelper');
 const { sql, getPool } = require('../../config/database');
+const gamificationService = require('../gamification/gamification.service');
+const { EXP_REWARDS } = require('../../utils/constants');
 
 const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.3-70b-instruct';
+const NVIDIA_MODEL = process.env.WRITING_NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
+const WRITING_AI_ENABLED = process.env.WRITING_AI_ENABLED !== 'false';
+const WRITING_AI_TIMEOUT_MS = Number.parseInt(process.env.WRITING_AI_TIMEOUT_MS, 10) || 6000;
+const WRITING_AI_MAX_TOKENS = Number.parseInt(process.env.WRITING_AI_MAX_TOKENS, 10) || 280;
+const WRITING_FAST_PASS_SCORE = Number.parseInt(process.env.WRITING_FAST_PASS_SCORE, 10) || 92;
+const WRITING_FAST_FAIL_SCORE = Number.parseInt(process.env.WRITING_FAST_FAIL_SCORE, 10) || 45;
+const WRITING_CHECK_CACHE_TTL_MS = Number.parseInt(process.env.WRITING_CHECK_CACHE_TTL_MS, 10) || 10 * 60 * 1000;
+const WRITING_CHECK_CACHE_MAX = Number.parseInt(process.env.WRITING_CHECK_CACHE_MAX, 10) || 500;
+const writingCheckCache = new Map();
 
 function stripCodeFence(text) {
   return String(text || '')
@@ -68,13 +78,17 @@ function parseJsonContent(content) {
   }
 }
 
-function getSimilarityScore(userText, targetText) {
-  const cleanString = (str) => {
-    return str.toLowerCase().replace(/[^\w\s]|_/g, '').replace(/\s+/g, ' ').trim();
-  };
+function normalizeText(str) {
+  return String(str || '')
+    .toLowerCase()
+    .replace(/[^\w\s]|_/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-  const cleanUser = cleanString(userText);
-  const cleanTarget = cleanString(targetText);
+function getSimilarityScore(userText, targetText) {
+  const cleanUser = normalizeText(userText);
+  const cleanTarget = normalizeText(targetText);
 
   const levenshtein = (a, b) => {
     if (a.length === 0) return b.length;
@@ -103,16 +117,50 @@ function getSimilarityScore(userText, targetText) {
   return maxLen === 0 ? 100 : Math.max(0, Math.round((1 - dist / maxLen) * 100));
 }
 
-function fallbackWritingCheck(userText, targetText) {
-  const score = getSimilarityScore(userText, targetText);
+function getWritingCacheKey(userText, targetText) {
+  return `${normalizeText(targetText)}::${normalizeText(userText)}`;
+}
+
+function getCachedWritingCheck(cacheKey) {
+  const cached = writingCheckCache.get(cacheKey);
+  if (!cached) return null;
+
+  if (Date.now() - cached.createdAt > WRITING_CHECK_CACHE_TTL_MS) {
+    writingCheckCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.value;
+}
+
+function setCachedWritingCheck(cacheKey, value) {
+  if (writingCheckCache.size >= WRITING_CHECK_CACHE_MAX) {
+    const oldestKey = writingCheckCache.keys().next().value;
+    if (oldestKey) writingCheckCache.delete(oldestKey);
+  }
+
+  writingCheckCache.set(cacheKey, { value, createdAt: Date.now() });
+}
+
+function fallbackWritingCheck(userText, targetText, score = getSimilarityScore(userText, targetText)) {
   const passed = score >= 80;
 
   return {
     score,
     passed,
     feedback: passed ? 'Chính xác! Bạn làm rất tốt.' : 'Chưa đủ chính xác, hãy xem lại đáp án nhé.',
+    correctedText: targetText,
+    grammarNotes: [],
+    naturalnessNotes: [],
     source: 'similarity'
   };
+}
+
+function buildFallbackPassage(exercises, field) {
+  return exercises
+    .map(item => item[field])
+    .filter(Boolean)
+    .join(' ');
 }
 
 function normalizeAiWritingFeedback(raw, fallbackScore) {
@@ -149,10 +197,10 @@ async function checkWritingWithAi(userText, targetText) {
   const similarityScore = getSimilarityScore(userText, targetText);
   const systemPrompt = [
     'You are an English writing tutor for Vietnamese learners.',
-    'Evaluate grammar, meaning, and naturalness. Do not require exact wording if the learner answer is correct and natural.',
+    'Evaluate one short sentence for grammar, meaning, and naturalness.',
+    'Do not require exact wording if the learner answer is correct and natural.',
     'Return valid JSON only. Do not include markdown.',
-    'JSON shape: {"score":0-100,"passed":true/false,"feedback":"short Vietnamese feedback","correctedText":"best corrected English sentence","grammarNotes":["..."],"naturalnessNotes":["..."]}.',
-    'Feedback must be in Vietnamese, concise, specific, and encouraging without being vague.',
+    'JSON shape: {"score":0-100,"passed":true/false,"feedback":"Vietnamese feedback under 18 words","correctedText":"best corrected English sentence","grammarNotes":["one short note"],"naturalnessNotes":[]}.',
     'Score should reflect meaning accuracy, grammar, word choice, punctuation, and naturalness.'
   ].join(' ');
 
@@ -176,7 +224,7 @@ async function checkWritingWithAi(userText, targetText) {
         ],
         temperature: 0.2,
         top_p: 0.8,
-        max_tokens: 700,
+        max_tokens: WRITING_AI_MAX_TOKENS,
         response_format: { type: 'json_object' },
         stream: false
       },
@@ -185,7 +233,7 @@ async function checkWritingWithAi(userText, targetText) {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
-        timeout: 30000
+        timeout: WRITING_AI_TIMEOUT_MS
       }
     );
   } catch (err) {
@@ -244,7 +292,11 @@ const writingController = {
       const { id } = req.params;
       const pool = getPool();
       
-      const lessonResult = await pool.query(`SELECT Id, Title FROM WritingLessons WHERE Id = $1`, [id]);
+      const lessonResult = await pool.query(`
+        SELECT Id, Title, Description, PassageEN, PassageVI
+        FROM WritingLessons
+        WHERE Id = $1
+      `, [id]);
       if (lessonResult.rows.length === 0) return badRequest(res, 'Lesson not found');
 
       const exerResult = await pool.query(`
@@ -267,8 +319,16 @@ const writingController = {
         });
       }
 
+      const lesson = lessonResult.rows[0];
+
       return success(res, { 
-        lesson: { id: lessonResult.rows[0].id, title: lessonResult.rows[0].title },
+        lesson: {
+          id: lesson.id,
+          title: lesson.title,
+          description: lesson.description,
+          passageEN: lesson.passageen || buildFallbackPassage(exercises, 'correctAnswerEN'),
+          passageVI: lesson.passagevi || buildFallbackPassage(exercises, 'contentVI')
+        },
         exercises 
       });
     } catch (err) {
@@ -283,11 +343,32 @@ const writingController = {
         return badRequest(res, 'userText and targetText are required');
       }
 
+      const cacheKey = getWritingCacheKey(userText, targetText);
+      const cached = getCachedWritingCheck(cacheKey);
+      if (cached) {
+        return success(res, { ...cached, source: `${cached.source}:cache` });
+      }
+
+      const similarityScore = getSimilarityScore(userText, targetText);
+      if (
+        !WRITING_AI_ENABLED ||
+        similarityScore >= WRITING_FAST_PASS_SCORE ||
+        similarityScore <= WRITING_FAST_FAIL_SCORE
+      ) {
+        const fastResult = fallbackWritingCheck(userText, targetText, similarityScore);
+        setCachedWritingCheck(cacheKey, fastResult);
+        return success(res, fastResult);
+      }
+
       try {
-        return success(res, await checkWritingWithAi(userText, targetText));
+        const aiResult = await checkWritingWithAi(userText, targetText);
+        setCachedWritingCheck(cacheKey, aiResult);
+        return success(res, aiResult);
       } catch (aiErr) {
         console.warn('AI writing feedback failed, falling back to similarity:', aiErr.message);
-        return success(res, fallbackWritingCheck(userText, targetText));
+        const fallbackResult = fallbackWritingCheck(userText, targetText, similarityScore);
+        setCachedWritingCheck(cacheKey, fallbackResult);
+        return success(res, fallbackResult);
       }
     } catch (err) {
       next(err);
@@ -305,6 +386,12 @@ const writingController = {
 
       const status = completed === false ? 'in_progress' : 'completed';
       const score = status === 'completed' ? 100 : null;
+      const existingResult = await pool.query(`
+        SELECT Status
+        FROM WritingProgress
+        WHERE UserId = $1 AND LessonId = $2
+      `, [req.user.id, lessonId]);
+      const wasCompleted = existingResult.rows[0]?.status === 'completed';
 
       await pool.query(`
         INSERT INTO WritingProgress (UserId, LessonId, Score, Status, UpdatedAt)
@@ -315,8 +402,16 @@ const writingController = {
           Status = EXCLUDED.Status,
           UpdatedAt = NOW()
       `, [req.user.id, lessonId, score, status]);
+
+      const expReward = status === 'completed' && !wasCompleted
+        ? await gamificationService.addExp(
+          req.user.id,
+          EXP_REWARDS.WRITING_LESSON_COMPLETE,
+          'writing_lesson_complete'
+        )
+        : null;
         
-      return success(res, { message: 'Progress saved' });
+      return success(res, { message: 'Progress saved', alreadyCompleted: wasCompleted, expReward });
     } catch (err) {
       next(err);
     }

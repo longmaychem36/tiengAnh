@@ -3,6 +3,7 @@
 // ============================================
 const { sql, getPool } = require('../../config/database');
 const { EXP_REWARDS } = require('../../utils/constants');
+const gamificationService = require('../gamification/gamification.service');
 
 const progressService = {
   async getOverall(userId) {
@@ -23,11 +24,22 @@ const progressService = {
 
   async updateLesson(userId, lessonId, status, score) {
     const pool = getPool();
+    const normalizedStatus = status || 'in_progress';
+
+    const existingResult = await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .input('lessonId', sql.UniqueIdentifier, lessonId)
+      .query(`
+        SELECT Status, Score
+        FROM UserProgress
+        WHERE UserId = @userId AND LessonId = @lessonId
+      `);
+    const wasCompleted = existingResult.recordset[0]?.Status === 'completed';
 
     const updateResult = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
       .input('lessonId', sql.UniqueIdentifier, lessonId)
-      .input('status', sql.NVarChar, status || 'in_progress')
+      .input('status', sql.NVarChar, normalizedStatus)
       .input('score', sql.Int, score || null)
       .query(`
         UPDATE UserProgress
@@ -40,7 +52,7 @@ const progressService = {
       await pool.request()
         .input('userId', sql.UniqueIdentifier, userId)
         .input('lessonId', sql.UniqueIdentifier, lessonId)
-        .input('status', sql.NVarChar, status || 'in_progress')
+        .input('status', sql.NVarChar, normalizedStatus)
         .input('score', sql.Int, score || null)
         .query(`
           INSERT INTO UserProgress (UserId, LessonId, Status, Score)
@@ -48,32 +60,23 @@ const progressService = {
         `);
     }
 
-    // Award EXP if completed
-    if (status === 'completed') {
-      await pool.request()
-        .input('userId', sql.UniqueIdentifier, userId)
-        .input('exp', sql.Int, EXP_REWARDS.LESSON_COMPLETE)
-        .query(`
-          UPDATE UserStats
-          SET Exp = Exp + @exp,
-              Level = CASE
-                WHEN Exp + @exp >= 10000 THEN 10
-                WHEN Exp + @exp >= 7500 THEN 9
-                WHEN Exp + @exp >= 5500 THEN 8
-                WHEN Exp + @exp >= 4000 THEN 7
-                WHEN Exp + @exp >= 2800 THEN 6
-                WHEN Exp + @exp >= 1800 THEN 5
-                WHEN Exp + @exp >= 1000 THEN 4
-                WHEN Exp + @exp >= 500 THEN 3
-                WHEN Exp + @exp >= 250 THEN 2
-                WHEN Exp + @exp >= 100 THEN 1
-                ELSE Level
-              END
-          WHERE UserId = @userId
-        `);
+    let expReward = null;
+    if (normalizedStatus === 'completed' && !wasCompleted) {
+      expReward = await gamificationService.addExp(
+        userId,
+        EXP_REWARDS.LESSON_COMPLETE,
+        'lesson_complete'
+      );
     }
 
-    return { userId, lessonId, status, score };
+    return {
+      userId,
+      lessonId,
+      status: normalizedStatus,
+      score,
+      alreadyCompleted: wasCompleted,
+      expReward
+    };
   },
 
   async getByCourse(userId, courseId) {

@@ -8,6 +8,8 @@ const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
 const billingService = require('../billing/billing.service');
+const gamificationService = require('../gamification/gamification.service');
+const { EXP_REWARDS } = require('../../utils/constants');
 
 const WHISPER_SERVER_URL = process.env.WHISPER_SERVER_URL || 'http://127.0.0.1:5001';
 
@@ -44,12 +46,146 @@ const contractions = {
 
 const fillerWords = new Set(['um', 'uh', 'erm', 'ah', 'hmm']);
 const lightWords = new Set(['a', 'an', 'the', 'to', 'of', 'in', 'on', 'at', 'for', 'and', 'or']);
+const ones = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+const ordinalWords = {
+  1: 'first',
+  2: 'second',
+  3: 'third',
+  4: 'fourth',
+  5: 'fifth',
+  6: 'sixth',
+  7: 'seventh',
+  8: 'eighth',
+  9: 'ninth',
+  10: 'tenth',
+  11: 'eleventh',
+  12: 'twelfth',
+  13: 'thirteenth',
+  14: 'fourteenth',
+  15: 'fifteenth',
+  16: 'sixteenth',
+  17: 'seventeenth',
+  18: 'eighteenth',
+  19: 'nineteenth',
+  20: 'twentieth',
+  30: 'thirtieth',
+  40: 'fortieth',
+  50: 'fiftieth',
+  60: 'sixtieth',
+  70: 'seventieth',
+  80: 'eightieth',
+  90: 'ninetieth'
+};
+
+function integerToWords(value) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0 || number > 999999) return String(value);
+  if (number < 10) return ones[number];
+  if (number < 20) return teens[number - 10];
+  if (number < 100) {
+    const ten = Math.floor(number / 10);
+    const rest = number % 10;
+    return rest ? `${tens[ten]} ${ones[rest]}` : tens[ten];
+  }
+  if (number < 1000) {
+    const hundred = Math.floor(number / 100);
+    const rest = number % 100;
+    return rest ? `${ones[hundred]} hundred ${integerToWords(rest)}` : `${ones[hundred]} hundred`;
+  }
+  const thousand = Math.floor(number / 1000);
+  const rest = number % 1000;
+  return rest ? `${integerToWords(thousand)} thousand ${integerToWords(rest)}` : `${integerToWords(thousand)} thousand`;
+}
+
+function ordinalToWords(value) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number <= 0 || number > 999999) return String(value);
+  if (ordinalWords[number]) return ordinalWords[number];
+  if (number < 100) {
+    const ten = Math.floor(number / 10) * 10;
+    const rest = number % 10;
+    return `${tens[Math.floor(ten / 10)]} ${ordinalWords[rest]}`;
+  }
+  const cardinal = integerToWords(number);
+  const parts = cardinal.split(' ');
+  const last = parts.pop();
+  const wordToOrdinal = {
+    ...Object.fromEntries(ones.map((word, index) => [word, ordinalWords[index]])),
+    ...Object.fromEntries(teens.map((word, index) => [word, ordinalWords[index + 10]])),
+    twenty: 'twentieth',
+    thirty: 'thirtieth',
+    forty: 'fortieth',
+    fifty: 'fiftieth',
+    sixty: 'sixtieth',
+    seventy: 'seventieth',
+    eighty: 'eightieth',
+    ninety: 'ninetieth'
+  };
+  parts.push(wordToOrdinal[last] || `${last}th`);
+  return parts.join(' ');
+}
+
+function isGroupedThousands(value) {
+  return /^\d{1,3}(,\d{3})+$/.test(String(value));
+}
+
+function numberTokenToWords(value) {
+  const token = String(value);
+  if (token.includes(',') && !isGroupedThousands(token.split('.')[0])) {
+    return token.split(',').map(part => decimalToWords(part)).join(' ');
+  }
+  return decimalToWords(token);
+}
+
+function decimalToWords(value) {
+  const [whole, decimal = ''] = String(value).replace(/,/g, '').split('.');
+  if (!decimal) return integerToWords(Number(whole));
+  return `${integerToWords(Number(whole))} point ${decimal.split('').map((digit) => ones[Number(digit)] || digit).join(' ')}`;
+}
+
+function moneyToWords(rawValue, unit) {
+  const clean = String(rawValue).replace(/,/g, '');
+  if (String(rawValue).includes(',') && !isGroupedThousands(String(rawValue).split('.')[0])) {
+    return `${String(rawValue).split(',').map(part => decimalToWords(part)).join(' ')} ${unit.plural}`;
+  }
+  const [wholeText, centsText] = clean.split('.');
+  const whole = Number(wholeText || 0);
+  const cents = centsText ? Number(centsText.padEnd(2, '0').slice(0, 2)) : 0;
+  const major = whole > 0 ? `${integerToWords(whole)} ${whole === 1 ? unit.singular : unit.plural}` : '';
+  const minor = cents > 0 ? `${integerToWords(cents)} ${cents === 1 ? 'cent' : 'cents'}` : '';
+  return [major, minor].filter(Boolean).join(' ') || `zero ${unit.plural}`;
+}
+
+function normalizeNumbersAndSymbols(text) {
+  const moneyUnits = {
+    '$': { singular: 'dollar', plural: 'dollars' },
+    '€': { singular: 'euro', plural: 'euros' },
+    '£': { singular: 'pound', plural: 'pounds' },
+    '¥': { singular: 'yen', plural: 'yen' }
+  };
+  let normalized = text;
+  Object.entries(moneyUnits).forEach(([symbol, unit]) => {
+    const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    normalized = normalized.replace(new RegExp(`${escaped}\\s*(\\d[\\d,]*(?:\\.\\d+)?)`, 'g'), (_, amount) => moneyToWords(amount, unit));
+    normalized = normalized.replace(new RegExp(`(\\d[\\d,]*(?:\\.\\d+)?)\\s*${escaped}`, 'g'), (_, amount) => moneyToWords(amount, unit));
+  });
+  normalized = normalized
+    .replace(/\bbucks?\b/g, 'dollars')
+    .replace(/\b(\d[\d,]*)(st|nd|rd|th)\b/g, (_, number) => ordinalToWords(Number(number.replace(/,/g, ''))))
+    .replace(/\b(\d[\d,]*(?:\.\d+)?)\s*%/g, (_, number) => `${numberTokenToWords(number)} percent`)
+    .replace(/\b(\d[\d,]*\.\d+)\b/g, (_, number) => numberTokenToWords(number))
+    .replace(/\b\d[\d,]*\b/g, (number) => numberTokenToWords(number));
+  return normalized;
+}
 
 function normalizeSpeakingText(text = '') {
   let normalized = String(text).toLowerCase().trim();
   Object.entries(contractions).forEach(([short, expanded]) => {
     normalized = normalized.replace(new RegExp(`\\b${short.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g'), expanded);
   });
+  normalized = normalizeNumbersAndSymbols(normalized);
   return normalized
     .replace(/[^a-z0-9\s']/g, ' ')
     .split(/\s+/)
@@ -282,13 +418,16 @@ const speakingController = {
           return res.status(500).json({ success: false, message: result.error });
         }
 
+        const transcript = result.transcript || result.text || '';
+        const localAnalysis = analyzeTranscript(transcript, textsArray);
+
         return success(res, {
-          transcript: result.transcript || result.text,
-          score: result.score,
-          feedback: result.feedback,
-          matchedText: result.matchedText,
-          missingWords: result.missingWords || [],
-          extraWords: result.extraWords || [],
+          transcript,
+          score: localAnalysis.score,
+          feedback: localAnalysis.feedback,
+          matchedText: localAnalysis.matchedText,
+          missingWords: localAnalysis.missingWords || [],
+          extraWords: localAnalysis.extraWords || [],
           processingTime: result.processingTime
         });
       } catch (err) {
@@ -438,7 +577,13 @@ const speakingController = {
       const { sql, getPool } = require('../../config/database');
       const { lessonId, completed } = req.body;
       const pool = getPool();
-      
+      const existingResult = await pool.query(`
+        SELECT Status
+        FROM SpeakingProgress
+        WHERE UserId = $1 AND LessonId = $2
+      `, [req.user.id, lessonId]);
+      const wasCompleted = existingResult.rows[0]?.status === 'completed';
+
       // PostgreSQL UPSERT — insert or update on conflict
       await pool.query(`
         INSERT INTO SpeakingProgress (UserId, LessonId, Score, Status, UpdatedAt)
@@ -447,7 +592,15 @@ const speakingController = {
         DO UPDATE SET Status = 'completed', UpdatedAt = NOW()
       `, [req.user.id, lessonId]);
         
-      return success(res, { message: 'Progress saved' });
+      const expReward = !wasCompleted
+        ? await gamificationService.addExp(
+          req.user.id,
+          EXP_REWARDS.SPEAKING_LESSON_COMPLETE,
+          'speaking_lesson_complete'
+        )
+        : null;
+
+      return success(res, { message: 'Progress saved', alreadyCompleted: wasCompleted, expReward });
     } catch (err) {
       next(err);
     }

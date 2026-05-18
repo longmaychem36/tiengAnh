@@ -3,6 +3,7 @@
 // ============================================
 const { sql, getPool } = require('../../config/database');
 const { EXP_REWARDS } = require('../../utils/constants');
+const gamificationService = require('../gamification/gamification.service');
 
 const quizService = {
   async getByLesson(lessonId) {
@@ -48,31 +49,12 @@ const quizService = {
     const score = Math.round((correct / total) * 100);
 
     // Award EXP if score >= 70%
-    if (score >= 70) {
-      await pool.request()
-        .input('userId', sql.UniqueIdentifier, userId)
-        .input('exp', sql.Int, EXP_REWARDS.QUIZ_COMPLETE)
-        .query(`
-          UPDATE UserStats
-          SET Exp = Exp + @exp,
-              Level = CASE
-                WHEN Exp + @exp >= 10000 THEN 10
-                WHEN Exp + @exp >= 7500 THEN 9
-                WHEN Exp + @exp >= 5500 THEN 8
-                WHEN Exp + @exp >= 4000 THEN 7
-                WHEN Exp + @exp >= 2800 THEN 6
-                WHEN Exp + @exp >= 1800 THEN 5
-                WHEN Exp + @exp >= 1000 THEN 4
-                WHEN Exp + @exp >= 500 THEN 3
-                WHEN Exp + @exp >= 250 THEN 2
-                WHEN Exp + @exp >= 100 THEN 1
-                ELSE Level
-              END
-          WHERE UserId = @userId
-        `);
-    }
+    const expEarned = score >= 70 ? EXP_REWARDS.QUIZ_COMPLETE : 0;
+    const expReward = expEarned > 0
+      ? await gamificationService.addExp(userId, expEarned, 'quiz_complete')
+      : null;
 
-    return { correct, total, score, expEarned: score >= 70 ? EXP_REWARDS.QUIZ_COMPLETE : 0, results };
+    return { correct, total, score, expEarned, expReward, results };
   },
 
   async create(data) {

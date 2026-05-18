@@ -18,6 +18,8 @@ const AdminWriting = () => {
   // Lesson state
   const [lTitle, setLTitle] = useState('');
   const [lDesc, setLDesc] = useState('');
+  const [lPassageEN, setLPassageEN] = useState('');
+  const [lPassageVI, setLPassageVI] = useState('');
   const [lOrder, setLOrder] = useState(0);
 
   // Exercise state
@@ -71,7 +73,7 @@ const AdminWriting = () => {
 
   const handleSaveLesson = async () => {
     try {
-      const data = { Title: lTitle, Description: lDesc, OrderIndex: lOrder };
+      const data = { Title: lTitle, Description: lDesc, PassageEN: lPassageEN, PassageVI: lPassageVI, OrderIndex: lOrder };
       if (editingLesson) {
         await axios.put(`${API_URL}/admin/writing/lessons/${editingLesson.Id}`, data, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -107,7 +109,7 @@ const AdminWriting = () => {
   const closeLessonForm = () => {
     setShowLessonForm(false);
     setEditingLesson(null);
-    setLTitle(''); setLDesc(''); setLOrder(0);
+    setLTitle(''); setLDesc(''); setLPassageEN(''); setLPassageVI(''); setLOrder(0);
   };
 
   const handleSelectLesson = (lesson) => {
@@ -211,6 +213,14 @@ const AdminWriting = () => {
               <label className="form-label">Mô tả</label>
               <textarea className="form-input" value={lDesc} onChange={e => setLDesc(e.target.value)} rows={2} />
             </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">Bài văn hoàn chỉnh (English)</label>
+              <textarea className="form-input" value={lPassageEN} onChange={e => setLPassageEN(e.target.value)} rows={5} />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">Bản dịch bài văn (Tiếng Việt)</label>
+              <textarea className="form-input" value={lPassageVI} onChange={e => setLPassageVI(e.target.value)} rows={4} />
+            </div>
           </div>
           <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-2)' }}>
             <button className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
@@ -228,11 +238,16 @@ const AdminWriting = () => {
                 <div>
                   <div style={{ fontWeight: 600 }}>{lesson.Title}</div>
                   <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>{lesson.Description}</div>
+                  {lesson.PassageEN && (
+                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-primary)', marginTop: 4 }}>
+                      {lesson.PassageEN.slice(0, 140)}{lesson.PassageEN.length > 140 ? '...' : ''}
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                 <button className="btn btn-ghost btn-sm" onClick={() => {
-                  setEditingLesson(lesson); setLTitle(lesson.Title); setLDesc(lesson.Description); setLOrder(lesson.OrderIndex);
+                  setEditingLesson(lesson); setLTitle(lesson.Title); setLDesc(lesson.Description); setLPassageEN(lesson.PassageEN || ''); setLPassageVI(lesson.PassageVI || ''); setLOrder(lesson.OrderIndex);
                   setShowLessonForm(true);
                 }}><FiEdit2 size={14} /></button>
                 <button className="btn btn-ghost btn-sm" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteLesson(lesson.Id)}><FiTrash2 size={14} /></button>

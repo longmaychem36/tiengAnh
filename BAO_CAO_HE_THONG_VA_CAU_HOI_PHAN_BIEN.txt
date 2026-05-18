@@ -1,0 +1,1118 @@
+﻿BÁO CÁO HỆ THỐNG WEB HỌC TIẾNG ANH
+Vai trò 1: Sinh viên trình bày trước giảng viên
+Vai trò 2: Giảng viên phản biện đặt câu hỏi kiểm tra mức độ hiểu hệ thống
+
+============================================================
+PHẦN 1. SINH VIÊN BÁO CÁO VÀ GIẢI THÍCH HỆ THỐNG
+============================================================
+
+1. Tổng quan đề tài
+------------------------------------------------------------
+Thưa thầy cô, đề tài của em là hệ thống web học tiếng Anh theo hướng tự học, có các chức năng chính như học bài, luyện nói, luyện viết, học ngữ pháp, tra từ điển, chơi mini game, theo dõi tiến độ và quản trị nội dung.
+
+Mục tiêu của hệ thống không chỉ là hiển thị bài học tĩnh, mà là tạo một quy trình học tập khép kín:
+
+- Người dùng đăng ký, đăng nhập.
+- Người học chọn kỹ năng hoặc lộ trình học.
+- Hệ thống cung cấp bài học, bài luyện nói, bài luyện viết, ngữ pháp và mini game.
+- Sau khi học xong, hệ thống lưu tiến độ, cộng điểm kinh nghiệm, mở khóa bài tiếp theo.
+- Admin có thể quản lý nội dung học tập thông qua trang quản trị.
+
+Hệ thống gồm hai phần chính:
+
+- Frontend: xây dựng bằng React, chịu trách nhiệm giao diện, điều hướng, tương tác người dùng và gọi API.
+- Backend: xây dựng bằng Node.js và Express, chịu trách nhiệm xử lý nghiệp vụ, xác thực, phân quyền, kết nối cơ sở dữ liệu PostgreSQL và tích hợp các dịch vụ ngoài như AI, nhận diện giọng nói, thanh toán.
+
+
+2. Kiến trúc tổng thể
+------------------------------------------------------------
+Hệ thống được xây dựng theo mô hình client-server.
+
+Luồng tổng quát:
+
+Trình duyệt người dùng
+  -> Frontend React
+  -> Axios HTTP Client
+  -> REST API Express
+  -> Controller
+  -> Service
+  -> PostgreSQL Database
+  -> Dịch vụ ngoài như NVIDIA AI, Whisper, Cloudinary, SePay
+
+Frontend không truy cập trực tiếp vào database. Mọi thao tác như đăng nhập, lấy bài học, kiểm tra câu writing, phân tích speaking, lưu tiến độ, quản lý admin đều phải thông qua backend API. Cách thiết kế này giúp hệ thống an toàn hơn, dễ kiểm soát quyền truy cập hơn và tách rõ phần giao diện với phần xử lý nghiệp vụ.
+
+Backend được chia theo module:
+
+- auth: đăng ký, đăng nhập, tạo JWT.
+- user: thông tin người dùng, hồ sơ cá nhân, avatar, gói plus.
+- course, lesson, vocabulary, quiz: khóa học, bài học, từ vựng và câu hỏi.
+- speaking: luyện nói, ghi âm, phân tích phát âm, bài speaking AI cá nhân hóa.
+- writing: luyện viết, kiểm tra câu, hiển thị bài văn hoàn chỉnh.
+- grammar: danh mục ngữ pháp, chủ đề ngữ pháp, quiz.
+- game: mini game, level, câu hỏi, điểm, sao và EXP.
+- dictionary: tra từ, autocomplete, dịch câu.
+- collection: bộ sưu tập từ đã lưu.
+- progress và gamification: tiến độ học tập, cấp độ, kinh nghiệm, thành tích.
+- billing: thanh toán gói plus.
+- admin: quản trị nội dung và người dùng.
+
+
+3. Công nghệ frontend
+------------------------------------------------------------
+Frontend sử dụng các công nghệ chính sau:
+
+3.1. React
+
+React được dùng để xây dựng giao diện theo hướng component. Mỗi màn hình hoặc khối chức năng được tách thành component riêng, ví dụ:
+
+- SpeakingOptions.jsx
+- SpeakingList.jsx
+- SpeakingLesson.jsx
+- Recorder.jsx
+- WritingList.jsx
+- WritingLesson.jsx
+- Grammar.jsx
+- GamePlay.jsx
+- Dictionary.jsx
+- Progress.jsx
+- AdminGrammar.jsx
+- AdminWriting.jsx
+- AdminSpeaking.jsx
+
+Lý do dùng React:
+
+- Phù hợp với ứng dụng có nhiều màn hình tương tác.
+- Quản lý trạng thái tốt bằng useState, useEffect, useRef.
+- Dễ tái sử dụng component như Loading, ProgressBar, Layout, ProtectedRoute.
+- Dễ mở rộng thêm tính năng mới.
+
+3.2. Vite
+
+Vite được dùng để chạy và build frontend. Ưu điểm là khởi động nhanh, hot reload nhanh, phù hợp trong quá trình phát triển.
+
+Các lệnh chính:
+
+- npm run dev: chạy môi trường phát triển.
+- npm run build: build bản production.
+- npm run preview: xem thử bản đã build.
+
+3.3. React Router DOM
+
+React Router DOM dùng để quản lý điều hướng trong ứng dụng. Một số route chính:
+
+- /login
+- /register
+- /dashboard
+- /courses
+- /lessons/:id
+- /speaking/options
+- /speaking/lessons
+- /speaking/lessons/:id
+- /speaking/ai
+- /speaking/personalized/:sessionId
+- /writing/lessons
+- /writing/lessons/:id
+- /grammar
+- /games
+- /games/play/:levelId
+- /dictionary
+- /progress
+- /admin/*
+
+Hệ thống có ProtectedRoute để chặn người dùng chưa đăng nhập truy cập các trang cần xác thực.
+
+3.4. Axios
+
+Axios được dùng để gọi API. File axiosClient cấu hình sẵn:
+
+- baseURL lấy từ biến môi trường VITE_API_URL.
+- Tự động gắn JWT token vào header Authorization.
+- Nếu backend trả về lỗi 401 thì xóa token và chuyển người dùng về trang đăng nhập.
+
+Nhờ vậy các file API như speakingApi, writingApi, lessonApi, gameApi không cần lặp lại logic gắn token.
+
+3.5. Framer Motion
+
+Framer Motion được dùng để tạo hiệu ứng chuyển động nhẹ cho card, màn hình kết quả, feedback và các phần tử xuất hiện trên giao diện.
+
+3.6. React Hot Toast
+
+React Hot Toast dùng để hiển thị thông báo:
+
+- Đăng nhập thành công.
+- Tải bài học thất bại.
+- Lưu tiến độ thành công.
+- Không nhận diện được giọng nói.
+- Kiểm tra bài viết lỗi.
+
+3.7. React Icons
+
+React Icons cung cấp các icon như FiArrowRight, FiCheck, FiMic, FiBookOpen, FiEdit3. Các icon giúp giao diện dễ hiểu và trực quan hơn.
+
+3.8. React Quill và DOMPurify
+
+React Quill được dùng ở trang AdminGrammar để admin có thể soạn nội dung ngữ pháp dạng rich text. DOMPurify được dùng để xử lý HTML an toàn hơn khi hiển thị nội dung có định dạng.
+
+
+4. Công nghệ backend
+------------------------------------------------------------
+Backend sử dụng Node.js và Express.
+
+4.1. Express
+
+Express dùng để xây dựng REST API. Mỗi module có routes, controller và service riêng. Ví dụ:
+
+- /api/v1/auth
+- /api/v1/lessons
+- /api/v1/speaking
+- /api/v1/writing
+- /api/v1/grammar
+- /api/v1/games
+- /api/v1/admin
+
+Routes nhận request, controller điều phối, service xử lý nghiệp vụ và truy vấn database.
+
+4.2. PostgreSQL và pg
+
+Database của hệ thống là PostgreSQL. Backend dùng thư viện pg để kết nối. Trong database.js có một lớp wrapper để hỗ trợ cú pháp pool.request().input().query(), giúp tương thích với một số đoạn code có phong cách giống SQL Server trước đó.
+
+4.3. JWT
+
+JWT dùng để xác thực người dùng. Sau khi đăng nhập thành công, backend trả về token. Frontend lưu token và tự động gắn token vào mỗi request cần xác thực.
+
+4.4. bcryptjs
+
+bcryptjs dùng để mã hóa mật khẩu. Hệ thống không lưu mật khẩu dạng plain text trong database.
+
+4.5. helmet, cors, morgan
+
+- helmet: tăng bảo mật HTTP header.
+- cors: cho phép frontend gọi API từ domain được cấu hình.
+- morgan: ghi log request HTTP để hỗ trợ debug.
+
+4.6. multer
+
+multer dùng để xử lý upload file, ví dụ audio khi người học ghi âm Speaking hoặc upload avatar.
+
+4.7. dotenv
+
+dotenv dùng để đọc biến môi trường từ file .env, ví dụ:
+
+- PORT
+- DB_HOST
+- DB_NAME
+- DB_USER
+- DB_PASSWORD
+- JWT_SECRET
+- NVIDIA_API_KEY
+- WHISPER_SERVER_URL
+- CLOUDINARY_*
+- SEPAY_*
+
+
+5. Cơ sở dữ liệu
+------------------------------------------------------------
+Hệ thống có nhiều nhóm bảng chính.
+
+5.1. Nhóm người dùng và xác thực
+
+- Users: lưu thông tin người dùng, email, mật khẩu đã hash, role.
+- UserProgress: lưu tiến độ học bài thông thường.
+- UserGameProgress: lưu điểm, sao, trạng thái hoàn thành mini game.
+
+5.2. Nhóm khóa học
+
+- Courses: khóa học.
+- Lessons: bài học trong khóa học.
+- LessonMedia: hình ảnh, audio hoặc media của bài học.
+- Vocabulary: từ vựng.
+- LessonVocabulary: bảng trung gian liên kết bài học với từ vựng.
+- Quiz: câu hỏi của bài học.
+
+5.3. Nhóm Speaking
+
+- SpeakingLessons: chủ đề luyện nói.
+- SpeakingQuestions: câu hỏi và các câu trả lời luyện nói.
+- SpeakingProgress: tiến độ luyện nói.
+
+5.4. Nhóm Writing
+
+- WritingLessons: chủ đề writing, có tiêu đề, mô tả, PassageEN và PassageVI.
+- WritingExercises: các câu quan trọng được trích ra từ bài văn.
+- WritingVocab: gợi ý từ vựng cho từng câu.
+- WritingProgress: tiến độ luyện viết.
+
+Điểm mới của Writing là mỗi chủ đề có một đoạn văn hoặc bài văn hoàn chỉnh. Các câu bài tập chỉ là một số câu quan trọng được trích ra từ đoạn văn đó. Sau khi làm xong, người học thấy lại bài văn hoàn chỉnh để hiểu ngữ cảnh.
+
+5.5. Nhóm Grammar
+
+- GrammarCategories: danh mục ngữ pháp.
+- GrammarTopics: chủ đề ngữ pháp.
+- GrammarQuiz: câu hỏi trắc nghiệm.
+
+5.6. Nhóm Mini Game
+
+- GameSets: bộ game.
+- GameLevels: level trong bộ game.
+- MiniGameQuestions: câu hỏi của từng level.
+- UserGameProgress: tiến độ, điểm, sao của từng user.
+
+5.7. Nhóm Dictionary và Collection
+
+- Các bảng từ điển lưu từ, nghĩa, phiên âm, ví dụ, audio.
+- Collections: bộ sưu tập từ của người dùng.
+- CollectionWords: các từ được lưu vào bộ sưu tập.
+
+5.8. Nhóm Billing
+
+Billing dùng cho thanh toán gói plus, tích hợp webhook SePay để xác nhận giao dịch.
+
+
+6. Luồng xác thực và phân quyền
+------------------------------------------------------------
+Luồng đăng nhập:
+
+1. Người dùng nhập email và mật khẩu.
+2. Frontend gửi request đến backend.
+3. Backend tìm user trong database.
+4. Backend dùng bcryptjs so sánh mật khẩu.
+5. Nếu đúng, backend tạo JWT.
+6. Frontend lưu JWT vào localStorage.
+7. Axios interceptor tự động gắn JWT vào header Authorization.
+8. Backend dùng authMiddleware để xác minh token.
+9. Các route admin dùng requireRole('admin') hoặc superAdminOnly().
+
+Hệ thống có các vai trò:
+
+- User thường: học bài, luyện nói, luyện viết, chơi game, tra từ điển.
+- Admin: quản lý nội dung.
+- Superadmin: có quyền cao hơn, ví dụ xóa một số dữ liệu quan trọng.
+
+
+7. Luồng bài học thông thường
+------------------------------------------------------------
+Khi người học vào một bài học:
+
+1. Frontend vào route /lessons/:id.
+2. LessonPage gọi lessonApi.getById(id).
+3. Backend trả về thông tin bài học, media, vocabulary, quiz.
+4. Frontend hiển thị nội dung.
+5. Người học bấm Mark as Completed.
+6. Frontend gọi progressApi.updateLesson.
+7. Backend lưu vào UserProgress.
+8. Frontend hiển thị nút chuyển sang bài tiếp theo nếu còn bài trong cùng khóa học.
+
+Nút chuyển bài tiếp theo giúp trải nghiệm học liên tục hơn, người học không cần quay lại danh sách để tìm bài kế tiếp.
+
+
+8. Luồng Speaking
+------------------------------------------------------------
+Speaking có hai hướng:
+
+- Luyện nói theo lộ trình.
+- Luyện nói AI cá nhân hóa.
+
+8.1. Luyện nói theo lộ trình
+
+1. Người học vào SpeakingOptions.
+2. Chọn luyện nói theo lộ trình.
+3. SpeakingList gọi /speaking/lessons.
+4. Backend trả về danh sách bài, trạng thái isCompleted và isLocked.
+5. Người học chỉ vào được bài chưa bị khóa.
+6. SpeakingLesson gọi /speaking/lessons/:id.
+7. Frontend hiển thị câu hỏi, các câu trả lời, bản dịch.
+8. Hệ thống dùng Web Speech API để đọc mẫu câu tiếng Anh.
+9. Người học ghi âm bằng Recorder.
+10. Recorder gửi audio blob lên backend bằng multipart/form-data.
+11. Backend gửi audio đến Whisper service để chuyển giọng nói thành văn bản.
+12. Backend so sánh transcript với các câu mục tiêu và tính điểm.
+13. Frontend hiển thị điểm, transcript, từ thiếu, từ thừa và feedback.
+14. Khi hoàn thành tất cả câu, backend lưu SpeakingProgress.
+15. Frontend hiển thị màn hình hoàn thành và nút Bài tiếp theo nếu còn bài.
+
+8.2. Luyện nói AI cá nhân hóa
+
+1. Người học vào SpeakingAiBuilder.
+2. Nhập chủ đề, trình độ và số câu.
+3. Frontend gọi API tạo bài speaking cá nhân hóa.
+4. Backend dùng NVIDIA AI để sinh nội dung.
+5. Frontend chuyển đến /speaking/personalized/:sessionId.
+6. Người học luyện nói giống bài speaking thông thường.
+
+Tính năng này cho thấy hệ thống không chỉ dùng nội dung cố định mà còn có thể tạo nội dung học tập theo nhu cầu.
+
+
+9. Luồng Writing
+------------------------------------------------------------
+Writing được thiết kế theo hướng học câu trong ngữ cảnh bài văn.
+
+1. WritingList gọi /writing/lessons.
+2. Backend trả về danh sách chủ đề, số câu luyện tập, isCompleted và isLocked.
+3. Người học vào /writing/lessons/:id.
+4. WritingLesson gọi /writing/lessons/:id để lấy:
+   - thông tin lesson;
+   - PassageEN;
+   - PassageVI;
+   - danh sách exercises;
+   - gợi ý từ vựng.
+5. Mỗi exercise hiển thị câu tiếng Việt, người học nhập câu tiếng Anh.
+6. Frontend gọi /writing/check.
+7. Backend kiểm tra câu bằng nhiều lớp:
+   - tính similarity trước;
+   - nếu câu rất đúng hoặc rất sai thì trả kết quả ngay;
+   - nếu cần đánh giá tự nhiên hơn thì gọi NVIDIA AI;
+   - nếu AI lỗi hoặc timeout thì fallback về similarity;
+   - có cache để tránh kiểm tra lại cùng một câu nhiều lần.
+8. Frontend hiển thị điểm, feedback và đáp án đúng.
+9. Sau câu cuối, frontend gọi /writing/progress.
+10. Màn hình hoàn thành hiển thị bài văn hoàn chỉnh, highlight các câu đã luyện và có nút Bài tiếp theo.
+
+
+10. Luồng Grammar
+------------------------------------------------------------
+Grammar gồm ba cấp:
+
+- GrammarCategories: danh mục.
+- GrammarTopics: chủ đề.
+- GrammarQuiz: câu hỏi luyện tập.
+
+Luồng học:
+
+1. Grammar page gọi /grammar/categories.
+2. Người học chọn category.
+3. Frontend gọi /grammar/categories/:categoryId/topics.
+4. Người học chọn topic.
+5. Frontend gọi /grammar/topics/:topicId.
+6. Backend trả về nội dung topic và quizzes.
+7. Frontend hiển thị nội dung HTML và quiz.
+8. Người học làm quiz, frontend kiểm tra đúng sai theo đáp án backend trả về.
+
+AdminGrammar cho phép admin thêm, sửa, xóa category, topic và quiz. Nội dung topic được soạn bằng React Quill.
+
+
+11. Luồng Mini Game
+------------------------------------------------------------
+Mini game giúp người học ôn tập qua các dạng tương tác:
+
+- Matching: nối từ hoặc chọn nghĩa.
+- Listening: nghe và chọn.
+- Listen Build: nghe và sắp xếp câu.
+- True/False: đúng hoặc sai.
+
+Luồng game:
+
+1. Games page gọi /games/sets.
+2. Người học chọn bộ game và level.
+3. GamePlay gọi /games/levels/:levelId/questions.
+4. Backend trả về thông tin level và danh sách câu hỏi.
+5. Người học trả lời từng câu.
+6. Khi hết câu hoặc hết thời gian, frontend gửi answers và duration đến /games/submit.
+7. Backend chấm điểm, tính score, stars và EXP.
+8. Backend lưu UserGameProgress.
+9. Frontend hiển thị kết quả, số sao, EXP, nút chơi lại và nút Level tiếp theo nếu đạt.
+
+
+12. Luồng Dictionary và Collection
+------------------------------------------------------------
+Dictionary hỗ trợ:
+
+- Tra từ.
+- Gợi ý autocomplete.
+- Dịch câu.
+- Lưu từ vào bộ sưu tập.
+
+Luồng cơ bản:
+
+1. Người học nhập từ hoặc câu.
+2. Frontend xác định đây là từ đơn hay câu.
+3. Nếu là từ đơn, gọi API tra từ hoặc autocomplete.
+4. Nếu là câu, gọi API dịch câu.
+5. Frontend hiển thị nghĩa, phiên âm, audio và ví dụ.
+6. Người học có thể lưu từ vào collection.
+
+
+13. Progress và Gamification
+------------------------------------------------------------
+Progress page tổng hợp:
+
+- Số bài học đã hoàn thành.
+- EXP.
+- Cấp độ hiện tại.
+- Tiến độ lên cấp.
+- Thành tích đã mở khóa.
+- Gợi ý việc cần học tiếp.
+
+Gamification giúp tăng động lực học bằng:
+
+- EXP sau khi hoàn thành bài.
+- Sao trong mini game.
+- Level người dùng.
+- Achievement.
+
+
+14. Trang Admin
+------------------------------------------------------------
+Admin có các màn hình chính:
+
+- AdminDashboard: thống kê tổng quan.
+- AdminCourses: quản lý khóa học.
+- AdminLessons: quản lý bài học.
+- AdminSpeaking: quản lý bài luyện nói.
+- AdminWriting: quản lý bài writing, câu trích từ bài văn, gợi ý từ vựng.
+- AdminGrammar: quản lý ngữ pháp và quiz.
+- AdminGames: quản lý game set, level, câu hỏi.
+- AdminUsers: quản lý người dùng.
+
+Các route admin được bảo vệ bằng authMiddleware và requireRole('admin'). Một số thao tác xóa quan trọng dùng superAdminOnly.
+
+
+15. Tích hợp AI và nhận diện giọng nói
+------------------------------------------------------------
+15.1. NVIDIA AI
+
+NVIDIA AI được dùng cho:
+
+- Tạo bài Speaking cá nhân hóa.
+- Chấm Writing trong trường hợp similarity chưa đủ chính xác.
+
+Writing đã được tối ưu:
+
+- Câu rất đúng trả kết quả ngay.
+- Câu quá sai trả kết quả ngay.
+- Chỉ gọi AI khi cần đánh giá ngữ nghĩa và độ tự nhiên.
+- Giới hạn timeout và max tokens.
+- Có cache kết quả.
+
+15.2. Whisper
+
+Whisper service dùng để chuyển audio ghi âm của người học thành transcript. Transcript sau đó được so sánh với câu mục tiêu để tính điểm Speaking.
+
+15.3. Web Speech API
+
+Frontend dùng window.speechSynthesis để đọc mẫu câu tiếng Anh. Điều này giúp người học nghe mẫu mà không cần lưu file audio cho từng câu.
+
+
+16. Bảo mật và độ tin cậy
+------------------------------------------------------------
+Một số điểm bảo mật:
+
+- Mật khẩu được hash bằng bcryptjs.
+- API cần đăng nhập dùng JWT.
+- Route admin có phân quyền role.
+- Helmet tăng bảo mật HTTP headers.
+- CORS kiểm soát nguồn gọi API.
+- Upload file dùng multer và có giới hạn kích thước.
+- API key, JWT secret, DB password được đặt trong .env.
+- Frontend không truy cập trực tiếp database.
+
+Một số điểm cần cải thiện:
+
+- Không nên commit file .env thật lên Git.
+- Cần validate input mạnh hơn ở backend.
+- Cần rate limit các API tốn chi phí như AI, speech và billing.
+- Cần thêm audit log cho thao tác admin.
+- Cần thêm test tự động cho các luồng quan trọng.
+
+
+17. Điểm nổi bật của hệ thống
+------------------------------------------------------------
+Theo em, các điểm thể hiện độ phức tạp của hệ thống là:
+
+- Không chỉ CRUD mà có nhiều luồng học tập khác nhau.
+- Có phân quyền user, admin và superadmin.
+- Có Speaking dùng audio, transcript và scoring.
+- Có Writing kết hợp similarity và AI.
+- Có mini game tính điểm, sao, EXP và mở khóa level.
+- Có trang admin quản lý nhiều loại nội dung.
+- Có thanh toán plus và webhook.
+- Có progress và gamification để theo dõi quá trình học.
+
+
+18. Tóm tắt công nghệ sử dụng
+------------------------------------------------------------
+Frontend:
+
+- React
+- Vite
+- React Router DOM
+- Axios
+- Framer Motion
+- React Hot Toast
+- React Icons
+- React Quill
+- DOMPurify
+
+Backend:
+
+- Node.js
+- Express
+- PostgreSQL
+- pg
+- JWT
+- bcryptjs
+- multer
+- helmet
+- cors
+- morgan
+- dotenv
+- axios
+- form-data
+
+Dịch vụ tích hợp:
+
+- NVIDIA AI
+- Whisper speech recognition service
+- Cloudinary
+- SePay webhook
+- Browser Web Speech API
+
+
+============================================================
+PHẦN 2. GIẢNG VIÊN PHẢN BIỆN - CÂU HỎI VÀ TRẢ LỜI GỢI Ý
+============================================================
+
+1. Câu hỏi về kiến trúc tổng thể
+------------------------------------------------------------
+1. Em hãy trình bày kiến trúc client-server của hệ thống.
+Trả lời gợi ý: Hệ thống gồm frontend React chạy trên trình duyệt và backend Express chạy trên server. Frontend gửi request qua Axios đến REST API, backend xử lý nghiệp vụ, truy vấn PostgreSQL và trả dữ liệu về frontend. Một số chức năng còn gọi dịch vụ ngoài như NVIDIA AI, Whisper, Cloudinary và SePay.
+
+2. Vì sao frontend không nên truy cập trực tiếp database?
+Trả lời gợi ý: Vì nếu frontend truy cập trực tiếp database thì lộ thông tin kết nối, khó kiểm soát quyền, dễ bị tấn công và không có lớp xử lý nghiệp vụ trung gian. Backend đóng vai trò bảo vệ database, xác thực user, kiểm tra quyền và chuẩn hóa dữ liệu.
+
+3. Backend được chia module như thế nào?
+Trả lời gợi ý: Backend được chia theo chức năng: auth, user, course, lesson, vocabulary, speaking, writing, grammar, game, dictionary, progress, billing, admin. Cách chia này giúp code rõ trách nhiệm, dễ bảo trì và dễ mở rộng.
+
+4. Controller, service và route khác nhau ở điểm nào?
+Trả lời gợi ý: Route định nghĩa URL và HTTP method. Controller nhận request, kiểm tra dữ liệu đầu vào cơ bản và gọi service. Service chứa logic nghiệp vụ chính và truy vấn database hoặc gọi dịch vụ ngoài.
+
+5. Khi người dùng bấm một nút trên giao diện, request đi qua những lớp nào?
+Trả lời gợi ý: Sự kiện bắt đầu ở component React, sau đó gọi hàm trong file API qua Axios. Request đi đến Express route, qua middleware xác thực nếu cần, vào controller, service, database hoặc dịch vụ ngoài, rồi trả response về frontend để cập nhật giao diện.
+
+6. Nếu muốn thêm một kỹ năng mới như Listening, em sẽ thêm module theo cấu trúc nào?
+Trả lời gợi ý: Em sẽ tạo module backend listening gồm listening.routes.js, listening.controller.js, listening.service.js và các bảng như ListeningLessons, ListeningQuestions, ListeningProgress. Frontend sẽ có ListeningList, ListeningLesson, listeningApi và route tương ứng.
+
+7. Đâu là phần xử lý giao diện và đâu là phần xử lý nghiệp vụ?
+Trả lời gợi ý: Frontend xử lý giao diện, tương tác, hiển thị dữ liệu, điều hướng. Backend xử lý nghiệp vụ như xác thực, phân quyền, chấm điểm, lưu tiến độ, truy vấn database và tích hợp AI hoặc speech service.
+
+
+2. Câu hỏi về React và frontend
+------------------------------------------------------------
+1. Vì sao em chọn React cho hệ thống này?
+Trả lời gợi ý: React phù hợp với hệ thống có nhiều màn hình tương tác và nhiều trạng thái như bài học hiện tại, kết quả chấm điểm, ghi âm, tiến độ. Component giúp tái sử dụng giao diện và dễ mở rộng.
+
+2. useState được dùng để làm gì trong SpeakingLesson hoặc WritingLesson?
+Trả lời gợi ý: useState dùng để lưu trạng thái giao diện như bài hiện tại, danh sách câu, index câu đang làm, kết quả chấm, loading, trạng thái hoàn thành và bài tiếp theo.
+
+3. useEffect được dùng để làm gì khi tải dữ liệu bài học?
+Trả lời gợi ý: useEffect chạy khi component mount hoặc id thay đổi để gọi API lấy dữ liệu bài học. Nó cũng được dùng để reset state khi chuyển sang bài khác.
+
+4. Vì sao cần reset state khi id bài học thay đổi?
+Trả lời gợi ý: Nếu không reset, dữ liệu của bài cũ như kết quả chấm, câu hiện tại hoặc trạng thái hoàn thành có thể còn hiển thị khi sang bài mới, gây sai giao diện và sai luồng học.
+
+5. React Router DOM đang quản lý route như thế nào?
+Trả lời gợi ý: React Router DOM định nghĩa các đường dẫn như /lessons/:id, /speaking/lessons/:id, /writing/lessons/:id. Khi URL thay đổi, router render component tương ứng mà không cần tải lại toàn bộ trang.
+
+6. ProtectedRoute có vai trò gì?
+Trả lời gợi ý: ProtectedRoute kiểm tra người dùng đã đăng nhập chưa. Nếu chưa có user/token hợp lệ thì chuyển về trang login, tránh truy cập trái phép vào các trang học tập hoặc trang cá nhân.
+
+7. Axios interceptor có tác dụng gì?
+Trả lời gợi ý: Axios interceptor tự động gắn JWT token vào header Authorization cho mỗi request và xử lý lỗi 401 bằng cách xóa token, chuyển người dùng về trang đăng nhập.
+
+8. Nếu token hết hạn, frontend xử lý như thế nào?
+Trả lời gợi ý: Khi backend trả 401, interceptor xóa token và user khỏi localStorage, sau đó điều hướng người dùng về trang login.
+
+9. React Quill được dùng ở đâu?
+Trả lời gợi ý: React Quill được dùng trong trang AdminGrammar để admin soạn nội dung bài ngữ pháp dạng rich text như tiêu đề, đoạn văn, danh sách và định dạng chữ.
+
+10. Khi render HTML từ nội dung admin, em cần chú ý rủi ro gì?
+Trả lời gợi ý: Cần chú ý XSS, vì HTML có thể chứa script độc hại. Do đó nên sanitize nội dung bằng DOMPurify trước khi render bằng dangerouslySetInnerHTML.
+
+
+3. Câu hỏi về backend Express
+------------------------------------------------------------
+1. Express route, controller và service khác nhau như thế nào?
+Trả lời gợi ý: Route khai báo endpoint, controller nhận request và trả response, service xử lý nghiệp vụ và làm việc với database hoặc dịch vụ ngoài.
+
+2. authMiddleware hoạt động ra sao?
+Trả lời gợi ý: authMiddleware lấy token từ Authorization header, xác minh JWT, lấy thông tin user và gắn vào req.user. Nếu token không hợp lệ thì trả lỗi xác thực.
+
+3. requireRole('admin') và superAdminOnly khác nhau ở điểm nào?
+Trả lời gợi ý: requireRole('admin') cho phép admin và thường cả superadmin truy cập. superAdminOnly chỉ cho superadmin thực hiện các thao tác nhạy cảm hơn như xóa dữ liệu quan trọng.
+
+4. Nếu request không có token thì backend nên trả lỗi gì?
+Trả lời gợi ý: Backend nên trả 401 Unauthorized vì người dùng chưa được xác thực.
+
+5. Backend đọc biến môi trường từ đâu?
+Trả lời gợi ý: Backend dùng dotenv để đọc file .env, trong đó có DB config, JWT secret, API key, Cloudinary, SePay và các cấu hình timeout.
+
+6. Vì sao không hard-code DB password, JWT secret và API key trong source code?
+Trả lời gợi ý: Vì đây là thông tin nhạy cảm. Nếu hard-code và đẩy lên Git thì dễ bị lộ, dẫn đến mất dữ liệu hoặc bị dùng trái phép API trả phí.
+
+7. Morgan, Helmet và CORS có vai trò gì?
+Trả lời gợi ý: Morgan ghi log request, Helmet tăng bảo mật HTTP header, CORS kiểm soát domain nào được phép gọi API.
+
+8. Multer được dùng trong tính năng nào?
+Trả lời gợi ý: Multer được dùng để xử lý upload file, đặc biệt là audio ghi âm trong Speaking và có thể dùng cho upload avatar/media.
+
+9. Nếu API AI chậm, backend nên xử lý timeout như thế nào?
+Trả lời gợi ý: Backend nên đặt timeout ngắn hợp lý. Nếu AI không phản hồi kịp thì fallback sang cơ chế chấm đơn giản hơn, ví dụ similarity trong Writing, để người học không phải chờ quá lâu.
+
+10. Nếu PostgreSQL mất kết nối, các tính năng nào sẽ bị ảnh hưởng?
+Trả lời gợi ý: Hầu hết tính năng sẽ ảnh hưởng vì dữ liệu user, bài học, tiến độ, speaking, writing, grammar, game đều lưu trong PostgreSQL.
+
+
+4. Câu hỏi về cơ sở dữ liệu
+------------------------------------------------------------
+1. Em hãy kể các nhóm bảng chính trong database.
+Trả lời gợi ý: Có nhóm user/auth, course/lesson/vocabulary/quiz, speaking, writing, grammar, game, dictionary/collection, progress/gamification và billing.
+
+2. Courses và Lessons có quan hệ như thế nào?
+Trả lời gợi ý: Đây là quan hệ một-nhiều. Một course có nhiều lesson, mỗi lesson thuộc một course thông qua CourseId.
+
+3. Vì sao cần bảng trung gian LessonVocabulary?
+Trả lời gợi ý: Vì một bài học có thể có nhiều từ vựng và một từ vựng có thể xuất hiện ở nhiều bài học. Bảng trung gian giúp biểu diễn quan hệ nhiều-nhiều.
+
+4. WritingLessons và WritingExercises khác nhau thế nào?
+Trả lời gợi ý: WritingLessons là chủ đề/bài viết tổng, có đoạn văn hoàn chỉnh. WritingExercises là các câu quan trọng được trích ra để người học luyện viết.
+
+5. Vì sao WritingLessons cần PassageEN và PassageVI?
+Trả lời gợi ý: PassageEN lưu bài văn hoàn chỉnh tiếng Anh, PassageVI lưu bản dịch tiếng Việt. Sau khi làm xong các câu, người học thấy lại toàn bộ bài trong ngữ cảnh.
+
+6. SpeakingLessons và SpeakingQuestions được dùng trong luồng nào?
+Trả lời gợi ý: SpeakingLessons lưu chủ đề luyện nói, SpeakingQuestions lưu câu hỏi và các phương án/câu trả lời dùng trong SpeakingLesson.
+
+7. GameSets, GameLevels và MiniGameQuestions có quan hệ như thế nào?
+Trả lời gợi ý: Một GameSet có nhiều GameLevel, mỗi GameLevel có nhiều MiniGameQuestions. Đây là cấu trúc bộ game, cấp độ và câu hỏi.
+
+8. UserProgress khác UserGameProgress ở điểm nào?
+Trả lời gợi ý: UserProgress lưu tiến độ bài học thông thường. UserGameProgress lưu riêng tiến độ game như score, stars, attempts, best time và trạng thái hoàn thành level.
+
+9. Nếu xóa một WritingLesson thì WritingExercises nên xử lý ra sao?
+Trả lời gợi ý: Nên xóa cascade các WritingExercises và WritingVocab liên quan để tránh dữ liệu mồ côi.
+
+10. Vì sao nhiều bảng cần OrderIndex?
+Trả lời gợi ý: OrderIndex dùng để sắp xếp bài học, chủ đề, level hoặc câu hỏi theo thứ tự học mong muốn thay vì phụ thuộc vào thời gian tạo hoặc id.
+
+
+5. Câu hỏi về xác thực và phân quyền
+------------------------------------------------------------
+1. Luồng đăng nhập của hệ thống diễn ra như thế nào?
+Trả lời gợi ý: Frontend gửi email/password lên backend. Backend tìm user, so sánh password bằng bcrypt, nếu đúng thì tạo JWT và trả về frontend để lưu và dùng cho các request sau.
+
+2. JWT có vai trò gì?
+Trả lời gợi ý: JWT chứng minh người dùng đã đăng nhập. Backend xác minh JWT để biết request đến từ user nào và role gì.
+
+3. Vì sao mật khẩu phải hash bằng bcrypt?
+Trả lời gợi ý: Hash giúp không lưu mật khẩu thật trong database. Nếu database bị lộ, kẻ tấn công không đọc được mật khẩu gốc ngay.
+
+4. Nếu user sửa localStorage để thành admin thì có gọi được API admin không? Vì sao?
+Trả lời gợi ý: Không, nếu backend kiểm tra role từ JWT/database chứ không tin dữ liệu frontend. Frontend chỉ là giao diện, bảo mật thật nằm ở backend.
+
+5. Ẩn menu admin ở frontend có đủ bảo mật không?
+Trả lời gợi ý: Không đủ. Ẩn menu chỉ cải thiện giao diện. Backend vẫn phải kiểm tra quyền ở API admin.
+
+6. Authentication và authorization khác nhau thế nào?
+Trả lời gợi ý: Authentication là xác thực người dùng là ai. Authorization là kiểm tra người đó được phép làm gì.
+
+7. Nếu token bị lộ thì rủi ro là gì?
+Trả lời gợi ý: Người khác có thể dùng token đó để gọi API như user thật cho đến khi token hết hạn hoặc bị thu hồi.
+
+8. Em sẽ cải thiện bảo mật token như thế nào?
+Trả lời gợi ý: Có thể dùng thời hạn token ngắn hơn, refresh token an toàn, HttpOnly cookie, kiểm soát XSS, logout thu hồi token và theo dõi thiết bị đăng nhập.
+
+
+6. Câu hỏi về luồng bài học
+------------------------------------------------------------
+1. Khi vào /lessons/:id, frontend gọi API nào?
+Trả lời gợi ý: Frontend gọi lessonApi.getById(id), tương ứng API /lessons/:id.
+
+2. LessonPage lấy vocabulary và media như thế nào?
+Trả lời gợi ý: Backend lesson service khi lấy lesson sẽ truy vấn thêm LessonMedia và LessonVocabulary/Vocabulary rồi trả về trong cùng response.
+
+3. Khi bấm Mark as Completed, API nào được gọi?
+Trả lời gợi ý: Frontend gọi progressApi.updateLesson với lessonId, status completed và score.
+
+4. Hệ thống xác định bài tiếp theo bằng cách nào?
+Trả lời gợi ý: Frontend lấy danh sách bài trong cùng course bằng lessonApi.getByCourse(CourseId), tìm vị trí bài hiện tại rồi lấy phần tử tiếp theo.
+
+5. Nếu bài hiện tại là bài cuối cùng thì nút bài tiếp theo có hiện không?
+Trả lời gợi ý: Không. Nếu không có nextLesson thì chỉ hiện trạng thái hoàn thành hoặc nút quay lại.
+
+6. Nếu lưu tiến độ thành công nhưng lấy danh sách bài tiếp theo thất bại thì UX nên như thế nào?
+Trả lời gợi ý: Vẫn báo hoàn thành bài học, nhưng không hiển thị nút bài tiếp theo. Người học có thể quay lại danh sách bài.
+
+
+7. Câu hỏi về Speaking
+------------------------------------------------------------
+1. SpeakingOptions có vai trò gì?
+Trả lời gợi ý: Đây là màn hình cho người học chọn luyện Speaking theo lộ trình hoặc tạo bài luyện nói AI cá nhân hóa.
+
+2. SpeakingList lấy danh sách bài nói từ API nào?
+Trả lời gợi ý: SpeakingList gọi speakingApi.getLessons, tương ứng API /speaking/lessons.
+
+3. isLocked và isCompleted dùng để làm gì?
+Trả lời gợi ý: isCompleted cho biết bài đã hoàn thành. isLocked cho biết bài có bị khóa không, thường bài sau chỉ mở khi bài trước đã hoàn thành.
+
+4. SpeakingLesson dùng speechSynthesis để làm gì?
+Trả lời gợi ý: Dùng Web Speech API để đọc mẫu câu tiếng Anh cho người học nghe trước khi luyện nói.
+
+5. Recorder tạo dữ liệu gì gửi lên backend?
+Trả lời gợi ý: Recorder ghi âm từ microphone và tạo audioBlob, sau đó gửi lên backend dưới dạng file audio.
+
+6. Vì sao upload audio phải dùng multipart/form-data?
+Trả lời gợi ý: Vì audio là dữ liệu nhị phân dạng file. multipart/form-data phù hợp để gửi file kèm dữ liệu khác trong HTTP request.
+
+7. Backend xử lý audio speaking qua những bước nào?
+Trả lời gợi ý: Backend nhận file audio, gửi sang Whisper/speech service để transcribe, lấy transcript, so sánh với câu mục tiêu, tính điểm và trả feedback.
+
+8. Whisper service có vai trò gì?
+Trả lời gợi ý: Whisper chuyển giọng nói trong audio thành văn bản để backend có thể chấm phát âm/dạng nói dựa trên transcript.
+
+9. Transcript là gì?
+Trả lời gợi ý: Transcript là văn bản được nhận diện từ giọng nói của người học.
+
+10. Hệ thống tính score speaking dựa trên đâu?
+Trả lời gợi ý: Score dựa trên mức độ khớp giữa transcript và các câu mục tiêu, đồng thời xét từ thiếu, từ thừa hoặc câu được match tốt nhất.
+
+11. missingWords và extraWords có ý nghĩa gì?
+Trả lời gợi ý: missingWords là từ người học thiếu so với câu mục tiêu. extraWords là từ người học nói thêm không có trong câu mục tiêu.
+
+12. passThreshold là gì?
+Trả lời gợi ý: passThreshold là ngưỡng điểm tối thiểu để coi là đạt yêu cầu. Người học có thể điều chỉnh ngưỡng này trong cài đặt Speaking.
+
+13. Khi hoàn thành bài speaking, backend lưu tiến độ vào bảng nào?
+Trả lời gợi ý: Backend lưu vào SpeakingProgress với UserId, LessonId, status và thời gian cập nhật.
+
+14. Vì sao speaking AI cá nhân hóa không nên lưu tiến độ giống bài theo lộ trình?
+Trả lời gợi ý: Vì bài AI cá nhân hóa là phiên tạm thời theo nhu cầu user, không thuộc lộ trình cố định dùng để mở khóa bài tiếp theo.
+
+15. Nếu trình duyệt không hỗ trợ speechSynthesis thì hệ thống nên xử lý thế nào?
+Trả lời gợi ý: Nên thông báo trình duyệt không hỗ trợ đọc mẫu, nhưng vẫn cho người học xem câu và ghi âm nếu microphone hoạt động.
+
+
+8. Câu hỏi về Writing
+------------------------------------------------------------
+1. WritingLessons và WritingExercises có quan hệ như thế nào?
+Trả lời gợi ý: Một WritingLesson có nhiều WritingExercises. Lesson là chủ đề/bài văn, exercises là các câu trích ra để luyện.
+
+2. Vì sao Writing cần bài văn hoàn chỉnh thay vì chỉ từng câu riêng lẻ?
+Trả lời gợi ý: Bài văn giúp người học hiểu ngữ cảnh, mạch ý và cách liên kết câu. Các câu luyện không bị rời rạc.
+
+3. Khi người học submit câu writing, frontend gọi API nào?
+Trả lời gợi ý: Frontend gọi writingApi.checkWriting, tương ứng API /writing/check.
+
+4. Backend chấm writing bằng những cơ chế nào?
+Trả lời gợi ý: Backend tính similarity trước, dùng fast-path cho câu rất đúng hoặc rất sai, gọi NVIDIA AI khi cần đánh giá sâu hơn và fallback về similarity nếu AI lỗi.
+
+5. Similarity score là gì?
+Trả lời gợi ý: Similarity score là điểm tương đồng giữa câu người học nhập và câu đáp án, được tính sau khi chuẩn hóa chữ, dấu câu và khoảng trắng.
+
+6. Khi nào backend không cần gọi AI?
+Trả lời gợi ý: Khi câu có similarity rất cao, rất thấp, hoặc khi cấu hình tắt AI. Khi đó backend trả kết quả nhanh bằng similarity.
+
+7. Khi nào backend mới gọi NVIDIA AI?
+Trả lời gợi ý: Khi similarity nằm ở vùng cần đánh giá thêm, ví dụ câu khác đáp án nhưng có thể vẫn đúng nghĩa hoặc tự nhiên.
+
+8. Vì sao cần cache kết quả check writing?
+Trả lời gợi ý: Cache giúp nếu người học gửi lại cùng câu thì backend trả kết quả ngay, tránh gọi AI lặp lại, giảm độ trễ và chi phí.
+
+9. Nếu AI timeout thì hệ thống có dùng được không?
+Trả lời gợi ý: Có. Backend fallback về similarity nên người học vẫn nhận được điểm và feedback cơ bản.
+
+10. PassageEN và PassageVI được hiển thị ở đâu?
+Trả lời gợi ý: Chúng được hiển thị ở màn hình hoàn thành bài Writing, sau khi người học làm xong các câu.
+
+11. Các câu highlight trong bài văn hoàn chỉnh được xác định như thế nào?
+Trả lời gợi ý: Frontend lấy các correctAnswerEN trong exercises, tìm chúng trong PassageEN và bọc bằng mark để highlight.
+
+12. Nút Bài tiếp theo trong WritingLesson lấy bài tiếp theo từ đâu?
+Trả lời gợi ý: WritingLesson gọi writingApi.getLessons, tìm lesson hiện tại theo id rồi lấy phần tử kế tiếp trong danh sách.
+
+13. Nếu user bỏ qua câu writing sai thì hệ thống có cho đi tiếp không? Vì sao?
+Trả lời gợi ý: Có, hệ thống cho bỏ qua để tránh kẹt luồng học. Tuy nhiên vẫn hiển thị đáp án đúng để người học tự đối chiếu.
+
+
+9. Câu hỏi về Grammar
+------------------------------------------------------------
+1. GrammarCategories, GrammarTopics và GrammarQuiz có chức năng gì?
+Trả lời gợi ý: Categories là nhóm ngữ pháp, Topics là bài học cụ thể trong nhóm, GrammarQuiz là câu hỏi luyện tập cho topic.
+
+2. Trang Grammar hiển thị topic và quiz theo luồng nào?
+Trả lời gợi ý: Frontend lấy categories, sau đó lấy topics theo category, rồi lấy chi tiết topic gồm nội dung và quiz.
+
+3. AdminGrammar dùng React Quill để làm gì?
+Trả lời gợi ý: Dùng để admin soạn nội dung bài ngữ pháp có định dạng như heading, in đậm, danh sách, ví dụ.
+
+4. Nội dung HTML từ admin khi render ra frontend có rủi ro nào?
+Trả lời gợi ý: Có rủi ro XSS nếu HTML chứa script độc hại hoặc thuộc tính nguy hiểm.
+
+5. Nếu admin nhập script độc hại vào nội dung grammar thì cần phòng chống thế nào?
+Trả lời gợi ý: Cần sanitize HTML bằng DOMPurify, giới hạn quyền admin và có thể lọc tag/attribute không an toàn ở backend.
+
+6. Vì sao cần validate trước khi lưu category, topic và quiz?
+Trả lời gợi ý: Để tránh dữ liệu thiếu tiêu đề, sai đáp án, rỗng nội dung hoặc gây lỗi khi frontend hiển thị.
+
+
+10. Câu hỏi về Mini Game
+------------------------------------------------------------
+1. GameSets và GameLevels khác nhau thế nào?
+Trả lời gợi ý: GameSet là bộ game hoặc nhóm trò chơi. GameLevel là cấp độ cụ thể thuộc một GameSet.
+
+2. GamePlay lấy câu hỏi bằng API nào?
+Trả lời gợi ý: GamePlay gọi gameApi.getQuestions(levelId), tương ứng API /games/levels/:levelId/questions.
+
+3. Vì sao backend random câu hỏi khi lấy level?
+Trả lời gợi ý: Random giúp mỗi lần chơi có trải nghiệm mới hơn và hạn chế việc học thuộc thứ tự câu hỏi.
+
+4. Khi hết level, frontend gửi dữ liệu gì lên /games/submit?
+Trả lời gợi ý: Frontend gửi levelId, danh sách answers và duration để backend chấm điểm và lưu tiến độ.
+
+5. Backend tính score, stars và EXP như thế nào?
+Trả lời gợi ý: Backend so sánh đáp án user với đáp án đúng, tính tỷ lệ đúng thành score, quy đổi score thành stars và EXP theo quy tắc trong service/constants.
+
+6. UserGameProgress lưu những thông tin gì?
+Trả lời gợi ý: Lưu userId, levelId, score, stars, trạng thái hoàn thành, thời gian tốt nhất và số lần thử nếu có.
+
+7. Có các loại câu hỏi game nào?
+Trả lời gợi ý: Có matching, listening, listenbuild và truefalse.
+
+8. Listen Build khác Listening như thế nào?
+Trả lời gợi ý: Listening thường nghe và chọn/nhập đáp án. Listen Build yêu cầu nghe rồi sắp xếp các từ thành câu đúng.
+
+9. Nút Level tiếp theo chỉ nên hiện khi nào?
+Trả lời gợi ý: Nên hiện khi người học pass level và còn level kế tiếp trong cùng GameSet.
+
+10. Nếu người học fail level thì có nên mở level tiếp theo không? Vì sao?
+Trả lời gợi ý: Không nên, vì cơ chế học theo level cần đảm bảo người học đạt kiến thức trước khi sang cấp độ sau.
+
+
+11. Câu hỏi về Dictionary và Collection
+------------------------------------------------------------
+1. Dictionary page phân biệt từ đơn và câu như thế nào?
+Trả lời gợi ý: Frontend có thể dựa vào số lượng từ hoặc cấu trúc input. Nếu chuỗi có nhiều từ như một câu thì dùng luồng dịch câu, nếu là từ đơn thì tra từ.
+
+2. Autocomplete có lợi ích gì?
+Trả lời gợi ý: Autocomplete giúp gợi ý từ khi người học đang nhập, giảm thời gian gõ và tăng khả năng tìm đúng từ.
+
+3. Dịch câu và tra từ khác nhau ở đâu?
+Trả lời gợi ý: Tra từ trả nghĩa, phiên âm, ví dụ, audio của một từ. Dịch câu xử lý cả câu và trả bản dịch theo ngữ cảnh.
+
+4. Collection được dùng để làm gì?
+Trả lời gợi ý: Collection cho phép người học lưu các từ quan trọng vào bộ sưu tập để ôn lại sau.
+
+5. Nếu user lưu cùng một từ nhiều lần thì backend nên xử lý thế nào?
+Trả lời gợi ý: Backend nên kiểm tra trùng theo user, collection và wordId, dùng unique constraint hoặc logic kiểm tra trước khi insert.
+
+6. Audio phát âm của từ vựng lấy từ đâu?
+Trả lời gợi ý: Có thể lấy từ dữ liệu dictionary API, dữ liệu đã lưu trong database hoặc URL audio trong bảng Vocabulary/Dictionary.
+
+
+12. Câu hỏi về Admin
+------------------------------------------------------------
+1. AdminDashboard hiển thị những số liệu nào?
+Trả lời gợi ý: Hiển thị thống kê tổng quan như số user, course, lesson, game, speaking lesson, writing lesson, grammar category/topic.
+
+2. AdminWriting quản lý những đối tượng nào?
+Trả lời gợi ý: Quản lý WritingLessons, PassageEN, PassageVI, WritingExercises và WritingVocab.
+
+3. AdminSpeaking quản lý những đối tượng nào?
+Trả lời gợi ý: Quản lý SpeakingLessons và SpeakingQuestions, bao gồm câu hỏi, bản dịch và các option trả lời.
+
+4. AdminGrammar quản lý những đối tượng nào?
+Trả lời gợi ý: Quản lý GrammarCategories, GrammarTopics và GrammarQuiz.
+
+5. AdminGames cần quản lý game theo những cấp nào?
+Trả lời gợi ý: Quản lý GameSets, GameLevels và MiniGameQuestions.
+
+6. Vì sao thao tác xóa nên giới hạn cho superadmin trong một số trường hợp?
+Trả lời gợi ý: Vì xóa dữ liệu có thể ảnh hưởng lớn đến hệ thống và tiến độ học. Giới hạn cho superadmin giúp giảm rủi ro xóa nhầm hoặc lạm quyền.
+
+7. Nếu hai admin cùng sửa một bài học cùng lúc thì có vấn đề gì?
+Trả lời gợi ý: Có thể xảy ra ghi đè dữ liệu. Cách cải thiện là dùng updatedAt, optimistic locking hoặc cảnh báo khi dữ liệu đã bị người khác sửa.
+
+8. Em sẽ thêm audit log cho admin như thế nào?
+Trả lời gợi ý: Tạo bảng AdminAuditLogs lưu adminId, hành động, entity, entityId, dữ liệu trước/sau, IP và thời gian thao tác.
+
+
+13. Câu hỏi về AI và tích hợp ngoài
+------------------------------------------------------------
+1. NVIDIA AI được dùng trong những tính năng nào?
+Trả lời gợi ý: Dùng để tạo bài speaking cá nhân hóa và chấm writing khi cần đánh giá ngữ nghĩa, ngữ pháp, độ tự nhiên.
+
+2. Vì sao không nên gọi AI trực tiếp từ frontend?
+Trả lời gợi ý: Vì sẽ lộ API key, khó kiểm soát chi phí, không kiểm tra được quyền user và khó áp dụng rate limit.
+
+3. Nếu API key NVIDIA bị lộ thì rủi ro là gì?
+Trả lời gợi ý: Người khác có thể dùng key để gọi API gây tốn chi phí, lạm dụng dịch vụ hoặc làm cạn quota.
+
+4. Timeout AI có tác dụng gì?
+Trả lời gợi ý: Timeout giới hạn thời gian chờ AI. Nếu AI quá chậm, backend dừng chờ và fallback để đảm bảo trải nghiệm người dùng.
+
+5. Max tokens ảnh hưởng gì đến tốc độ và chi phí?
+Trả lời gợi ý: Max tokens càng cao thì phản hồi có thể dài hơn, chậm hơn và tốn chi phí hơn. Giảm max tokens giúp phản hồi nhanh hơn.
+
+6. Vì sao writing cần fast-path similarity trước khi gọi AI?
+Trả lời gợi ý: Vì nhiều câu rất đúng hoặc rất sai có thể chấm nhanh bằng similarity, không cần gọi AI. Điều này giảm độ trễ và chi phí.
+
+7. Whisper speech service có thể chạy riêng backend không?
+Trả lời gợi ý: Có. Whisper có thể chạy như một service riêng, backend gửi audio sang service đó và nhận transcript.
+
+8. Nếu Whisper service bị tắt, Speaking lỗi ở bước nào?
+Trả lời gợi ý: Lỗi ở bước transcribe audio. Backend không nhận được transcript nên không thể chấm Speaking chính xác.
+
+9. Cloudinary được dùng cho tính năng nào?
+Trả lời gợi ý: Cloudinary dùng để upload và lưu trữ ảnh, ví dụ avatar người dùng hoặc media nếu hệ thống cấu hình dùng Cloudinary.
+
+10. SePay webhook hoạt động theo luồng nào?
+Trả lời gợi ý: Khi có giao dịch thanh toán, SePay gọi webhook backend. Backend xác thực webhook, đối chiếu giao dịch và cập nhật trạng thái/gói plus cho user.
+
+
+14. Câu hỏi về hiệu năng và tối ưu
+------------------------------------------------------------
+1. Vì sao kiểm tra Writing ban đầu chậm?
+Trả lời gợi ý: Vì mỗi lần kiểm tra đều gọi AI model lớn, timeout dài và max tokens cao, dẫn đến độ trễ lớn.
+
+2. Em đã tối ưu Writing check bằng những cách nào?
+Trả lời gợi ý: Em thêm similarity fast-path, cache kết quả, giảm timeout, giảm max tokens và dùng model riêng nhanh hơn cho writing.
+
+3. Cache nên đặt ở frontend hay backend? Vì sao?
+Trả lời gợi ý: Backend nên có cache vì nhiều client có thể dùng chung, không tin dữ liệu frontend và tránh gọi AI lặp lại ở server.
+
+4. Nếu có 1000 user cùng học Speaking, điểm nghẽn có thể nằm ở đâu?
+Trả lời gợi ý: Điểm nghẽn có thể ở upload audio, Whisper service, CPU/GPU xử lý speech, database và băng thông mạng.
+
+5. Frontend bundle lớn có ảnh hưởng gì?
+Trả lời gợi ý: Bundle lớn làm tải trang lần đầu chậm hơn, đặc biệt trên mạng yếu. Có thể cải thiện bằng code splitting theo route.
+
+6. API nào nên có rate limit?
+Trả lời gợi ý: API login, register, writing AI check, speaking transcribe, generate personalized lesson, upload file và billing webhook nên có rate limit.
+
+7. Khi nào nên dùng pagination?
+Trả lời gợi ý: Khi danh sách dữ liệu lớn như users, lessons, dictionary entries, game questions hoặc admin logs.
+
+8. Nội dung nào nên cache?
+Trả lời gợi ý: Có thể cache danh sách category, lesson public, dictionary lookup, kết quả writing check lặp lại và nội dung ít thay đổi.
+
+
+15. Câu hỏi về bảo mật
+------------------------------------------------------------
+1. Rủi ro khi lưu JWT trong localStorage là gì?
+Trả lời gợi ý: Nếu bị XSS, script độc hại có thể đọc token trong localStorage và giả mạo người dùng.
+
+2. Em có cách nào giảm rủi ro XSS không?
+Trả lời gợi ý: Sanitize HTML, tránh render dữ liệu không tin cậy, dùng CSP, hạn chế dangerouslySetInnerHTML và kiểm soát thư viện bên thứ ba.
+
+3. Vì sao cần sanitize HTML?
+Trả lời gợi ý: Vì nội dung HTML từ admin hoặc người dùng có thể chứa script, event handler hoặc URL độc hại gây XSS.
+
+4. Upload file có những rủi ro nào?
+Trả lời gợi ý: Có thể upload file quá lớn, file độc hại, sai định dạng hoặc tấn công lưu trữ. Cần giới hạn size, kiểm tra MIME type và lưu an toàn.
+
+5. CORS cấu hình sai có thể gây vấn đề gì?
+Trả lời gợi ý: Nếu cho phép quá rộng, domain không mong muốn có thể gọi API từ trình duyệt người dùng, tăng rủi ro lạm dụng.
+
+6. SQL injection được hạn chế như thế nào?
+Trả lời gợi ý: Bằng cách dùng parameterized query, ví dụ $1, $2 hoặc input binding thay vì nối chuỗi SQL trực tiếp.
+
+7. Vì sao query nên dùng parameter thay vì nối chuỗi SQL?
+Trả lời gợi ý: Parameter giúp database phân biệt dữ liệu và câu lệnh SQL, tránh attacker chèn lệnh SQL độc hại.
+
+8. Webhook thanh toán cần xác thực như thế nào?
+Trả lời gợi ý: Cần kiểm tra API key/chữ ký, đối chiếu thông tin giao dịch, số tiền, nội dung chuyển khoản và tránh xử lý trùng giao dịch.
+
+9. API admin có nên có log hành động không? Vì sao?
+Trả lời gợi ý: Có, để truy vết ai đã tạo, sửa, xóa dữ liệu nào và hỗ trợ khôi phục khi có lỗi hoặc lạm quyền.
+
+10. Nếu user thường gọi API xóa grammar thì backend xử lý thế nào?
+Trả lời gợi ý: Backend kiểm tra role bằng middleware. User thường không đủ quyền nên bị trả 403 Forbidden.
+
+
+16. Câu hỏi tình huống nâng cao
+------------------------------------------------------------
+1. Nếu muốn thêm kỹ năng Listening riêng, em thiết kế database và route như thế nào?
+Trả lời gợi ý: Em sẽ tạo ListeningLessons, ListeningQuestions, ListeningProgress; backend có /listening/lessons, /listening/lessons/:id, /listening/check hoặc /listening/progress; frontend có ListeningList và ListeningLesson.
+
+2. Nếu muốn mỗi bài Writing có nhiều mức độ beginner, intermediate, advanced thì sửa schema ra sao?
+Trả lời gợi ý: Có thể thêm cột Level/Difficulty vào WritingLessons hoặc tạo bảng WritingLevels liên kết với lessons/exercises để quản lý nhiều phiên bản theo trình độ.
+
+3. Nếu muốn Speaking chấm phát âm theo từng âm tiết, cần thêm công nghệ gì?
+Trả lời gợi ý: Cần speech assessment/phoneme recognition, forced alignment hoặc API chuyên chấm phát âm theo âm vị thay vì chỉ transcript text.
+
+4. Nếu muốn offline mode cho Dictionary, em sẽ làm thế nào?
+Trả lời gợi ý: Có thể dùng IndexedDB hoặc service worker để cache dữ liệu từ điển phổ biến trên trình duyệt và đồng bộ khi có mạng.
+
+5. Nếu hệ thống có 10.000 user, em cần cải thiện backend/database như thế nào?
+Trả lời gợi ý: Cần index database, pagination, caching, connection pool hợp lý, tách service nặng như AI/speech, queue xử lý nền và scale backend theo chiều ngang.
+
+6. Nếu AI hết quota, hệ thống có tiếp tục dùng được không?
+Trả lời gợi ý: Có thể tiếp tục dùng các luồng không phụ thuộc AI. Writing fallback bằng similarity, speaking theo lộ trình vẫn dùng được nếu không cần tạo nội dung AI.
+
+7. Nếu admin xóa nhầm bài học, em có cơ chế khôi phục nào?
+Trả lời gợi ý: Có thể dùng soft delete, backup định kỳ, audit log và chức năng restore thay vì xóa cứng ngay.
+
+8. Nếu người học đang làm game mà reload trang, tiến độ tạm thời có mất không? Cách khắc phục?
+Trả lời gợi ý: Hiện tại có thể mất state tạm. Có thể lưu trạng thái game vào localStorage hoặc backend draft progress để khôi phục.
+
+9. Nếu cần đa ngôn ngữ giao diện, em tổ chức i18n như thế nào?
+Trả lời gợi ý: Dùng thư viện i18n như react-i18next, tách text giao diện ra file ngôn ngữ vi.json, en.json và dùng key thay vì hard-code text.
+
+10. Nếu muốn làm mobile app, backend hiện tại có tái sử dụng được không?
+Trả lời gợi ý: Có. Vì backend đã là REST API độc lập, mobile app có thể gọi cùng API. Chỉ cần bổ sung xử lý auth/token và upload phù hợp với mobile.
+
+
+17. Câu hỏi yêu cầu demo trực tiếp
+------------------------------------------------------------
+1. Em hãy demo đăng nhập và giải thích token lưu ở đâu.
+Trả lời gợi ý: Em đăng nhập, mở DevTools Application/Local Storage để chỉ token. Sau đó mở Network để chứng minh token được gửi trong Authorization header.
+
+2. Em hãy mở DevTools Network và chỉ ra request lấy danh sách Writing lessons.
+Trả lời gợi ý: Em vào /writing/lessons, trong Network chỉ request GET /api/v1/writing/lessons và response gồm lessons, isCompleted, isLocked, exerciseCount.
+
+3. Em hãy làm một câu Writing và giải thích backend chấm câu như thế nào.
+Trả lời gợi ý: Em nhập câu, frontend gọi POST /writing/check. Backend tính similarity, nếu cần thì gọi AI, nếu AI lỗi thì fallback similarity, sau đó trả score và feedback.
+
+4. Em hãy vào Speaking, ghi âm một câu và giải thích audio đi qua những bước nào.
+Trả lời gợi ý: Recorder tạo audio blob, gửi multipart/form-data đến backend, backend gửi audio sang Whisper để transcribe, sau đó so khớp transcript và trả điểm.
+
+5. Em hãy vào AdminGrammar, sửa một topic và giải thích React Quill lưu nội dung ra sao.
+Trả lời gợi ý: React Quill tạo HTML string cho nội dung rich text. Khi lưu, frontend gửi Content lên API admin grammar topics, backend lưu vào cột Content của GrammarTopics.
+
+6. Em hãy chơi một level mini game và giải thích cách tính sao.
+Trả lời gợi ý: Sau khi trả lời, frontend gửi answers và duration lên /games/submit. Backend tính số câu đúng, score phần trăm, từ đó quy đổi stars và EXP.
+
+7. Em hãy hoàn thành một bài học và chỉ ra nút bài tiếp theo lấy dữ liệu từ đâu.
+Trả lời gợi ý: Sau khi hoàn thành, LessonPage lấy danh sách lesson cùng CourseId bằng getByCourse, tìm bài hiện tại và lấy bài kế tiếp để hiển thị nút.
+
+8. Em hãy mở database và chỉ ra bảng lưu tiến độ của user.
+Trả lời gợi ý: Với bài học thường là UserProgress, Speaking là SpeakingProgress, Writing là WritingProgress, mini game là UserGameProgress.
+
+9. Em hãy tắt API AI và giải thích Writing fallback như thế nào.
+Trả lời gợi ý: Khi tắt AI hoặc AI lỗi, backend vẫn tính similarity giữa câu user và đáp án, trả score, passed và feedback cơ bản.
+
+10. Em hãy chỉ ra route nào chỉ admin mới truy cập được.
+Trả lời gợi ý: Các route dưới /api/v1/admin như /admin/grammar, /admin/writing, /admin/users được bảo vệ bằng authMiddleware và requireRole('admin') hoặc superAdminOnly.
+
+PHẦN 3. KẾT LUẬN CỦA SINH VIÊN
+============================================================
+
+Qua hệ thống này, em đã nắm được cách xây dựng một ứng dụng web full-stack có nhiều module:
+
+- Thiết kế giao diện học tập bằng React.
+- Tổ chức backend Express theo module.
+- Kết nối và thiết kế dữ liệu PostgreSQL.
+- Xác thực JWT và phân quyền role.
+- Upload và xử lý audio.
+- Tích hợp AI để tạo và chấm nội dung học tập.
+- Lưu tiến độ, EXP, level và thành tích.
+- Xây dựng trang admin quản lý nội dung.
+- Tối ưu trải nghiệm học bằng nút bài tiếp theo, feedback nhanh và luồng học liên tục.
+
+Nếu tiếp tục phát triển, em sẽ ưu tiên:
+
+- Thêm unit test và integration test.
+- Thêm rate limit cho AI và speech.
+- Cải thiện bảo mật token và sanitize HTML.
+- Thêm audit log cho admin.
+- Tách bundle frontend theo route để giảm dung lượng ban đầu.
+- Cải thiện scoring Speaking và Writing chi tiết hơn.
+

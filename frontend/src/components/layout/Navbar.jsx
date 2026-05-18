@@ -2,7 +2,7 @@
 // Navbar Component
 // ============================================
 import { useAuth } from '../../hooks/useAuth';
-import { FiBell, FiLogOut, FiSearch } from 'react-icons/fi';
+import { FiBell, FiLogOut } from 'react-icons/fi';
 import { HiOutlineFire } from 'react-icons/hi';
 
 function Navbar() {
@@ -10,11 +10,6 @@ function Navbar() {
 
   return (
     <nav className="lingo-navbar">
-      <div className="lingo-search">
-        <FiSearch />
-        <input type="text" placeholder="Tìm khóa học, bài luyện, từ vựng..." />
-      </div>
-
       <div className="lingo-navbar-actions">
         {user?.stats && (
           <>
@@ -37,7 +32,13 @@ function Navbar() {
         </button>
 
         <div className="lingo-user-pill">
-          <div className="lingo-avatar">{user?.username?.charAt(0).toUpperCase() || 'U'}</div>
+          <div className="lingo-avatar">
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+            ) : (
+              user?.username?.charAt(0).toUpperCase() || 'U'
+            )}
+          </div>
           <span>{user?.username || 'User'}</span>
         </div>
 
