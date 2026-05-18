@@ -78,7 +78,6 @@ function SpeakingOptions() {
             <div style={bulletStyle}><FiStar color="#f59e0b" fill="#f59e0b" /> Dành cho tài khoản Plus</div>
             <div style={bulletStyle}><FiStar color="#f59e0b" fill="#f59e0b" /> Tự tạo bài luyện nói theo chủ đề</div>
             <div style={bulletStyle}><FiStar color="#f59e0b" fill="#f59e0b" /> Chọn trình độ, số câu và mục tiêu cá nhân</div>
-            <div style={bulletStyle}><FiStar color="#f59e0b" fill="#f59e0b" /> Không lưu câu AI vào cơ sở dữ liệu</div>
           </div>
         </motion.div>
       </div>

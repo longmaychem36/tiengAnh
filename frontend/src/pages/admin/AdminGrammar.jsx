@@ -6,6 +6,9 @@ import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiChevronRight, FiChevronDown, 
 import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const textValue = (value) => value ?? '';
+const numberValue = (value) => Number.parseInt(value, 10) || 0;
 
 const AdminGrammar = () => {
   const [categories, setCategories] = useState([]);
@@ -49,9 +52,9 @@ const AdminGrammar = () => {
   const fetchCategories = async () => {
     try {
       const res = await axios.get(`${API_URL}/admin/grammar/categories`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: authHeaders()
       });
-      setCategories(res.data.data);
+      setCategories(res.data.data || []);
     } catch (err) {
       toast.error('Lỗi tải danh mục');
     } finally {
@@ -62,9 +65,9 @@ const AdminGrammar = () => {
   const fetchTopics = async (catId) => {
     try {
       const res = await axios.get(`${API_URL}/admin/grammar/categories/${catId}/topics`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: authHeaders()
       });
-      setTopics(res.data.data);
+      setTopics(res.data.data || []);
     } catch (err) {
       toast.error('Lỗi tải chủ đề');
     }
@@ -73,9 +76,9 @@ const AdminGrammar = () => {
   const fetchQuizzes = async (topicId) => {
     try {
       const res = await axios.get(`${API_URL}/admin/grammar/topics/${topicId}/quizzes`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: authHeaders()
       });
-      setQuizzes(res.data.data);
+      setQuizzes(res.data.data || []);
     } catch (err) {
       toast.error('Lỗi tải bài tập');
     }
@@ -84,15 +87,16 @@ const AdminGrammar = () => {
   // Category Actions
   const handleSaveCat = async () => {
     try {
-      const data = { Name: catName, NameVI: catNameVI, Icon: catIcon, OrderIndex: catOrder };
+      if (!catName.trim()) return toast.error('Vui lòng nhập tên danh mục');
+      const data = { Name: catName.trim(), NameVI: catNameVI.trim(), Icon: catIcon || '📘', OrderIndex: numberValue(catOrder) };
       if (editingCat) {
         await axios.put(`${API_URL}/admin/grammar/categories/${editingCat.Id}`, data, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          headers: authHeaders()
         });
         toast.success('Cập nhật danh mục thành công');
       } else {
         await axios.post(`${API_URL}/admin/grammar/categories`, data, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          headers: authHeaders()
         });
         toast.success('Thêm danh mục thành công');
       }
@@ -108,15 +112,17 @@ const AdminGrammar = () => {
   // Topic Actions
   const handleSaveTopic = async () => {
     try {
-      const data = { CategoryId: selectedCat.Id, Title: topicTitle, TitleVI: topicTitleVI, Content: topicContent, OrderIndex: topicOrder };
+      if (!selectedCat?.Id) return toast.error('Vui lòng chọn danh mục');
+      if (!topicTitle.trim()) return toast.error('Vui lòng nhập tiêu đề chủ đề');
+      const data = { CategoryId: Number(selectedCat.Id), Title: topicTitle.trim(), TitleVI: topicTitleVI.trim(), Content: topicContent || '', OrderIndex: numberValue(topicOrder) };
       if (editingTopic) {
         await axios.put(`${API_URL}/admin/grammar/topics/${editingTopic.Id}`, data, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          headers: authHeaders()
         });
         toast.success('Cập nhật chủ đề thành công');
       } else {
         await axios.post(`${API_URL}/admin/grammar/topics`, data, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          headers: authHeaders()
         });
         toast.success('Thêm chủ đề thành công');
       }
@@ -132,15 +138,17 @@ const AdminGrammar = () => {
   // Quiz Actions
   const handleSaveQuiz = async () => {
     try {
-      const data = { TopicId: selectedTopic.Id, Question: quizQ, OptionA: qA, OptionB: qB, OptionC: qC, OptionD: qD, CorrectAnswer: qAns, Explanation: qExp };
+      if (!selectedTopic?.Id) return toast.error('Vui lòng chọn chủ đề');
+      if (!quizQ.trim()) return toast.error('Vui lòng nhập câu hỏi');
+      const data = { TopicId: selectedTopic.Id, Question: quizQ.trim(), OptionA: qA.trim(), OptionB: qB.trim(), OptionC: qC.trim(), OptionD: qD.trim(), CorrectAnswer: qAns, Explanation: qExp.trim() };
       if (editingQuiz) {
         await axios.put(`${API_URL}/admin/grammar/quizzes/${editingQuiz.Id}`, data, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          headers: authHeaders()
         });
         toast.success('Cập nhật bài tập thành công');
       } else {
         await axios.post(`${API_URL}/admin/grammar/quizzes`, data, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          headers: authHeaders()
         });
         toast.success('Thêm bài tập thành công');
       }
@@ -192,8 +200,19 @@ const AdminGrammar = () => {
         {categories.map(cat => (
           <div key={cat.Id} className="card overflow-hidden">
             <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50" onClick={() => {
-              if (selectedCat?.Id === cat.Id) setSelectedCat(null);
-              else { setSelectedCat(cat); fetchTopics(cat.Id); setSelectedTopic(null); }
+              if (selectedCat?.Id === cat.Id) {
+                setSelectedCat(null);
+                setSelectedTopic(null);
+                setTopics([]);
+                setQuizzes([]);
+              } else {
+                setSelectedCat(cat);
+                setSelectedTopic(null);
+                setQuizzes([]);
+                closeTopicForm();
+                closeQuizForm();
+                fetchTopics(cat.Id);
+              }
             }}>
               <div className="flex items-center gap-3">
                 <span style={{ fontSize: '24px' }}>{cat.Icon}</span>
@@ -203,12 +222,17 @@ const AdminGrammar = () => {
               </div>
               <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                 <button className="btn btn-ghost btn-sm" onClick={() => {
-                  setEditingCat(cat); setCatName(cat.Name); setCatNameVI(cat.NameVI); setCatIcon(cat.Icon); setCatOrder(cat.OrderIndex); setShowCatForm(true);
+                  setEditingCat(cat); setCatName(textValue(cat.Name)); setCatNameVI(textValue(cat.NameVI)); setCatIcon(cat.Icon || '📘'); setCatOrder(numberValue(cat.OrderIndex)); setShowCatForm(true);
                 }}><FiEdit2 size={14} /></button>
                 <button className="btn btn-ghost btn-sm text-error" onClick={async () => {
                   if (window.confirm('Xóa danh mục này?')) {
-                    await axios.delete(`${API_URL}/admin/grammar/categories/${cat.Id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-                    fetchCategories();
+                    try {
+                      await axios.delete(`${API_URL}/admin/grammar/categories/${cat.Id}`, { headers: authHeaders() });
+                      fetchCategories();
+                      if (selectedCat?.Id === cat.Id) setSelectedCat(null);
+                    } catch (err) {
+                      toast.error('Không thể xóa danh mục này');
+                    }
                   }
                 }}><FiTrash2 size={14} /></button>
                 {selectedCat?.Id === cat.Id ? <FiChevronDown /> : <FiChevronRight />}
@@ -253,8 +277,14 @@ const AdminGrammar = () => {
                   {topics.map(topic => (
                     <div key={topic.Id} className="border rounded-lg bg-white overflow-hidden shadow-sm">
                       <div className="p-3 flex items-center justify-between cursor-pointer hover:bg-gray-50" onClick={() => {
-                        if (selectedTopic?.Id === topic.Id) setSelectedTopic(null);
-                        else { setSelectedTopic(topic); fetchQuizzes(topic.Id); }
+                        if (selectedTopic?.Id === topic.Id) {
+                          setSelectedTopic(null);
+                          setQuizzes([]);
+                        } else {
+                          setSelectedTopic(topic);
+                          closeQuizForm();
+                          fetchQuizzes(topic.Id);
+                        }
                       }}>
                         <div className="flex items-center gap-2">
                           <FiBookOpen className="text-primary" />
@@ -262,12 +292,17 @@ const AdminGrammar = () => {
                         </div>
                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                           <button className="btn btn-ghost btn-xs" onClick={() => {
-                            setEditingTopic(topic); setTopicTitle(topic.Title); setTopicTitleVI(topic.TitleVI); setTopicContent(topic.Content); setTopicOrder(topic.OrderIndex); setShowTopicForm(true);
+                            setEditingTopic(topic); setTopicTitle(textValue(topic.Title)); setTopicTitleVI(textValue(topic.TitleVI)); setTopicContent(textValue(topic.Content)); setTopicOrder(numberValue(topic.OrderIndex)); setShowTopicForm(true);
                           }}><FiEdit2 size={12} /></button>
                           <button className="btn btn-ghost btn-xs text-error" onClick={async () => {
                             if (window.confirm('Xóa chủ đề này?')) {
-                              await axios.delete(`${API_URL}/admin/grammar/topics/${topic.Id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-                              fetchTopics(cat.Id);
+                              try {
+                                await axios.delete(`${API_URL}/admin/grammar/topics/${topic.Id}`, { headers: authHeaders() });
+                                fetchTopics(cat.Id);
+                                if (selectedTopic?.Id === topic.Id) setSelectedTopic(null);
+                              } catch (err) {
+                                toast.error('Không thể xóa chủ đề này');
+                              }
                             }
                           }}><FiTrash2 size={12} /></button>
                           {selectedTopic?.Id === topic.Id ? <FiChevronDown size={14} /> : <FiChevronRight size={14} />}
@@ -318,12 +353,16 @@ const AdminGrammar = () => {
                                 </div>
                                 <div className="flex gap-1">
                                   <button className="btn btn-ghost btn-xs" onClick={() => {
-                                    setEditingQuiz(q); setQuizQ(q.Question); setQA(q.OptionA); setQB(q.OptionB); setQC(q.OptionC); setQD(q.OptionD); setQAns(q.CorrectAnswer); setQExp(q.Explanation || ''); setShowQuizForm(true);
+                                    setEditingQuiz(q); setQuizQ(textValue(q.Question)); setQA(textValue(q.OptionA)); setQB(textValue(q.OptionB)); setQC(textValue(q.OptionC)); setQD(textValue(q.OptionD)); setQAns(q.CorrectAnswer || 'A'); setQExp(textValue(q.Explanation)); setShowQuizForm(true);
                                   }}><FiEdit2 size={12} /></button>
                                   <button className="btn btn-ghost btn-xs text-error" onClick={async () => {
                                     if (window.confirm('Xóa bài tập?')) {
-                                      await axios.delete(`${API_URL}/admin/grammar/quizzes/${q.Id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-                                      fetchQuizzes(topic.Id);
+                                      try {
+                                        await axios.delete(`${API_URL}/admin/grammar/quizzes/${q.Id}`, { headers: authHeaders() });
+                                        fetchQuizzes(topic.Id);
+                                      } catch (err) {
+                                        toast.error('Không thể xóa bài tập');
+                                      }
                                     }
                                   }}><FiTrash2 size={12} /></button>
                                 </div>

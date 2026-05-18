@@ -108,10 +108,12 @@ const adminContentService = {
     const res = await pool.request()
       .input('title', sql.NVarChar, data.Title)
       .input('desc', sql.NVarChar, data.Description)
+      .input('passageEN', sql.NText, data.PassageEN || data.passageEN || '')
+      .input('passageVI', sql.NText, data.PassageVI || data.passageVI || '')
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
-        INSERT INTO WritingLessons (Title, Description, OrderIndex)
-        VALUES (@title, @desc, @order) RETURNING *
+        INSERT INTO WritingLessons (Title, Description, PassageEN, PassageVI, OrderIndex)
+        VALUES (@title, @desc, @passageEN, @passageVI, @order) RETURNING *
       `);
     return res.recordset[0];
   },
@@ -122,10 +124,12 @@ const adminContentService = {
       .input('id', sql.UniqueIdentifier, id)
       .input('title', sql.NVarChar, data.Title)
       .input('desc', sql.NVarChar, data.Description)
+      .input('passageEN', sql.NText, data.PassageEN || data.passageEN || '')
+      .input('passageVI', sql.NText, data.PassageVI || data.passageVI || '')
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         UPDATE WritingLessons 
-        SET Title = @title, Description = @desc, OrderIndex = @order
+        SET Title = @title, Description = @desc, PassageEN = @passageEN, PassageVI = @passageVI, OrderIndex = @order
         WHERE Id = @id
       `);
   },

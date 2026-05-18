@@ -18,7 +18,7 @@ const gamificationController = {
     try {
       const { amount, reason } = req.body;
       if (!amount || amount <= 0) return badRequest(res, 'Valid EXP amount is required');
-      const result = await gamificationService.addExp(req.user.id, amount);
+      const result = await gamificationService.addExp(req.user.id, amount, reason);
       return success(res, result, `+${amount} EXP earned!`);
     } catch (err) {
       next(err);

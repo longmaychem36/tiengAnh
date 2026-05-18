@@ -6,6 +6,15 @@ const { sql, getPool } = require('../../config/database');
 const { generateToken } = require('../../config/jwt');
 const billingService = require('../billing/billing.service');
 
+let profileSchemaReady = false;
+
+async function ensureProfileSchema() {
+  if (profileSchemaReady) return;
+  const pool = getPool();
+  await pool.query('ALTER TABLE Users ADD COLUMN IF NOT EXISTS AvatarUrl text');
+  profileSchemaReady = true;
+}
+
 function getPlanInfo(user = {}) {
   const plan = (user.Plan || user.plan || 'free').toLowerCase();
   const plusExpiresAt = user.PlusExpiresAt || user.plusexpiresat || null;
@@ -25,6 +34,7 @@ const authService = {
   async register({ username, email, password }) {
     const pool = getPool();
     await billingService.ensureBillingSchema();
+    await ensureProfileSchema();
 
     // Check if user already exists
     const existing = await pool.request()
@@ -47,7 +57,7 @@ const authService = {
       .input('passwordHash', sql.NVarChar, passwordHash)
       .query(`
         INSERT INTO Users (Username, Email, PasswordHash, Role, Plan)
-        VALUES (@username, @email, @passwordHash, 'user', 'free') RETURNING Id, Username, Email, Role, Plan, PlusExpiresAt, CreatedAt
+        VALUES (@username, @email, @passwordHash, 'user', 'free') RETURNING Id, Username, Email, Role, Plan, PlusExpiresAt, AvatarUrl, CreatedAt
       `);
 
     const user = result.recordset[0];
@@ -73,6 +83,7 @@ const authService = {
         username: user.Username,
         email: user.Email,
         role: user.Role,
+        avatarUrl: user.AvatarUrl || null,
         ...getPlanInfo(user),
         createdAt: user.CreatedAt
       },
@@ -86,12 +97,13 @@ const authService = {
   async login({ email, password }) {
     const pool = getPool();
     await billingService.ensureBillingSchema();
+    await ensureProfileSchema();
 
     // Find user
     const result = await pool.request()
       .input('email', sql.NVarChar, email)
       .query(`
-        SELECT u.Id, u.Username, u.Email, u.PasswordHash, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.CreatedAt,
+        SELECT u.Id, u.Username, u.Email, u.PasswordHash, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.AvatarUrl, u.CreatedAt,
                ll.Code as LevelCode, ll.Name as LevelName,
                us.Exp, us.Level as GameLevel, us.StreakDays
         FROM Users u
@@ -139,6 +151,7 @@ const authService = {
         username: user.Username,
         email: user.Email,
         role: user.Role,
+        avatarUrl: user.AvatarUrl || null,
         ...getPlanInfo(user),
         level: user.LevelCode ? { code: user.LevelCode, name: user.LevelName } : null,
         stats: {
@@ -158,11 +171,12 @@ const authService = {
   async getUserById(userId) {
     const pool = getPool();
     await billingService.ensureBillingSchema();
+    await ensureProfileSchema();
 
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
       .query(`
-        SELECT u.Id, u.Username, u.Email, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.CreatedAt,
+        SELECT u.Id, u.Username, u.Email, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.AvatarUrl, u.CreatedAt,
                ll.Code as LevelCode, ll.Name as LevelName,
                us.Exp, us.Level as GameLevel, us.StreakDays, us.LastLogin
         FROM Users u
@@ -179,6 +193,7 @@ const authService = {
       username: user.Username,
       email: user.Email,
       role: user.Role,
+      avatarUrl: user.AvatarUrl || null,
       ...getPlanInfo(user),
       level: user.LevelCode ? { code: user.LevelCode, name: user.LevelName } : null,
       stats: {

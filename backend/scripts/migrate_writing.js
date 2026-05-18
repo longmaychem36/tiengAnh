@@ -11,10 +11,15 @@ async function migrate() {
         Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         Title varchar(255),
         Description text,
+        PassageEN text,
+        PassageVI text,
         OrderIndex integer,
         CreatedAt timestamptz DEFAULT now()
       )
     `);
+
+    await pool.query(`ALTER TABLE WritingLessons ADD COLUMN IF NOT EXISTS PassageEN text`);
+    await pool.query(`ALTER TABLE WritingLessons ADD COLUMN IF NOT EXISTS PassageVI text`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS WritingExercises (

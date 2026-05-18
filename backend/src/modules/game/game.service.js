@@ -3,6 +3,31 @@
 // ============================================
 const { getPool } = require('../../config/database');
 const { EXP_REWARDS } = require('../../utils/constants');
+const gamificationService = require('../gamification/gamification.service');
+
+const GAME_DIFFICULTY_EXP = {
+  easy: 24,
+  medium: 34,
+  hard: 46
+};
+
+function calculateGameExp({ difficulty, scorePercent, totalQuestions, alreadyCompleted }) {
+  if (scorePercent < 50) return 0;
+
+  const base = GAME_DIFFICULTY_EXP[difficulty] || EXP_REWARDS.GAME_WIN;
+  const questionBonus = Math.min(12, Math.max(0, totalQuestions - 5) * 2);
+  const scoreBonus = scorePercent >= 95
+    ? EXP_REWARDS.PERFECT_SCORE_BONUS
+    : scorePercent >= 85
+      ? 6
+      : scorePercent >= 70
+        ? 3
+        : 0;
+  const firstClearExp = base + questionBonus + scoreBonus;
+
+  if (!alreadyCompleted) return firstClearExp;
+  return Math.max(5, Math.round(firstClearExp * EXP_REWARDS.GAME_REPLAY_FACTOR));
+}
 
 const gameService = {
   // ==================
@@ -125,21 +150,29 @@ const gameService = {
   // ==================
   // POST submit answers
   // ==================
-  async submitLevel(userId, levelId, answers, duration) {
+  async submitLevel(userId, levelId, answers, duration, questionIds = []) {
     const pool = getPool();
 
     const data = await this.getQuestions(levelId);
     if (!data) throw new Error('Level not found');
     const { level, questions } = data;
 
-    // Re-fetch all questions (not just random 10) to score accurately
+    const playedQuestionIds = Array.isArray(questionIds)
+      ? questionIds.filter(Boolean)
+      : [];
+
     const allQRes = await pool.query(`
-      SELECT Id, QuestionType, CorrectAnswer, Options FROM MiniGameQuestions WHERE LevelId = $1
+      SELECT Id, QuestionType, ContentVI, CorrectAnswer, Options FROM MiniGameQuestions WHERE LevelId = $1
     `, [levelId]);
-    const allQuestions = allQRes.rows.map(q => ({
-      Id: q.id, QuestionType: q.questiontype, CorrectAnswer: q.correctanswer,
-      Options: q.options ? JSON.parse(q.options) : null
-    }));
+    const allQuestions = allQRes.rows
+      .filter(q => playedQuestionIds.length === 0 || playedQuestionIds.includes(q.id))
+      .map(q => ({
+        Id: q.id,
+        QuestionType: q.questiontype,
+        ContentVI: q.contentvi,
+        CorrectAnswer: q.correctanswer,
+        Options: q.options ? JSON.parse(q.options) : null
+      }));
 
     let correctCount = 0;
     const results = [];
@@ -153,7 +186,7 @@ const gameService = {
       const ca = (q.CorrectAnswer || '').toLowerCase().trim();
 
       if (q.QuestionType === 'matching') {
-        isCorrect = ua === ca;
+        isCorrect = ua === (q.ContentVI || '').toLowerCase().trim();
       } else if (q.QuestionType === 'listening') {
         isCorrect = ua === ca;
       } else if (q.QuestionType === 'listenbuild') {
@@ -169,10 +202,16 @@ const gameService = {
       results.push({ questionId: q.Id, correct: isCorrect, correctAnswer: q.CorrectAnswer, userAnswer: userAnswer.answer });
     }
 
-    const totalQuestions = answers.length || allQuestions.length;
+    const totalQuestions = allQuestions.length || answers.length;
     const scorePercent = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
     const passed = scorePercent >= level.PassScore;
     let stars = scorePercent >= 90 ? 3 : scorePercent >= 70 ? 2 : scorePercent >= 50 ? 1 : 0;
+    const previousProgress = await pool.query(`
+      SELECT IsCompleted, Score, Stars
+      FROM UserGameProgress
+      WHERE UserId = $1 AND LevelId = $2
+    `, [userId, levelId]);
+    const alreadyCompleted = previousProgress.rows[0]?.iscompleted === true;
 
     // UPSERT progress
     await pool.query(`
@@ -187,32 +226,38 @@ const gameService = {
         ${passed ? ', CompletedAt = COALESCE(UserGameProgress.CompletedAt, NOW())' : ''}
     `, [userId, levelId, scorePercent, stars, passed, duration || 0]);
 
-    // Award EXP
-    let expEarned = 0;
-    if (passed) {
-      expEarned = EXP_REWARDS.GAME_WIN || 25;
-      if (scorePercent >= 90) expEarned = Math.round(expEarned * 1.5);
+    const expEarned = passed
+      ? calculateGameExp({
+        difficulty: level.Difficulty,
+        scorePercent,
+        totalQuestions,
+        alreadyCompleted
+      })
+      : 0;
+    let expReward = null;
+
+    if (expEarned > 0) {
       try {
-        await pool.query(`
-          INSERT INTO UserStats (UserId, Exp, Level, StreakDays)
-          VALUES ($1, 0, 1, 0)
-          ON CONFLICT (UserId) DO NOTHING
-        `, [userId]);
-        await pool.query(`
-          UPDATE UserStats SET Exp = Exp + $2,
-            Level = CASE
-              WHEN Exp + $2 >= 10000 THEN 10 WHEN Exp + $2 >= 7500 THEN 9
-              WHEN Exp + $2 >= 5500 THEN 8  WHEN Exp + $2 >= 4000 THEN 7
-              WHEN Exp + $2 >= 2800 THEN 6  WHEN Exp + $2 >= 1800 THEN 5
-              WHEN Exp + $2 >= 1000 THEN 4  WHEN Exp + $2 >= 500 THEN 3
-              WHEN Exp + $2 >= 250 THEN 2   WHEN Exp + $2 >= 100 THEN 1
-              ELSE Level END
-          WHERE UserId = $1
-        `, [userId, expEarned]);
+        expReward = await gamificationService.addExp(
+          userId,
+          expEarned,
+          alreadyCompleted ? 'game_replay_complete' : 'game_level_complete'
+        );
       } catch (e) { console.error('EXP error (non-fatal):', e.message); }
     }
 
-    return { score: scorePercent, stars, passed, correctCount, totalQuestions, expEarned, duration: duration || 0, results };
+    return {
+      score: scorePercent,
+      stars,
+      passed,
+      correctCount,
+      totalQuestions,
+      expEarned,
+      expReward,
+      alreadyCompleted,
+      duration: duration || 0,
+      results
+    };
   }
 };
 

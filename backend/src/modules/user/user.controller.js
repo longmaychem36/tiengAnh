@@ -49,6 +49,27 @@ const userController = {
   },
 
   /**
+   * PUT /api/v1/users/:id/avatar
+   */
+  async updateAvatar(req, res, next) {
+    try {
+      if (req.user.id !== req.params.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+        return badRequest(res, 'You can only update your own avatar');
+      }
+      const result = await userService.updateAvatar(req.params.id, req.file);
+      return success(res, result, 'Avatar updated successfully');
+    } catch (err) {
+      if (err.statusCode) {
+        return res.status(err.statusCode).json({
+          success: false,
+          message: err.message
+        });
+      }
+      next(err);
+    }
+  },
+
+  /**
    * GET /api/v1/users/:id/stats
    */
   async getStats(req, res, next) {

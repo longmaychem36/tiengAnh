@@ -1,13 +1,10 @@
 import axiosClient from './axiosClient';
 
 export const speakingApi = {
-  // Get all speaking lessons
   getLessons: () => axiosClient.get('/speaking/lessons'),
   
-  // Get lesson details (sentences)
   getLessonDetails: (id) => axiosClient.get(`/speaking/lessons/${id}`),
   
-  // Transcribe audio using Whisper (legacy - kept for compatibility)
   transcribeAudio: (audioBlob) => {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
@@ -17,7 +14,6 @@ export const speakingApi = {
     });
   },
 
-  // Combined transcribe + analyze in one request (FAST - saves 1 round-trip)
   transcribeAndAnalyze: (audioBlob, targetTexts) => {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
@@ -28,17 +24,13 @@ export const speakingApi = {
     });
   },
   
-  // Analyze transcript against target texts (legacy - kept for compatibility)
   analyzeText: (data) => axiosClient.post('/speaking/analyze', data),
   
-  // Save progress
   saveProgress: (data) => axiosClient.post('/speaking/progress', data),
 
-  // Generate a temporary AI lesson in backend memory only
   generatePersonalizedLesson: (data) => axiosClient.post('/speaking/personalized', data, {
     timeout: 60000
   }),
 
-  // Read a temporary AI lesson from backend memory
   getPersonalizedLesson: (sessionId) => axiosClient.get(`/speaking/personalized/${sessionId}`)
 };

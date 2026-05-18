@@ -6,11 +6,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FiArrowLeft, FiCheck, FiClock, FiRefreshCw,
-  FiPlay, FiStar, FiVolume2, FiX, FiZap
+  FiArrowRight, FiPlay, FiStar, FiVolume2, FiX, FiZap
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { gameApi } from '../api/gameApi';
 import Loading from '../components/common/Loading';
+import ExpReward from '../components/common/ExpReward';
 
 const TYPE_LABELS = {
   matching: { icon: '🔗', label: 'Nối từ', color: '#8a4b35' },
@@ -27,6 +28,7 @@ function GamePlay() {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameFinished, setGameFinished] = useState(false);
   const [result, setResult] = useState(null);
+  const [nextLevel, setNextLevel] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
@@ -44,13 +46,40 @@ function GamePlay() {
   const [audioPlaying, setAudioPlaying] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setGameStarted(false);
+    setGameFinished(false);
+    setResult(null);
+    setNextLevel(null);
+    setCurrentQ(0);
+    setAnswers([]);
+    answersRef.current = [];
+
     gameApi.getQuestions(levelId)
-      .then(res => {
+      .then(async (res) => {
+        if (cancelled) return;
         setLevelData(res.data);
         setTimeLeft(res.data.level.TimeLimit);
+
+        try {
+          const levelsRes = await gameApi.getLevels(res.data.level.SetId);
+          if (cancelled) return;
+          const levels = levelsRes.data || [];
+          const currentLevelIndex = levels.findIndex(level => String(level.Id) === String(levelId));
+          setNextLevel(currentLevelIndex >= 0 ? levels[currentLevelIndex + 1] || null : null);
+        } catch {
+          setNextLevel(null);
+        }
       })
       .catch(() => toast.error('Không thể tải dữ liệu game'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [levelId]);
 
   useEffect(() => {
@@ -143,7 +172,8 @@ function GamePlay() {
 
     const duration = Math.round((Date.now() - (startTimeRef.current || Date.now())) / 1000);
     try {
-      const res = await gameApi.submit({ levelId, answers: answersRef.current, duration });
+      const questionIds = levelData?.questions?.map(question => question.Id) || [];
+      const res = await gameApi.submit({ levelId, answers: answersRef.current, questionIds, duration });
       setResult(res.data);
     } catch {
       toast.error('Lỗi gửi kết quả');
@@ -247,8 +277,15 @@ function GamePlay() {
             <span><FiZap /> +{result.expEarned} EXP</span>
           </div>
 
+          <ExpReward reward={result.expReward} fallbackExp={result.expEarned} />
+
           <div className="game-result-actions">
             <button className="btn btn-secondary" onClick={() => navigate('/games')}><FiArrowLeft /> Quay lại</button>
+            {result.passed && nextLevel && (
+              <button className="btn btn-primary" onClick={() => navigate(`/games/play/${nextLevel.Id}`)}>
+                Level tiếp theo <FiArrowRight />
+              </button>
+            )}
             <button className="btn btn-primary" onClick={() => window.location.reload()}><FiRefreshCw /> Chơi lại</button>
           </div>
         </motion.section>
@@ -257,11 +294,6 @@ function GamePlay() {
   }
 
   if (!gameStarted) {
-    const typeCounts = {};
-    questions.forEach(question => {
-      typeCounts[question.QuestionType] = (typeCounts[question.QuestionType] || 0) + 1;
-    });
-
     return (
       <div className="game-play-shell">
         <motion.section
@@ -272,14 +304,6 @@ function GamePlay() {
           <div className="game-start-icon">🎮</div>
           <span className="game-kicker">Sẵn sàng vào màn</span>
           <h1>{level.Name}</h1>
-
-          <div className="game-type-pills">
-            {Object.entries(typeCounts).map(([type, count]) => (
-              <span key={type}>
-                {TYPE_LABELS[type]?.icon} {TYPE_LABELS[type]?.label} ({count})
-              </span>
-            ))}
-          </div>
 
           <div className="game-start-stats">
             <span><FiClock /> {level.TimeLimit}s</span>

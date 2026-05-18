@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiArrowLeft, FiRefreshCw, FiArrowRight, FiVolume2, FiSettings, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiRefreshCw, FiArrowRight, FiVolume2, FiSettings, FiX, FiCpu } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 import { speakingApi } from '../../api/speakingApi';
 import ProgressBar from './ProgressBar';
 import Recorder from './Recorder';
 import Loading from '../common/Loading';
+import ExpReward from '../common/ExpReward';
 
 const SpeakingLesson = () => {
   const { id, sessionId } = useParams();
@@ -17,6 +18,9 @@ const SpeakingLesson = () => {
   const [loading, setLoading] = useState(true);
   const [lessonData, setLessonData] = useState(null);
   const [sentences, setSentences] = useState([]);
+  const [nextLesson, setNextLesson] = useState(null);
+  const [showCompletion, setShowCompletion] = useState(false);
+  const [expReward, setExpReward] = useState(null);
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -55,20 +59,44 @@ const SpeakingLesson = () => {
   };
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLessonData(null);
+    setSentences([]);
+    setNextLesson(null);
+    setShowCompletion(false);
+    setExpReward(null);
+    setCurrentIndex(0);
+    setResult(null);
+
     const request = isPersonalized
       ? speakingApi.getPersonalizedLesson(sessionId)
       : speakingApi.getLessonDetails(id);
 
-    request
-      .then(res => {
+    Promise.all([
+      request,
+      isPersonalized ? Promise.resolve(null) : speakingApi.getLessons().catch(() => null)
+    ])
+      .then(([res, lessonsRes]) => {
+        if (cancelled) return;
         setLessonData(res.data.lesson);
         setSentences(res.data.sentences || []);
+
+        const lessons = lessonsRes?.data?.lessons || [];
+        const currentLessonIndex = lessons.findIndex(lesson => String(lesson.id) === String(id));
+        setNextLesson(currentLessonIndex >= 0 ? lessons[currentLessonIndex + 1] || null : null);
       })
       .catch(err => {
         toast.error(isPersonalized ? 'Bài luyện AI đã hết hạn hoặc không tồn tại' : 'Lỗi tải chủ đề');
         console.error(err);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, sessionId, isPersonalized]);
 
   const currentSentence = sentences[currentIndex];
@@ -154,6 +182,11 @@ const SpeakingLesson = () => {
   };
 
   const handleNext = async (auto = false) => {
+    if (!auto && (!result || result.score < passThreshold)) {
+      toast.error(`Bạn cần đạt tối thiểu ${passThreshold}% để qua câu này.`);
+      return;
+    }
+
     setCurrentIndex(prevIndex => {
       if (prevIndex + 1 < sentences.length) {
         setResult(null);
@@ -163,13 +196,16 @@ const SpeakingLesson = () => {
         setLoading(true);
         if (isPersonalized) {
           toast.success('Bạn đã hoàn thành bài luyện nói AI!');
-          navigate('/speaking/options');
+          setShowCompletion(true);
+          setLoading(false);
           return prevIndex;
         }
         speakingApi.saveProgress({ lessonId: id, completed: true })
-          .then(() => {
+          .then((res) => {
+            setExpReward(res.data?.expReward || null);
             toast.success('Chúc mừng! Bạn đã hoàn thành chủ đề!');
-            navigate('/speaking/lessons');
+            setShowCompletion(true);
+            setLoading(false);
           })
           .catch(err => {
             toast.error('Lỗi lưu tiến độ');
@@ -181,15 +217,56 @@ const SpeakingLesson = () => {
   };
 
   if (loading) return <Loading />;
+  if (showCompletion) {
+    const completionTitle = isPersonalized ? 'Hoàn thành bài luyện nói AI' : 'Hoàn thành chủ đề Speaking';
+
+    return (
+      <div className="fade-in" style={{ maxWidth: 760, margin: '0 auto', paddingBottom: 'var(--space-12)' }}>
+        <div className="card" style={{ padding: 'var(--space-8)', textAlign: 'center', display: 'grid', gap: 'var(--space-5)' }}>
+          <div>
+            <div style={{ color: 'var(--color-primary)', fontWeight: 700, marginBottom: 'var(--space-2)' }}>
+              {completionTitle}
+            </div>
+            <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, margin: 0 }}>
+              {lessonData?.title}
+            </h1>
+          </div>
+
+          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn btn-secondary" onClick={() => navigate('/speaking/options')}>
+              <FiArrowLeft /> Thoát
+            </button>
+            {isPersonalized && (
+              <button className="btn btn-primary" onClick={() => navigate('/speaking/ai')}>
+                <FiCpu /> Tạo bài nói khác
+              </button>
+            )}
+            {!isPersonalized && (
+              <button className="btn btn-secondary" onClick={() => navigate('/speaking/lessons')}>
+                <FiArrowLeft /> Về danh sách
+              </button>
+            )}
+            {!isPersonalized && nextLesson && (
+              <button className="btn btn-primary" onClick={() => navigate(`/speaking/lessons/${nextLesson.id}`)}>
+                Bài tiếp theo <FiArrowRight />
+              </button>
+            )}
+          </div>
+
+          {!isPersonalized && <ExpReward reward={expReward} />}
+        </div>
+      </div>
+    );
+  }
   if (!currentSentence) return <div style={{ textAlign: 'center', padding: 'var(--space-12)' }}>Chủ đề không có dữ liệu.</div>;
 
   const isPassed = result && result.score >= passThreshold;
 
   return (
-    <div className="fade-in" style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 'var(--space-12)', position: 'relative' }}>
+    <div className="fade-in speaking-lesson-shell" style={{ maxWidth: 860, margin: '0 auto', paddingBottom: 'var(--space-4)', position: 'relative' }}>
       
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
         <button className="btn btn-ghost btn-sm" onClick={() => navigate(isPersonalized ? '/speaking/options' : '/speaking/lessons')} style={{ padding: 0 }}>
           <FiArrowLeft /> Thoát
         </button>
@@ -198,12 +275,12 @@ const SpeakingLesson = () => {
         </button>
       </div>
 
-      <ProgressBar current={currentIndex + 1} total={sentences.length} />
+      <ProgressBar current={currentIndex + 1} total={sentences.length} compact />
 
       {lessonData && (
-        <div style={{ marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           <div>
-            <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, margin: 0 }}>{lessonData.title}</h1>
+            <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>{lessonData.title}</h1>
             {lessonData.description && (
               <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>{lessonData.description}</div>
             )}
@@ -217,32 +294,32 @@ const SpeakingLesson = () => {
       )}
 
       {/* Main Card */}
-      <div className="card" style={{ padding: 'var(--space-8)', textAlign: 'center', minHeight: 400, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div className="card speaking-lesson-card" style={{ padding: 'var(--space-5)', textAlign: 'center', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         
         {/* Step 1: Show Question & Options */}
-        <div style={{ marginBottom: 'var(--space-8)' }}>
-          <div style={{ color: 'var(--color-primary)', fontWeight: 600, marginBottom: 'var(--space-2)' }}>Câu hỏi:</div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
-            <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <div style={{ color: 'var(--color-primary)', fontWeight: 600, marginBottom: 'var(--space-1)' }}>Câu hỏi:</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
+            <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.25 }}>
               "{currentSentence.question}"
             </h2>
             <button 
               onClick={() => playTTS(currentSentence.question)} 
               className="btn btn-ghost" 
-              style={{ padding: 8, borderRadius: '50%', color: 'var(--color-primary)' }}
+              style={{ padding: 6, borderRadius: '50%', color: 'var(--color-primary)' }}
               title="Nghe mẫu"
             >
               <FiVolume2 size={24} />
             </button>
           </div>
           {currentSentence.translation && (
-            <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 'var(--space-6)' }}>
+            <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', fontStyle: 'italic', marginBottom: 'var(--space-3)' }}>
               ({currentSentence.translation})
             </div>
           )}
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', alignItems: 'center' }}>
-            <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', alignItems: 'center' }}>
+            <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 0 }}>
               Hãy chọn và đọc một trong các câu trả lời sau:
             </div>
             {currentSentence.options?.map((opt, idx) => {
@@ -251,13 +328,13 @@ const SpeakingLesson = () => {
                return (
                  <div key={idx} style={{ 
                    display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
-                   padding: '12px 24px', 
+                   padding: '9px 18px',
                    borderRadius: 'var(--radius-lg)', 
                    border: isMatched ? '2px solid #10b981' : '1px solid var(--color-border)',
                    background: isMatched ? 'rgba(16,185,129,0.1)' : 'var(--color-bg-secondary)',
                    color: isMatched ? '#059669' : 'var(--color-text)',
                    fontWeight: 600,
-                   fontSize: 'var(--font-size-lg)',
+                   fontSize: 'var(--font-size-base)',
                    opacity: opacity,
                    transition: 'all 0.3s',
                    cursor: 'pointer',
@@ -282,7 +359,7 @@ const SpeakingLesson = () => {
         </div>
 
         {/* Step 2: Recording or Reviewing */}
-        <div style={{ minHeight: 180, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ minHeight: 118, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <AnimatePresence mode="wait">
             {!result ? (
               <motion.div key="recording" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
@@ -331,18 +408,19 @@ const SpeakingLesson = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', marginTop: 'var(--space-4)', flexWrap: 'wrap' }}>
-                  {!isPassed && (
+                  {!isPassed ? (
                     <button className="btn btn-secondary" onClick={handleRetry} style={{ minWidth: 140 }}>
                       <FiRefreshCw /> Thử lại
                     </button>
+                  ) : (
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleNext()}
+                      style={{ minWidth: 120 }}
+                    >
+                      Tiếp tục <FiArrowRight />
+                    </button>
                   )}
-                  <button 
-                    className={isPassed ? 'btn btn-primary' : 'btn btn-outline'} 
-                    onClick={() => handleNext()} 
-                    style={{ minWidth: 120 }}
-                  >
-                    {isPassed ? 'Tiếp tục' : 'Bỏ qua'} <FiArrowRight />
-                  </button>
                 </div>
               </motion.div>
             )}

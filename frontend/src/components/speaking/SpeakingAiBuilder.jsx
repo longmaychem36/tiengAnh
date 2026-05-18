@@ -24,7 +24,7 @@ function SpeakingAiBuilder() {
   const [topic, setTopic] = useState(AI_TOPIC_OPTIONS[0]);
   const [goal, setGoal] = useState('');
   const [level, setLevel] = useState('beginner');
-  const [questionCount, setQuestionCount] = useState(5);
+  const [questionCount, setQuestionCount] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
@@ -69,7 +69,6 @@ function SpeakingAiBuilder() {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', alignItems: 'flex-start', marginBottom: 'var(--space-6)' }}>
           <div>
             <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, marginBottom: 6 }}>Tạo bài nói bằng AI</h1>
-            <p style={{ color: 'var(--color-text-secondary)' }}>Sinh câu hỏi và câu trả lời tạm thời theo chủ đề bạn chọn.</p>
           </div>
           <span className={canUseAi ? 'badge badge-success' : 'badge badge-warning'}>
             {canUseAi ? 'PLUS' : 'Cần Plus'}
@@ -110,9 +109,9 @@ function SpeakingAiBuilder() {
           <div>
             <label className="form-label">Số câu</label>
             <select className="form-input" value={questionCount} onChange={(e) => setQuestionCount(Number(e.target.value))} disabled={!canUseAi || isGenerating}>
-              <option value={3}>3 câu</option>
+              <option value={3}>3 câu - nhanh</option>
               <option value={5}>5 câu</option>
-              <option value={8}>8 câu</option>
+              <option value={8}>8 câu - lâu hơn</option>
             </select>
           </div>
         </div>

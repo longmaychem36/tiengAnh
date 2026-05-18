@@ -11,8 +11,6 @@ import { progressApi, gamificationApi } from '../api/progressApi';
 import Loading from '../components/common/Loading';
 import { calcPercentage } from '../utils/helpers';
 
-const levelMilestones = [0, 100, 250, 500, 1000, 1800, 2800, 4000, 5500, 7500, 10000];
-
 function number(value) {
   return Number(value || 0);
 }
@@ -46,10 +44,8 @@ function Progress() {
     const level = number(gameStats?.Level) || 1;
     const streak = number(gameStats?.StreakDays);
     const levelProgress = Math.max(0, Math.min(100, number(gameStats?.levelProgress)));
-    const nextLevelExp = levelMilestones[level] || levelMilestones[levelMilestones.length - 1];
-    const prevLevelExp = levelMilestones[level - 1] || 0;
-    const currentLevelExp = Math.max(0, exp - prevLevelExp);
-    const requiredLevelExp = Math.max(1, nextLevelExp - prevLevelExp);
+    const currentLevelExp = number(gameStats?.currentLevelExp);
+    const requiredLevelExp = number(gameStats?.requiredLevelExp);
 
     return {
       completedLessons,
@@ -66,7 +62,7 @@ function Progress() {
       levelProgress,
       currentLevelExp,
       requiredLevelExp,
-      expToNextLevel: Math.max(0, nextLevelExp - exp)
+      expToNextLevel: number(gameStats?.expToNextLevel)
     };
   }, [overall, gameStats]);
 

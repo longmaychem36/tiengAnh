@@ -44,9 +44,9 @@ const gameController = {
   // POST /games/submit — submit answers for a level
   async submit(req, res, next) {
     try {
-      const { levelId, answers, duration } = req.body;
+      const { levelId, answers, questionIds, duration } = req.body;
       if (!levelId || !answers) return badRequest(res, 'levelId and answers are required');
-      const result = await gameService.submitLevel(req.user.id, levelId, answers, duration);
+      const result = await gameService.submitLevel(req.user.id, levelId, answers, duration, questionIds);
       return success(res, result, `Score: ${result.score}% | ${result.stars}⭐ | +${result.expEarned} EXP`);
     } catch (err) { next(err); }
   }

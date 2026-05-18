@@ -1,10 +1,33 @@
 // ============================================
 // Courses Hub - 4 Skills + Mini Games
 // ============================================
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiBookOpen, FiEdit3, FiHeadphones, FiLock, FiMic, FiZap } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+
+const SKILL_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
+
+function SkillImage({ skill }) {
+  const [extensionIndex, setExtensionIndex] = useState(0);
+  const Icon = skill.icon;
+  const imageSrc = `/skills/${skill.id}.${SKILL_IMAGE_EXTENSIONS[extensionIndex]}`;
+
+  if (extensionIndex >= SKILL_IMAGE_EXTENSIONS.length) {
+    return <span className="lingo-skill-icon"><Icon /></span>;
+  }
+
+  return (
+    <span className="lingo-skill-image">
+      <img
+        src={imageSrc}
+        alt={`${skill.subtitle} illustration`}
+        onError={() => setExtensionIndex((index) => index + 1)}
+      />
+    </span>
+  );
+}
 
 function CoursesHub() {
   const navigate = useNavigate();
@@ -48,7 +71,7 @@ function CoursesHub() {
             onClick={() => handleSelectSkill(skill)}
           >
             {!skill.ready && <span className="lingo-lock-badge"><FiLock /> Sắp ra mắt</span>}
-            <span className="lingo-skill-icon"><skill.icon /></span>
+            <SkillImage skill={skill} />
             <span className="lingo-skill-subtitle">{skill.subtitle}</span>
             <strong>{skill.name}</strong>
             <p>{skill.desc}</p>

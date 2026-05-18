@@ -231,9 +231,6 @@ function Collections() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="card" style={{ width: 400 }}>
             <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>Add Custom Word</h3>
-            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)' }}>
-              Tip: You can also add words directly from the Dictionary page.
-            </p>
             <form onSubmit={handleAddCustomWord}>
               <div className="form-group">
                 <label className="form-label">Word/Phrase</label>
