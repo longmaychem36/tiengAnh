@@ -10,6 +10,7 @@ import { progressApi } from '../api/progressApi';
 import toast from 'react-hot-toast';
 import Loading from '../components/common/Loading';
 import ExpReward from '../components/common/ExpReward';
+import { playTrackedAudio, stopAllPlayback } from '../utils/audioControl';
 
 function LessonPage() {
   const { id } = useParams();
@@ -53,6 +54,7 @@ function LessonPage() {
 
     return () => {
       cancelled = true;
+      stopAllPlayback();
     };
   }, [id]);
 
@@ -120,7 +122,7 @@ function LessonPage() {
                     {v.Example && <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 4, fontStyle: 'italic' }}>"{v.Example}"</p>}
                   </div>
                   {v.AudioUrl && (
-                    <button className="btn btn-icon btn-ghost" onClick={() => new Audio(v.AudioUrl).play()}>
+                    <button className="btn btn-icon btn-ghost" onClick={() => playTrackedAudio(v.AudioUrl)}>
                       <FiVolume2 size={18} />
                     </button>
                   )}

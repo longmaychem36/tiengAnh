@@ -147,6 +147,124 @@ router.delete('/writing/vocab/:id', requireRole('admin'), async (req, res, next)
   } catch (err) { next(err); }
 });
 
+function registerReceptiveAdminRoutes(skill, contentPath, itemName) {
+  router.get(`/${skill}/lessons`, requireRole('admin'), async (req, res, next) => {
+    try {
+      const data = await adminContentService.getReceptiveLessons(skill);
+      return success(res, data);
+    } catch (err) { next(err); }
+  });
+
+  router.post(`/${skill}/lessons`, requireRole('admin'), async (req, res, next) => {
+    try {
+      const data = await adminContentService.createReceptiveLesson(skill, req.body);
+      return success(res, data, 'Lesson created');
+    } catch (err) { next(err); }
+  });
+
+  router.put(`/${skill}/lessons/:id`, requireRole('admin'), async (req, res, next) => {
+    try {
+      await adminContentService.updateReceptiveLesson(skill, req.params.id, req.body);
+      return success(res, null, 'Lesson updated');
+    } catch (err) { next(err); }
+  });
+
+  router.delete(`/${skill}/lessons/:id`, requireRole('admin'), async (req, res, next) => {
+    try {
+      await adminContentService.deleteReceptiveLesson(skill, req.params.id);
+      return success(res, null, 'Lesson deleted');
+    } catch (err) { next(err); }
+  });
+
+  router.get(`/${skill}/lessons/:id/${contentPath}`, requireRole('admin'), async (req, res, next) => {
+    try {
+      const data = await adminContentService.getReceptiveContent(skill, req.params.id);
+      return success(res, data);
+    } catch (err) { next(err); }
+  });
+
+  router.post(`/${skill}/${contentPath}`, requireRole('admin'), async (req, res, next) => {
+    try {
+      const data = await adminContentService.createReceptiveContent(skill, req.body);
+      return success(res, data, `${itemName} created`);
+    } catch (err) { next(err); }
+  });
+
+  router.put(`/${skill}/${contentPath}/:id`, requireRole('admin'), async (req, res, next) => {
+    try {
+      await adminContentService.updateReceptiveContent(skill, req.params.id, req.body);
+      return success(res, null, `${itemName} updated`);
+    } catch (err) { next(err); }
+  });
+
+  router.delete(`/${skill}/${contentPath}/:id`, requireRole('admin'), async (req, res, next) => {
+    try {
+      await adminContentService.deleteReceptiveContent(skill, req.params.id);
+      return success(res, null, `${itemName} deleted`);
+    } catch (err) { next(err); }
+  });
+
+  router.get(`/${skill}/lessons/:id/vocab`, requireRole('admin'), async (req, res, next) => {
+    try {
+      const data = await adminContentService.getReceptiveVocab(skill, req.params.id);
+      return success(res, data);
+    } catch (err) { next(err); }
+  });
+
+  router.post(`/${skill}/vocab`, requireRole('admin'), async (req, res, next) => {
+    try {
+      const data = await adminContentService.createReceptiveVocab(skill, req.body);
+      return success(res, data, 'Vocab created');
+    } catch (err) { next(err); }
+  });
+
+  router.put(`/${skill}/vocab/:id`, requireRole('admin'), async (req, res, next) => {
+    try {
+      await adminContentService.updateReceptiveVocab(skill, req.params.id, req.body);
+      return success(res, null, 'Vocab updated');
+    } catch (err) { next(err); }
+  });
+
+  router.delete(`/${skill}/vocab/:id`, requireRole('admin'), async (req, res, next) => {
+    try {
+      await adminContentService.deleteReceptiveVocab(skill, req.params.id);
+      return success(res, null, 'Vocab deleted');
+    } catch (err) { next(err); }
+  });
+
+  router.get(`/${skill}/lessons/:id/questions`, requireRole('admin'), async (req, res, next) => {
+    try {
+      const data = await adminContentService.getReceptiveQuestions(skill, req.params.id);
+      return success(res, data);
+    } catch (err) { next(err); }
+  });
+
+  router.post(`/${skill}/questions`, requireRole('admin'), async (req, res, next) => {
+    try {
+      const data = await adminContentService.createReceptiveQuestion(skill, req.body);
+      return success(res, data, 'Question created');
+    } catch (err) { next(err); }
+  });
+
+  router.put(`/${skill}/questions/:id`, requireRole('admin'), async (req, res, next) => {
+    try {
+      await adminContentService.updateReceptiveQuestion(skill, req.params.id, req.body);
+      return success(res, null, 'Question updated');
+    } catch (err) { next(err); }
+  });
+
+  router.delete(`/${skill}/questions/:id`, requireRole('admin'), async (req, res, next) => {
+    try {
+      await adminContentService.deleteReceptiveQuestion(skill, req.params.id);
+      return success(res, null, 'Question deleted');
+    } catch (err) { next(err); }
+  });
+}
+
+// ========== LISTENING / READING MANAGEMENT (admin + superadmin) ==========
+registerReceptiveAdminRoutes('listening', 'segments', 'Segment');
+registerReceptiveAdminRoutes('reading', 'paragraphs', 'Paragraph');
+
 // ========== GRAMMAR MANAGEMENT (admin + superadmin) ==========
 router.get('/grammar/categories', requireRole('admin'), async (req, res, next) => {
   try {
@@ -312,20 +430,31 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
   try {
     const { getPool } = require('../../config/database');
     const pool = getPool();
+    const countTable = async (tableName) => {
+      try {
+        return await pool.query(`SELECT count(*) as count FROM ${tableName}`);
+      } catch (err) {
+        return { rows: [{ count: 0 }] };
+      }
+    };
     const queries = await Promise.all([
-      pool.query('SELECT count(*) as count FROM Users'),
+      countTable('Users'),
       pool.query("SELECT count(*) as count FROM Users WHERE isactive = true"),
       pool.query("SELECT count(*) as count FROM Users WHERE createdat >= NOW() - INTERVAL '7 days'"),
-      pool.query('SELECT count(*) as count FROM Courses'),
-      pool.query('SELECT count(*) as count FROM GameSets'),
-      pool.query('SELECT count(*) as count FROM GameLevels'),
-      pool.query('SELECT count(*) as count FROM MiniGameQuestions'),
-      pool.query('SELECT count(*) as count FROM SpeakingLessons'),
-      pool.query('SELECT count(*) as count FROM SpeakingQuestions'),
-      pool.query('SELECT count(*) as count FROM WritingLessons'),
-      pool.query('SELECT count(*) as count FROM WritingExercises'),
-      pool.query('SELECT count(*) as count FROM GrammarCategories'),
-      pool.query('SELECT count(*) as count FROM GrammarTopics'),
+      countTable('Courses'),
+      countTable('GameSets'),
+      countTable('GameLevels'),
+      countTable('MiniGameQuestions'),
+      countTable('SpeakingLessons'),
+      countTable('SpeakingQuestions'),
+      countTable('WritingLessons'),
+      countTable('WritingExercises'),
+      countTable('GrammarCategories'),
+      countTable('GrammarTopics'),
+      countTable('ListeningLessons'),
+      countTable('ListeningQuestions'),
+      countTable('ReadingLessons'),
+      countTable('ReadingQuestions'),
     ]);
     const stats = {
       totalUsers: parseInt(queries[0].rows[0].count),
@@ -341,6 +470,10 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       totalWritingExercises: parseInt(queries[10].rows[0].count),
       totalGrammarCategories: parseInt(queries[11].rows[0].count),
       totalGrammarTopics: parseInt(queries[12].rows[0].count),
+      totalListeningLessons: parseInt(queries[13].rows[0].count),
+      totalListeningQuestions: parseInt(queries[14].rows[0].count),
+      totalReadingLessons: parseInt(queries[15].rows[0].count),
+      totalReadingQuestions: parseInt(queries[16].rows[0].count),
     };
     return success(res, stats);
   } catch (err) { next(err); }

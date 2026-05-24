@@ -2,6 +2,7 @@
 // Axios Client — HTTP Instance + Interceptors
 // ============================================
 import axios from 'axios';
+import { stopAllPlayback } from '../utils/audioControl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
@@ -28,6 +29,7 @@ axiosClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
+      stopAllPlayback();
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       if (window.location.pathname !== '/login') {

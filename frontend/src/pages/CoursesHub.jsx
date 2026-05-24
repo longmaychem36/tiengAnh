@@ -33,9 +33,9 @@ function CoursesHub() {
   const navigate = useNavigate();
 
   const skills = [
-    { id: 'listening', name: 'Nghe', subtitle: 'Listening', icon: FiHeadphones, desc: 'Luyện nghe hiểu qua hội thoại và bài test.', color: '#0e7490', ready: false },
+    { id: 'listening', name: 'Nghe', subtitle: 'Listening', icon: FiHeadphones, desc: 'Luyện nghe hiểu qua hội thoại và bài test.', color: '#0e7490', ready: true },
     { id: 'speaking', name: 'Nói', subtitle: 'Speaking', icon: FiMic, desc: 'Luyện phát âm, ghi âm và chấm điểm.', color: '#0f766e', ready: true },
-    { id: 'reading', name: 'Đọc', subtitle: 'Reading', icon: FiBookOpen, desc: 'Mở rộng vốn từ và đọc hiểu.', color: '#0e7490', ready: false },
+    { id: 'reading', name: 'Đọc', subtitle: 'Reading', icon: FiBookOpen, desc: 'Mở rộng vốn từ và đọc hiểu.', color: '#7c3aed', ready: true },
     { id: 'writing', name: 'Viết', subtitle: 'Writing', icon: FiEdit3, desc: 'Ghép câu, ngữ pháp và viết đoạn văn.', color: '#0f766e', ready: true },
     { id: 'games', name: 'Mini Games', subtitle: 'Arcade', icon: FiZap, desc: 'Ôn tập qua nối từ, nghe chọn và đúng/sai.', color: '#0e7490', ready: true }
   ];
@@ -45,7 +45,9 @@ function CoursesHub() {
       toast('Khóa học này đang được phát triển!', { icon: '🔒' });
       return;
     }
-    if (skill.id === 'speaking') navigate('/speaking/options');
+    if (skill.id === 'listening') navigate('/listening/lessons');
+    else if (skill.id === 'speaking') navigate('/speaking/options');
+    else if (skill.id === 'reading') navigate('/reading/lessons');
     else if (skill.id === 'writing') navigate('/writing/lessons');
     else if (skill.id === 'games') navigate('/games');
   };

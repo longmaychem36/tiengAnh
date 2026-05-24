@@ -17,6 +17,7 @@ import { dictionaryApi } from '../api/dictionaryApi';
 import { collectionApi } from '../api/collectionApi';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../hooks/useAuth';
+import { playTrackedAudio, speakText as speakWithBrowser, stopAllPlayback } from '../utils/audioControl';
 
 const getErrorMessage = (err, fallback) => err?.message || err?.errors?.[0]?.msg || fallback;
 
@@ -87,7 +88,10 @@ function Dictionary() {
       }
     };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      stopAllPlayback();
+    };
   }, []);
 
   useEffect(() => {
@@ -216,12 +220,7 @@ function Dictionary() {
   };
 
   const speakText = (text, lang = 'en-US') => {
-    if (!text || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+    speakWithBrowser(text, { lang, rate: 0.9 });
   };
 
   const playAudio = (url, text) => {
@@ -229,9 +228,7 @@ function Dictionary() {
       speakText(text);
       return;
     }
-    const audio = new Audio(url);
-    audio.onerror = () => speakText(text);
-    audio.play().catch(() => speakText(text));
+    playTrackedAudio(url, () => speakText(text));
   };
 
   const copyTranslation = async () => {

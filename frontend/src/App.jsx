@@ -1,8 +1,10 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Layout from './components/layout/Layout';
 import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import { stopAllPlayback } from './utils/audioControl';
 
 // Pages
 import Home from './pages/Home';
@@ -29,6 +31,10 @@ import SpeakingOptions from './components/speaking/SpeakingOptions';
 import SpeakingAiBuilder from './components/speaking/SpeakingAiBuilder';
 import WritingList from './components/writing/WritingList';
 import WritingLesson from './components/writing/WritingLesson';
+import ListeningList from './components/listening/ListeningList';
+import ListeningLesson from './components/listening/ListeningLesson';
+import ReadingList from './components/reading/ReadingList';
+import ReadingLesson from './components/reading/ReadingLesson';
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -39,11 +45,32 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminSpeaking from './pages/admin/AdminSpeaking';
 import AdminWriting from './pages/admin/AdminWriting';
 import AdminGrammar from './pages/admin/AdminGrammar';
+import AdminReceptive from './pages/admin/AdminReceptive';
 
 function App() {
   const { user } = useAuth();
+  const location = useLocation();
   const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
   const isSuperAdmin = user && user.role === 'superadmin';
+
+  useEffect(() => {
+    stopAllPlayback();
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const stopWhenHidden = () => {
+      if (document.hidden) stopAllPlayback();
+    };
+
+    document.addEventListener('visibilitychange', stopWhenHidden);
+    window.addEventListener('pagehide', stopAllPlayback);
+
+    return () => {
+      document.removeEventListener('visibilitychange', stopWhenHidden);
+      window.removeEventListener('pagehide', stopAllPlayback);
+      stopAllPlayback();
+    };
+  }, []);
 
   return (
     <Routes>
@@ -67,6 +94,10 @@ function App() {
         <Route path="/speaking/personalized/:sessionId" element={<SpeakingLesson />} />
         <Route path="/writing/lessons" element={<WritingList />} />
         <Route path="/writing/lessons/:id" element={<WritingLesson />} />
+        <Route path="/listening/lessons" element={<ListeningList />} />
+        <Route path="/listening/lessons/:id" element={<ListeningLesson />} />
+        <Route path="/reading/lessons" element={<ReadingList />} />
+        <Route path="/reading/lessons/:id" element={<ReadingLesson />} />
         
         <Route path="/lessons/:id" element={<LessonPage />} />
         <Route path="/dictionary" element={<Dictionary />} />
@@ -85,6 +116,8 @@ function App() {
         <Route path="/admin/courses/:courseId/lessons" element={<AdminLessons />} />
         <Route path="/admin/speaking" element={<AdminSpeaking />} />
         <Route path="/admin/writing" element={<AdminWriting />} />
+        <Route path="/admin/listening" element={<AdminReceptive skill="listening" />} />
+        <Route path="/admin/reading" element={<AdminReceptive skill="reading" />} />
         <Route path="/admin/grammar" element={<AdminGrammar />} />
         <Route path="/admin/games" element={<AdminGames />} />
         <Route path="/admin/users" element={<AdminUsers />} />
