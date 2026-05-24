@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import {
   FiUsers, FiBook, FiPlay, FiMic, FiEdit3,
   FiBookOpen, FiArrowRight, FiTrendingUp,
-  FiUserPlus, FiLayers, FiHelpCircle
+  FiUserPlus, FiLayers, FiHelpCircle, FiHeadphones
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import { adminApi } from '../../api/adminApi';
@@ -35,6 +35,8 @@ function AdminDashboard() {
   ];
 
   const contentCards = [
+    { icon: <FiHeadphones size={20} />, label: 'Listening', count: stats?.totalListeningLessons || 0, sub: `${stats?.totalListeningQuestions || 0} câu hỏi`, to: '/admin/listening', color: '#0e7490' },
+    { icon: <FiBookOpen size={20} />, label: 'Reading', count: stats?.totalReadingLessons || 0, sub: `${stats?.totalReadingQuestions || 0} câu hỏi`, to: '/admin/reading', color: '#7c3aed' },
     { icon: <FiMic size={20} />, label: 'Speaking', count: stats?.totalSpeakingLessons || 0, sub: `${stats?.totalSpeakingQuestions || 0} câu hỏi`, to: '/admin/speaking', color: '#f59e0b' },
     { icon: <FiEdit3 size={20} />, label: 'Writing', count: stats?.totalWritingLessons || 0, sub: `${stats?.totalWritingExercises || 0} bài tập`, to: '/admin/writing', color: '#10b981' },
     { icon: <FiBookOpen size={20} />, label: 'Grammar', count: stats?.totalGrammarCategories || 0, sub: `${stats?.totalGrammarTopics || 0} chủ đề`, to: '/admin/grammar', color: '#6366f1' },
@@ -42,6 +44,8 @@ function AdminDashboard() {
   ];
 
   const quickActions = [
+    { icon: <FiHeadphones size={18} />, label: 'Quản lý Listening', desc: 'Bài nghe, transcript, từ vựng & câu hỏi', to: '/admin/listening', color: '#0e7490' },
+    { icon: <FiBookOpen size={18} />, label: 'Quản lý Reading', desc: 'Bài đọc, đoạn văn, từ vựng & câu hỏi', to: '/admin/reading', color: '#7c3aed' },
     { icon: <FiBook size={18} />, label: 'Quản lý khóa học', desc: 'Thêm, sửa, xóa khóa học & bài học', to: '/admin/courses', color: '#8b5cf6' },
     { icon: <FiMic size={18} />, label: 'Quản lý Speaking', desc: 'Quản lý bài & câu hỏi speaking', to: '/admin/speaking', color: '#f59e0b' },
     { icon: <FiEdit3 size={18} />, label: 'Quản lý Writing', desc: 'Quản lý bài & bài tập writing', to: '/admin/writing', color: '#10b981' },

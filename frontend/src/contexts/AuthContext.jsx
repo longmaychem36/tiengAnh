@@ -3,6 +3,7 @@
 // ============================================
 import { createContext, useState, useEffect } from 'react';
 import { authApi } from '../api/authApi';
+import { stopAllPlayback } from '../utils/audioControl';
 
 export const AuthContext = createContext(null);
 
@@ -22,6 +23,7 @@ export function AuthProvider({ children }) {
           localStorage.setItem('user', JSON.stringify(res.data));
         })
         .catch(() => {
+          stopAllPlayback();
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           setUser(null);
@@ -51,6 +53,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    stopAllPlayback();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);

@@ -1,5 +1,94 @@
 const { getPool, sql } = require('../../config/database');
 
+const RECEPTIVE_CONFIG = {
+  listening: {
+    lessonTable: 'ListeningLessons',
+    contentTable: 'ListeningSegments',
+    vocabTable: 'ListeningVocabulary',
+    questionTable: 'ListeningQuestions',
+    contentLabel: 'segments'
+  },
+  reading: {
+    lessonTable: 'ReadingLessons',
+    contentTable: 'ReadingParagraphs',
+    vocabTable: 'ReadingVocabulary',
+    questionTable: 'ReadingQuestions',
+    contentLabel: 'paragraphs'
+  }
+};
+
+function getReceptiveConfig(skill) {
+  const config = RECEPTIVE_CONFIG[skill];
+  if (!config) throw new Error(`Unsupported receptive skill: ${skill}`);
+  return config;
+}
+
+function mapLesson(row) {
+  return {
+    Id: row.id,
+    Title: row.title,
+    Description: row.description,
+    Level: row.level,
+    Topic: row.topic,
+    Objective: row.objective,
+    Duration: row.duration,
+    PassageTitle: row.passagetitle,
+    AudioUrl: row.audiourl,
+    OrderIndex: row.orderindex,
+    CreatedAt: row.createdat,
+    UpdatedAt: row.updatedat
+  };
+}
+
+function mapContent(skill, row) {
+  if (skill === 'listening') {
+    return {
+      Id: row.id,
+      LessonId: row.lessonid,
+      Speaker: row.speaker,
+      Text: row.text,
+      StartSecond: row.startsecond,
+      EndSecond: row.endsecond,
+      OrderIndex: row.orderindex
+    };
+  }
+
+  return {
+    Id: row.id,
+    LessonId: row.lessonid,
+    Content: row.content,
+    OrderIndex: row.orderindex
+  };
+}
+
+function mapVocab(row) {
+  return {
+    Id: row.id,
+    LessonId: row.lessonid,
+    Word: row.word,
+    Meaning: row.meaning,
+    OrderIndex: row.orderindex
+  };
+}
+
+function mapQuestion(row) {
+  return {
+    Id: row.id,
+    LessonId: row.lessonid,
+    QuestionType: row.questiontype,
+    Prompt: row.prompt,
+    OptionA: row.optiona,
+    OptionB: row.optionb,
+    OptionC: row.optionc,
+    OptionD: row.optiond,
+    CorrectAnswer: row.correctanswer,
+    CorrectBoolean: row.correctboolean,
+    AcceptedAnswers: row.acceptedanswers,
+    Explanation: row.explanation,
+    OrderIndex: row.orderindex
+  };
+}
+
 const adminContentService = {
   // ========== SPEAKING MANAGEMENT ==========
   async getSpeakingLessons() {
@@ -202,6 +291,277 @@ const adminContentService = {
   async deleteWritingVocab(id) {
     const pool = getPool();
     await pool.request().input('id', sql.UniqueIdentifier, id).query(`DELETE FROM WritingVocab WHERE Id = @id`);
+  },
+
+  // ========== LISTENING / READING MANAGEMENT ==========
+  async getReceptiveLessons(skill) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    const res = await pool.query(`
+      SELECT *
+      FROM ${config.lessonTable}
+      ORDER BY OrderIndex ASC, CreatedAt ASC
+    `);
+    return res.rows.map(mapLesson);
+  },
+
+  async createReceptiveLesson(skill, data) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    const res = await pool.query(`
+      INSERT INTO ${config.lessonTable}
+        (Title, Description, Level, Topic, Objective, Duration, PassageTitle, AudioUrl, OrderIndex, UpdatedAt)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      RETURNING *
+    `, [
+      data.Title,
+      data.Description || '',
+      data.Level || 'A1',
+      data.Topic || '',
+      data.Objective || '',
+      data.Duration || '',
+      data.PassageTitle || '',
+      data.AudioUrl || '',
+      Number(data.OrderIndex || 0)
+    ]);
+    return mapLesson(res.rows[0]);
+  },
+
+  async updateReceptiveLesson(skill, id, data) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    await pool.query(`
+      UPDATE ${config.lessonTable}
+      SET Title = $1,
+          Description = $2,
+          Level = $3,
+          Topic = $4,
+          Objective = $5,
+          Duration = $6,
+          PassageTitle = $7,
+          AudioUrl = $8,
+          OrderIndex = $9,
+          UpdatedAt = NOW()
+      WHERE Id = $10
+    `, [
+      data.Title,
+      data.Description || '',
+      data.Level || 'A1',
+      data.Topic || '',
+      data.Objective || '',
+      data.Duration || '',
+      data.PassageTitle || '',
+      data.AudioUrl || '',
+      Number(data.OrderIndex || 0),
+      id
+    ]);
+  },
+
+  async deleteReceptiveLesson(skill, id) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    await pool.query(`DELETE FROM ${config.lessonTable} WHERE Id = $1`, [id]);
+  },
+
+  async getReceptiveContent(skill, lessonId) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    const res = await pool.query(`
+      SELECT *
+      FROM ${config.contentTable}
+      WHERE LessonId = $1
+      ORDER BY OrderIndex ASC
+    `, [lessonId]);
+    return res.rows.map((row) => mapContent(skill, row));
+  },
+
+  async createReceptiveContent(skill, data) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    let res;
+
+    if (skill === 'listening') {
+      res = await pool.query(`
+        INSERT INTO ${config.contentTable}
+          (LessonId, Speaker, Text, StartSecond, EndSecond, OrderIndex)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `, [
+        data.LessonId,
+        data.Speaker || '',
+        data.Text || '',
+        data.StartSecond === '' ? null : data.StartSecond,
+        data.EndSecond === '' ? null : data.EndSecond,
+        Number(data.OrderIndex || 0)
+      ]);
+    } else {
+      res = await pool.query(`
+        INSERT INTO ${config.contentTable}
+          (LessonId, Content, OrderIndex)
+        VALUES ($1, $2, $3)
+        RETURNING *
+      `, [
+        data.LessonId,
+        data.Content || '',
+        Number(data.OrderIndex || 0)
+      ]);
+    }
+
+    return mapContent(skill, res.rows[0]);
+  },
+
+  async updateReceptiveContent(skill, id, data) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+
+    if (skill === 'listening') {
+      await pool.query(`
+        UPDATE ${config.contentTable}
+        SET Speaker = $1, Text = $2, StartSecond = $3, EndSecond = $4, OrderIndex = $5
+        WHERE Id = $6
+      `, [
+        data.Speaker || '',
+        data.Text || '',
+        data.StartSecond === '' ? null : data.StartSecond,
+        data.EndSecond === '' ? null : data.EndSecond,
+        Number(data.OrderIndex || 0),
+        id
+      ]);
+      return;
+    }
+
+    await pool.query(`
+      UPDATE ${config.contentTable}
+      SET Content = $1, OrderIndex = $2
+      WHERE Id = $3
+    `, [data.Content || '', Number(data.OrderIndex || 0), id]);
+  },
+
+  async deleteReceptiveContent(skill, id) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    await pool.query(`DELETE FROM ${config.contentTable} WHERE Id = $1`, [id]);
+  },
+
+  async getReceptiveVocab(skill, lessonId) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    const res = await pool.query(`
+      SELECT *
+      FROM ${config.vocabTable}
+      WHERE LessonId = $1
+      ORDER BY OrderIndex ASC, Word ASC
+    `, [lessonId]);
+    return res.rows.map(mapVocab);
+  },
+
+  async createReceptiveVocab(skill, data) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    const res = await pool.query(`
+      INSERT INTO ${config.vocabTable}
+        (LessonId, Word, Meaning, OrderIndex)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [
+      data.LessonId,
+      data.Word || '',
+      data.Meaning || '',
+      Number(data.OrderIndex || 0)
+    ]);
+    return mapVocab(res.rows[0]);
+  },
+
+  async updateReceptiveVocab(skill, id, data) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    await pool.query(`
+      UPDATE ${config.vocabTable}
+      SET Word = $1, Meaning = $2, OrderIndex = $3
+      WHERE Id = $4
+    `, [data.Word || '', data.Meaning || '', Number(data.OrderIndex || 0), id]);
+  },
+
+  async deleteReceptiveVocab(skill, id) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    await pool.query(`DELETE FROM ${config.vocabTable} WHERE Id = $1`, [id]);
+  },
+
+  async getReceptiveQuestions(skill, lessonId) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    const res = await pool.query(`
+      SELECT *
+      FROM ${config.questionTable}
+      WHERE LessonId = $1
+      ORDER BY OrderIndex ASC
+    `, [lessonId]);
+    return res.rows.map(mapQuestion);
+  },
+
+  async createReceptiveQuestion(skill, data) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    const res = await pool.query(`
+      INSERT INTO ${config.questionTable}
+        (LessonId, QuestionType, Prompt, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, CorrectBoolean, AcceptedAnswers, Explanation, OrderIndex)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING *
+    `, [
+      data.LessonId,
+      data.QuestionType || 'multiple_choice',
+      data.Prompt || '',
+      data.OptionA || '',
+      data.OptionB || '',
+      data.OptionC || '',
+      data.OptionD || '',
+      data.CorrectAnswer || '',
+      data.CorrectBoolean === true || data.CorrectBoolean === 'true',
+      data.AcceptedAnswers || '',
+      data.Explanation || '',
+      Number(data.OrderIndex || 0)
+    ]);
+    return mapQuestion(res.rows[0]);
+  },
+
+  async updateReceptiveQuestion(skill, id, data) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    await pool.query(`
+      UPDATE ${config.questionTable}
+      SET QuestionType = $1,
+          Prompt = $2,
+          OptionA = $3,
+          OptionB = $4,
+          OptionC = $5,
+          OptionD = $6,
+          CorrectAnswer = $7,
+          CorrectBoolean = $8,
+          AcceptedAnswers = $9,
+          Explanation = $10,
+          OrderIndex = $11
+      WHERE Id = $12
+    `, [
+      data.QuestionType || 'multiple_choice',
+      data.Prompt || '',
+      data.OptionA || '',
+      data.OptionB || '',
+      data.OptionC || '',
+      data.OptionD || '',
+      data.CorrectAnswer || '',
+      data.CorrectBoolean === true || data.CorrectBoolean === 'true',
+      data.AcceptedAnswers || '',
+      data.Explanation || '',
+      Number(data.OrderIndex || 0),
+      id
+    ]);
+  },
+
+  async deleteReceptiveQuestion(skill, id) {
+    const config = getReceptiveConfig(skill);
+    const pool = getPool();
+    await pool.query(`DELETE FROM ${config.questionTable} WHERE Id = $1`, [id]);
   },
 
   // ========== GRAMMAR MANAGEMENT ==========

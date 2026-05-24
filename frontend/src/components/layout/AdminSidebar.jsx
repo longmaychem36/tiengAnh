@@ -3,7 +3,7 @@
 // ============================================
 import { NavLink, Link } from 'react-router-dom';
 import {
-  FiGrid, FiBook, FiBookOpen, FiMic, FiEdit3,
+  FiGrid, FiBook, FiBookOpen, FiMic, FiEdit3, FiHeadphones,
   FiPlay, FiUsers, FiShield, FiArrowLeft, FiLogOut
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
@@ -11,6 +11,8 @@ import { useAuth } from '../../hooks/useAuth';
 const adminItems = [
   { to: '/admin', icon: FiGrid, label: 'Tổng quan', exact: true },
   { to: '/admin/courses', icon: FiBook, label: 'Khóa học' },
+  { to: '/admin/listening', icon: FiHeadphones, label: 'Listening' },
+  { to: '/admin/reading', icon: FiBookOpen, label: 'Reading' },
   { to: '/admin/speaking', icon: FiMic, label: 'Speaking' },
   { to: '/admin/writing', icon: FiEdit3, label: 'Writing' },
   { to: '/admin/grammar', icon: FiBookOpen, label: 'Grammar' },

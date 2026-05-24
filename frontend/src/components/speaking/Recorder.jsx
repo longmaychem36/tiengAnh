@@ -1,37 +1,56 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FiMic, FiSquare } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
-const Recorder = ({ onRecordingComplete, isAnalyzing }) => {
+const formatTime = (seconds) => {
+  const safeSeconds = Math.max(0, seconds);
+  const mins = String(Math.floor(safeSeconds / 60)).padStart(2, '0');
+  const secs = String(safeSeconds % 60).padStart(2, '0');
+  return `${mins}:${secs}`;
+};
+
+const Recorder = ({ onRecordingComplete, isAnalyzing, maxDuration = 14 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const streamRef = useRef(null);
-  const analyserRef = useRef(null);
   const animFrameRef = useRef(null);
+  const autoStopRef = useRef(null);
+  const timerRef = useRef(null);
+  const startedAtRef = useRef(0);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopMediaStream();
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      clearTimers();
     };
   }, []);
 
-  const stopMediaStream = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
+  const clearTimers = () => {
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
+    if (autoStopRef.current) {
+      clearTimeout(autoStopRef.current);
+      autoStopRef.current = null;
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const stopMediaStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
     setAudioLevel(0);
   };
 
-  // Visualize audio level
   const startVisualization = (stream) => {
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -39,13 +58,12 @@ const Recorder = ({ onRecordingComplete, isAnalyzing }) => {
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
-      analyserRef.current = analyser;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       const updateLevel = () => {
         analyser.getByteFrequencyData(dataArray);
         const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        setAudioLevel(Math.min(avg / 128, 1)); // 0-1 range
+        setAudioLevel(Math.min(avg / 128, 1));
         animFrameRef.current = requestAnimationFrame(updateLevel);
       };
       updateLevel();
@@ -54,39 +72,36 @@ const Recorder = ({ onRecordingComplete, isAnalyzing }) => {
     }
   };
 
-  const autoStopRef = useRef(null);
-  const MAX_RECORD_SECONDS = 8; // Auto-stop after 8s for faster processing
+  const startTimer = () => {
+    startedAtRef.current = Date.now();
+    setRecordingSeconds(0);
+    timerRef.current = setInterval(() => {
+      setRecordingSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000));
+    }, 250);
+  };
 
   const startRecording = async () => {
-    if (isAnalyzing) return;
-    
+    if (isAnalyzing || isRecording) return;
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           sampleRate: 16000
-        } 
+        }
       });
-      
+
       streamRef.current = stream;
       audioChunksRef.current = [];
 
-      // Determine supported MIME type
       let mimeType = 'audio/webm;codecs=opus';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'audio/webm';
-      }
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'audio/ogg;codecs=opus';
-      }
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = ''; // Let browser decide
-      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
+      if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/ogg;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
 
-      const options = mimeType ? { mimeType } : {};
-      const mediaRecorder = new MediaRecorder(stream, options);
-      
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
@@ -94,42 +109,39 @@ const Recorder = ({ onRecordingComplete, isAnalyzing }) => {
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { 
-          type: mimeType || 'audio/webm' 
+        clearTimers();
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: mimeType || 'audio/webm'
         });
-        
+
         stopMediaStream();
+        setIsRecording(false);
 
         if (audioBlob.size < 1000) {
-          toast.error('Vui lòng đọc to và rõ ràng hơn!');
+          toast.error('Vui lòng đọc to và rõ ràng hơn.');
           return;
         }
-        
+
         onRecordingComplete(audioBlob);
       };
 
       mediaRecorder.onerror = (event) => {
         console.error('MediaRecorder error:', event.error);
         toast.error('Lỗi ghi âm, vui lòng thử lại.');
+        clearTimers();
         stopMediaStream();
         setIsRecording(false);
-        if (autoStopRef.current) clearTimeout(autoStopRef.current);
       };
 
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(100); // Collect data every 100ms
+      mediaRecorder.start(100);
       setIsRecording(true);
-
-      // Start audio visualization
+      startTimer();
       startVisualization(stream);
 
-      // Auto-stop after MAX_RECORD_SECONDS
       autoStopRef.current = setTimeout(() => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-          stopRecording();
-        }
-      }, MAX_RECORD_SECONDS * 1000);
-
+        stopRecording();
+      }, maxDuration * 1000);
     } catch (err) {
       console.error('Failed to access microphone:', err);
       if (err.name === 'NotAllowedError') {
@@ -137,114 +149,79 @@ const Recorder = ({ onRecordingComplete, isAnalyzing }) => {
       } else if (err.name === 'NotFoundError') {
         toast.error('Không tìm thấy microphone. Vui lòng kết nối microphone.');
       } else {
-        toast.error('Không thể truy cập microphone: ' + err.message);
+        toast.error(`Không thể truy cập microphone: ${err.message}`);
       }
     }
   };
 
   const stopRecording = () => {
-    if (!mediaRecorderRef.current || !isRecording) return;
-    
-    // Clear auto-stop timer
-    if (autoStopRef.current) {
-      clearTimeout(autoStopRef.current);
-      autoStopRef.current = null;
-    }
+    if (!mediaRecorderRef.current) return;
 
     try {
       if (mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
-      setIsRecording(false);
     } catch (err) {
       console.error('Error stopping recording:', err);
+      clearTimers();
+      stopMediaStream();
       setIsRecording(false);
     }
   };
 
-  // Dynamic ring effect based on audio level
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
   const ringScale = isRecording ? 1 + audioLevel * 0.4 : 1;
   const ringOpacity = isRecording ? 0.15 + audioLevel * 0.35 : 0;
+  const remainingSeconds = Math.max(0, maxDuration - recordingSeconds);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-      
-      {/* Pulsing ring effect */}
-      <div style={{ position: 'relative', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        
-        {/* Outer animated ring */}
-        <div style={{
-          position: 'absolute',
-          width: 100,
-          height: 100,
-          borderRadius: '50%',
-          background: isRecording ? 'rgba(239, 68, 68, 0.2)' : 'transparent',
-          transform: `scale(${ringScale})`,
-          opacity: ringOpacity,
-          transition: 'transform 0.1s ease, opacity 0.1s ease'
-        }} />
-
-        {/* Second ring */}
+    <div className="speaking-recorder">
+      <div className="speaking-recorder-ring">
+        <div
+          className="speaking-recorder-pulse"
+          style={{
+            transform: `scale(${ringScale})`,
+            opacity: ringOpacity
+          }}
+        />
         {isRecording && (
-          <div style={{
-            position: 'absolute',
-            width: 100,
-            height: 100,
-            borderRadius: '50%',
-            border: '2px solid rgba(239, 68, 68, 0.3)',
-            transform: `scale(${1 + audioLevel * 0.6})`,
-            opacity: ringOpacity * 0.5,
-            transition: 'transform 0.15s ease'
-          }} />
+          <div
+            className="speaking-recorder-outline"
+            style={{
+              transform: `scale(${1 + audioLevel * 0.6})`,
+              opacity: ringOpacity * 0.6
+            }}
+          />
         )}
 
-        {/* Main button */}
         <button
-          onMouseDown={startRecording}
-          onMouseUp={stopRecording}
-          onMouseLeave={() => { if (isRecording) stopRecording(); }}
-          onTouchStart={(e) => { e.preventDefault(); startRecording(); }}
-          onTouchEnd={(e) => { e.preventDefault(); stopRecording(); }}
+          type="button"
+          className={`speaking-recorder-button ${isRecording ? 'is-recording' : ''}`}
+          onClick={handleToggleRecording}
           disabled={isAnalyzing}
-          style={{
-            position: 'relative',
-            zIndex: 2,
-            width: 80,
-            height: 80,
-            borderRadius: '50%',
-            border: 'none',
-            background: isRecording 
-              ? `radial-gradient(circle, #f87171, #ef4444)` 
-              : 'var(--color-primary)',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: isAnalyzing ? 'not-allowed' : 'pointer',
-            boxShadow: isRecording 
-              ? `0 0 0 ${4 + audioLevel * 8}px rgba(239, 68, 68, ${0.2 + audioLevel * 0.15})` 
-              : '0 4px 16px rgba(16, 185, 129, 0.3)',
-            transition: 'box-shadow 0.15s ease, transform 0.2s ease',
-            transform: isRecording ? 'scale(1.05)' : 'scale(1)'
-          }}
         >
           {isRecording ? <FiSquare size={32} /> : <FiMic size={32} />}
         </button>
       </div>
-      
-      <div style={{ 
-        color: 'var(--color-text-muted)', 
-        fontSize: 'var(--font-size-sm)', 
-        fontWeight: 500,
-        textAlign: 'center'
-      }}>
-        <span>
-          {isAnalyzing 
-            ? '⏳ Đang nhận diện giọng nói...' 
-            : isRecording 
-              ? '🔴 Đang ghi âm (Thả ra để kết thúc)...' 
-              : '🎤 Nhấn giữ để nói'}
-        </span>
+
+      <div className="speaking-recorder-status">
+        {isAnalyzing ? (
+          <span>Đang nhận diện giọng nói...</span>
+        ) : isRecording ? (
+          <>
+            <strong>{formatTime(recordingSeconds)}</strong>
+            <span>Bấm lại để dừng · còn {remainingSeconds}s</span>
+          </>
+        ) : (
+          <span>Bấm micro để ghi âm</span>
+        )}
       </div>
     </div>
   );

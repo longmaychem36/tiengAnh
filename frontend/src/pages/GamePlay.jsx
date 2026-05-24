@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { gameApi } from '../api/gameApi';
 import Loading from '../components/common/Loading';
 import ExpReward from '../components/common/ExpReward';
+import { speakText, stopAllPlayback } from '../utils/audioControl';
 
 const TYPE_LABELS = {
   matching: { icon: '🔗', label: 'Nối từ', color: '#8a4b35' },
@@ -79,26 +80,43 @@ function GamePlay() {
 
     return () => {
       cancelled = true;
+      stopAllPlayback();
     };
   }, [levelId]);
 
   useEffect(() => {
-    if (gameStarted && !gameFinished && timeLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(time => {
-          if (time <= 1) {
-            clearInterval(timerRef.current);
-            doSubmit();
-            return 0;
-          }
-          return time - 1;
-        });
-      }, 1000);
+    if (!gameStarted || gameFinished) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+      return undefined;
     }
+
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((time) => {
+        if (time <= 1) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+          doSubmit();
+          return 0;
+        }
+        return time - 1;
+      });
+    }, 1000);
+
     return () => clearInterval(timerRef.current);
   }, [gameStarted, gameFinished]);
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
+
+  useEffect(() => {
+    const resetAudioState = () => {
+      if (document.hidden) setAudioPlaying(false);
+    };
+
+    document.addEventListener('visibilitychange', resetAudioState);
+    return () => document.removeEventListener('visibilitychange', resetAudioState);
+  }, []);
 
   const shuffle = (items) => {
     const list = [...items];
@@ -110,14 +128,13 @@ function GamePlay() {
   };
 
   const playTTS = (text) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
     setAudioPlaying(true);
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.onend = () => setAudioPlaying(false);
-    utterance.onerror = () => setAudioPlaying(false);
-    window.speechSynthesis.speak(utterance);
+    const utterance = speakText(text, {
+      lang: 'en-US',
+      onend: () => setAudioPlaying(false),
+      onerror: () => setAudioPlaying(false)
+    });
+    if (!utterance) setAudioPlaying(false);
   };
 
   const initQuestion = (idx) => {
@@ -321,7 +338,8 @@ function GamePlay() {
 
   const question = questions[currentQ];
   const type = TYPE_LABELS[question.QuestionType] || TYPE_LABELS.matching;
-  const timerPct = (timeLeft / level.TimeLimit) * 100;
+  const timerLimit = Math.max(1, Number(level.TimeLimit) || 1);
+  const timerPct = Math.max(0, Math.min(100, (Number(timeLeft) / timerLimit) * 100));
   const timerColor = timerPct > 50 ? '#8a5a2b' : timerPct > 20 ? '#c8851e' : '#c94a55';
   const progressPct = ((currentQ + (showFeedback ? 1 : 0)) / questions.length) * 100;
 
@@ -337,6 +355,7 @@ function GamePlay() {
         <FiClock style={{ color: timerColor }} />
         <div className="game-time-track">
           <motion.div
+            className="game-time-fill"
             style={{ background: timerColor }}
             animate={{ width: `${timerPct}%` }}
             transition={{ duration: 0.25 }}
