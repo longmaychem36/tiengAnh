@@ -34,7 +34,7 @@ import time
 MODEL_SIZE = os.environ.get("WHISPER_MODEL", "base")
 DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE", "int8")
-PORT = int(os.environ.get("WHISPER_PORT", 5001))
+PORT = int(os.environ.get("WHISPER_PORT") or os.environ.get("PORT", 5001))
 
 
 # ==========================================

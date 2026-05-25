@@ -2,8 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict yWy4eUVQinHhsvq48afq5efC68hIWKCE0CCGU8eqcuVes0qn1wtcIeXbIlWmktU
-
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
 
@@ -49,8 +47,6 @@ CREATE TABLE public.achievements (
 );
 
 
-ALTER TABLE public.achievements OWNER TO postgres;
-
 --
 -- Name: courses; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -64,8 +60,6 @@ CREATE TABLE public.courses (
     createdat timestamp without time zone DEFAULT now()
 );
 
-
-ALTER TABLE public.courses OWNER TO postgres;
 
 --
 -- Name: dictionaryentries; Type: TABLE; Schema: public; Owner: postgres
@@ -84,8 +78,6 @@ CREATE TABLE public.dictionaryentries (
 );
 
 
-ALTER TABLE public.dictionaryentries OWNER TO postgres;
-
 --
 -- Name: dictionarysearchhistory; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -98,8 +90,6 @@ CREATE TABLE public.dictionarysearchhistory (
 );
 
 
-ALTER TABLE public.dictionarysearchhistory OWNER TO postgres;
-
 --
 -- Name: dictionarysynonyms; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -110,8 +100,6 @@ CREATE TABLE public.dictionarysynonyms (
     synonym character varying(100)
 );
 
-
-ALTER TABLE public.dictionarysynonyms OWNER TO postgres;
 
 --
 -- Name: gamelevels; Type: TABLE; Schema: public; Owner: postgres
@@ -130,8 +118,6 @@ CREATE TABLE public.gamelevels (
 );
 
 
-ALTER TABLE public.gamelevels OWNER TO postgres;
-
 --
 -- Name: gamesets; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -148,8 +134,6 @@ CREATE TABLE public.gamesets (
 );
 
 
-ALTER TABLE public.gamesets OWNER TO postgres;
-
 --
 -- Name: grammarcategories; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -163,8 +147,6 @@ CREATE TABLE public.grammarcategories (
 );
 
 
-ALTER TABLE public.grammarcategories OWNER TO postgres;
-
 --
 -- Name: grammarcategories_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
@@ -177,8 +159,6 @@ CREATE SEQUENCE public.grammarcategories_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER SEQUENCE public.grammarcategories_id_seq OWNER TO postgres;
 
 --
 -- Name: grammarcategories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -204,8 +184,6 @@ CREATE TABLE public.grammarquiz (
 );
 
 
-ALTER TABLE public.grammarquiz OWNER TO postgres;
-
 --
 -- Name: grammartopics; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -220,8 +198,6 @@ CREATE TABLE public.grammartopics (
 );
 
 
-ALTER TABLE public.grammartopics OWNER TO postgres;
-
 --
 -- Name: learninglevels; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -233,8 +209,6 @@ CREATE TABLE public.learninglevels (
     description character varying(255)
 );
 
-
-ALTER TABLE public.learninglevels OWNER TO postgres;
 
 --
 -- Name: learninglevels_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -248,8 +222,6 @@ CREATE SEQUENCE public.learninglevels_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER SEQUENCE public.learninglevels_id_seq OWNER TO postgres;
 
 --
 -- Name: learninglevels_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -271,8 +243,6 @@ CREATE TABLE public.lessonmedia (
 );
 
 
-ALTER TABLE public.lessonmedia OWNER TO postgres;
-
 --
 -- Name: lessons; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -288,8 +258,6 @@ CREATE TABLE public.lessons (
 );
 
 
-ALTER TABLE public.lessons OWNER TO postgres;
-
 --
 -- Name: lessonvocabulary; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -299,8 +267,6 @@ CREATE TABLE public.lessonvocabulary (
     vocabid uuid NOT NULL
 );
 
-
-ALTER TABLE public.lessonvocabulary OWNER TO postgres;
 
 --
 -- Name: minigamequestions; Type: TABLE; Schema: public; Owner: postgres
@@ -320,8 +286,6 @@ CREATE TABLE public.minigamequestions (
 );
 
 
-ALTER TABLE public.minigamequestions OWNER TO postgres;
-
 --
 -- Name: quiz; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -335,8 +299,6 @@ CREATE TABLE public.quiz (
 );
 
 
-ALTER TABLE public.quiz OWNER TO postgres;
-
 --
 -- Name: quizoptions; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -347,8 +309,6 @@ CREATE TABLE public.quizoptions (
     optiontext character varying(255)
 );
 
-
-ALTER TABLE public.quizoptions OWNER TO postgres;
 
 --
 -- Name: speakinglessons; Type: TABLE; Schema: public; Owner: postgres
@@ -363,8 +323,6 @@ CREATE TABLE public.speakinglessons (
 );
 
 
-ALTER TABLE public.speakinglessons OWNER TO postgres;
-
 --
 -- Name: speakingprogress; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -377,8 +335,6 @@ CREATE TABLE public.speakingprogress (
     updatedat timestamp without time zone DEFAULT now()
 );
 
-
-ALTER TABLE public.speakingprogress OWNER TO postgres;
 
 --
 -- Name: speakingquestions; Type: TABLE; Schema: public; Owner: postgres
@@ -399,8 +355,6 @@ CREATE TABLE public.speakingquestions (
 );
 
 
-ALTER TABLE public.speakingquestions OWNER TO postgres;
-
 --
 -- Name: userachievements; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -411,8 +365,6 @@ CREATE TABLE public.userachievements (
     unlockedat timestamp without time zone DEFAULT now()
 );
 
-
-ALTER TABLE public.userachievements OWNER TO postgres;
 
 --
 -- Name: usercollections; Type: TABLE; Schema: public; Owner: postgres
@@ -426,8 +378,6 @@ CREATE TABLE public.usercollections (
     createdat timestamp without time zone DEFAULT now()
 );
 
-
-ALTER TABLE public.usercollections OWNER TO postgres;
 
 --
 -- Name: usercollectionwords; Type: TABLE; Schema: public; Owner: postgres
@@ -443,8 +393,6 @@ CREATE TABLE public.usercollectionwords (
     addedat timestamp without time zone DEFAULT now()
 );
 
-
-ALTER TABLE public.usercollectionwords OWNER TO postgres;
 
 --
 -- Name: usergameprogress; Type: TABLE; Schema: public; Owner: postgres
@@ -463,8 +411,6 @@ CREATE TABLE public.usergameprogress (
 );
 
 
-ALTER TABLE public.usergameprogress OWNER TO postgres;
-
 --
 -- Name: userprogress; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -477,8 +423,6 @@ CREATE TABLE public.userprogress (
     score integer
 );
 
-
-ALTER TABLE public.userprogress OWNER TO postgres;
 
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: postgres
@@ -497,8 +441,6 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO postgres;
-
 --
 -- Name: userstats; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -512,8 +454,6 @@ CREATE TABLE public.userstats (
 );
 
 
-ALTER TABLE public.userstats OWNER TO postgres;
-
 --
 -- Name: uservocabulary; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -524,8 +464,6 @@ CREATE TABLE public.uservocabulary (
     status character varying(20)
 );
 
-
-ALTER TABLE public.uservocabulary OWNER TO postgres;
 
 --
 -- Name: vocabulary; Type: TABLE; Schema: public; Owner: postgres
@@ -541,8 +479,6 @@ CREATE TABLE public.vocabulary (
 );
 
 
-ALTER TABLE public.vocabulary OWNER TO postgres;
-
 --
 -- Name: writingexercises; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -555,8 +491,6 @@ CREATE TABLE public.writingexercises (
     orderindex integer
 );
 
-
-ALTER TABLE public.writingexercises OWNER TO postgres;
 
 --
 -- Name: writinglessons; Type: TABLE; Schema: public; Owner: postgres
@@ -571,8 +505,6 @@ CREATE TABLE public.writinglessons (
 );
 
 
-ALTER TABLE public.writinglessons OWNER TO postgres;
-
 --
 -- Name: writingprogress; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -586,8 +518,6 @@ CREATE TABLE public.writingprogress (
 );
 
 
-ALTER TABLE public.writingprogress OWNER TO postgres;
-
 --
 -- Name: writingvocab; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -599,8 +529,6 @@ CREATE TABLE public.writingvocab (
     meaning character varying(255)
 );
 
-
-ALTER TABLE public.writingvocab OWNER TO postgres;
 
 --
 -- Name: grammarcategories id; Type: DEFAULT; Schema: public; Owner: postgres
@@ -1836,8 +1764,264 @@ ALTER TABLE ONLY public.writingvocab
 
 
 --
--- PostgreSQL database dump complete
+--
+-- Application schema supplements
+-- These statements keep the dump aligned with the current Node.js backend.
 --
 
-\unrestrict yWy4eUVQinHhsvq48afq5efC68hIWKCE0CCGU8eqcuVes0qn1wtcIeXbIlWmktU
+ALTER TABLE public.users
+    ADD COLUMN IF NOT EXISTS avatarurl text,
+    ADD COLUMN IF NOT EXISTS plan character varying(20) DEFAULT 'free'::character varying,
+    ADD COLUMN IF NOT EXISTS plusexpiresat timestamp without time zone;
 
+ALTER TABLE public.writinglessons
+    ADD COLUMN IF NOT EXISTS passageen text,
+    ADD COLUMN IF NOT EXISTS passagevi text;
+
+CREATE TABLE IF NOT EXISTS public.paymentrequests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    userid uuid NOT NULL,
+    plan character varying(20) DEFAULT 'plus'::character varying NOT NULL,
+    amount integer NOT NULL,
+    status character varying(20) DEFAULT 'pending'::character varying NOT NULL,
+    transfercontent character varying(120) NOT NULL,
+    gateway character varying(40) DEFAULT 'sepay'::character varying NOT NULL,
+    sepaytransactionid character varying(80),
+    rawpayload jsonb,
+    createdat timestamp without time zone DEFAULT now() NOT NULL,
+    completedat timestamp without time zone,
+    CONSTRAINT paymentrequests_pkey PRIMARY KEY (id),
+    CONSTRAINT paymentrequests_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_requests_transfer_content
+    ON public.paymentrequests USING btree (transfercontent);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_requests_sepay_transaction
+    ON public.paymentrequests USING btree (sepaytransactionid)
+    WHERE (sepaytransactionid IS NOT NULL);
+
+CREATE TABLE IF NOT EXISTS public.listeninglessons (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    title character varying(255) NOT NULL,
+    description text,
+    level character varying(20) DEFAULT 'A1'::character varying,
+    topic character varying(120),
+    objective text,
+    duration character varying(50),
+    passagetitle character varying(255),
+    audiourl text,
+    orderindex integer DEFAULT 0,
+    createdat timestamp with time zone DEFAULT now(),
+    updatedat timestamp with time zone DEFAULT now(),
+    CONSTRAINT listeninglessons_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.listeningsegments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lessonid uuid NOT NULL,
+    speaker character varying(120),
+    text text NOT NULL,
+    orderindex integer DEFAULT 0,
+    speakerid uuid,
+    CONSTRAINT listeningsegments_pkey PRIMARY KEY (id),
+    CONSTRAINT listeningsegments_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.listeninglessons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.listeningspeakers (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lessonid uuid NOT NULL,
+    name character varying(120) NOT NULL,
+    gender character varying(20) DEFAULT 'female'::character varying,
+    voicename character varying(180),
+    voiceuri character varying(255),
+    orderindex integer DEFAULT 0,
+    createdat timestamp with time zone DEFAULT now(),
+    updatedat timestamp with time zone DEFAULT now(),
+    CONSTRAINT listeningspeakers_pkey PRIMARY KEY (id),
+    CONSTRAINT listeningspeakers_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.listeninglessons(id) ON DELETE CASCADE
+);
+
+ALTER TABLE public.listeningsegments
+    DROP CONSTRAINT IF EXISTS listeningsegments_speakerid_fkey,
+    ADD CONSTRAINT listeningsegments_speakerid_fkey FOREIGN KEY (speakerid) REFERENCES public.listeningspeakers(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS public.listeningvocabulary (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lessonid uuid NOT NULL,
+    word character varying(120) NOT NULL,
+    meaning character varying(255),
+    orderindex integer DEFAULT 0,
+    CONSTRAINT listeningvocabulary_pkey PRIMARY KEY (id),
+    CONSTRAINT listeningvocabulary_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.listeninglessons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.listeningquestions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lessonid uuid NOT NULL,
+    questiontype character varying(50) DEFAULT 'multiple_choice'::character varying,
+    prompt text NOT NULL,
+    optiona text,
+    optionb text,
+    optionc text,
+    optiond text,
+    correctanswer text,
+    correctboolean boolean,
+    acceptedanswers text,
+    explanation text,
+    orderindex integer DEFAULT 0,
+    CONSTRAINT listeningquestions_pkey PRIMARY KEY (id),
+    CONSTRAINT listeningquestions_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.listeninglessons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.listeningprogress (
+    userid uuid NOT NULL,
+    lessonid uuid NOT NULL,
+    status character varying(50) DEFAULT 'in_progress'::character varying,
+    score double precision,
+    updatedat timestamp with time zone DEFAULT now(),
+    CONSTRAINT listeningprogress_pkey PRIMARY KEY (userid, lessonid),
+    CONSTRAINT listeningprogress_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE,
+    CONSTRAINT listeningprogress_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.listeninglessons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.readinglessons (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    title character varying(255) NOT NULL,
+    description text,
+    level character varying(20) DEFAULT 'A1'::character varying,
+    topic character varying(120),
+    objective text,
+    duration character varying(50),
+    passagetitle character varying(255),
+    audiourl text,
+    orderindex integer DEFAULT 0,
+    createdat timestamp with time zone DEFAULT now(),
+    updatedat timestamp with time zone DEFAULT now(),
+    CONSTRAINT readinglessons_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.readingparagraphs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lessonid uuid NOT NULL,
+    content text NOT NULL,
+    orderindex integer DEFAULT 0,
+    CONSTRAINT readingparagraphs_pkey PRIMARY KEY (id),
+    CONSTRAINT readingparagraphs_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.readinglessons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.readingvocabulary (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lessonid uuid NOT NULL,
+    word character varying(120) NOT NULL,
+    meaning character varying(255),
+    orderindex integer DEFAULT 0,
+    CONSTRAINT readingvocabulary_pkey PRIMARY KEY (id),
+    CONSTRAINT readingvocabulary_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.readinglessons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.readingquestions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lessonid uuid NOT NULL,
+    questiontype character varying(50) DEFAULT 'multiple_choice'::character varying,
+    prompt text NOT NULL,
+    optiona text,
+    optionb text,
+    optionc text,
+    optiond text,
+    correctanswer text,
+    correctboolean boolean,
+    acceptedanswers text,
+    explanation text,
+    orderindex integer DEFAULT 0,
+    CONSTRAINT readingquestions_pkey PRIMARY KEY (id),
+    CONSTRAINT readingquestions_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.readinglessons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.readingprogress (
+    userid uuid NOT NULL,
+    lessonid uuid NOT NULL,
+    status character varying(50) DEFAULT 'in_progress'::character varying,
+    score double precision,
+    updatedat timestamp with time zone DEFAULT now(),
+    CONSTRAINT readingprogress_pkey PRIMARY KEY (userid, lessonid),
+    CONSTRAINT readingprogress_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE,
+    CONSTRAINT readingprogress_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.readinglessons(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_listening_lessons_order ON public.listeninglessons USING btree (orderindex);
+CREATE INDEX IF NOT EXISTS idx_listeningsegments_lesson ON public.listeningsegments USING btree (lessonid, orderindex);
+CREATE INDEX IF NOT EXISTS idx_listening_speakers_lesson ON public.listeningspeakers USING btree (lessonid, orderindex);
+CREATE INDEX IF NOT EXISTS idx_listening_segments_speaker ON public.listeningsegments USING btree (speakerid);
+CREATE INDEX IF NOT EXISTS idx_listening_questions_lesson ON public.listeningquestions USING btree (lessonid, orderindex);
+CREATE INDEX IF NOT EXISTS idx_listening_vocab_lesson ON public.listeningvocabulary USING btree (lessonid, orderindex);
+CREATE INDEX IF NOT EXISTS idx_reading_lessons_order ON public.readinglessons USING btree (orderindex);
+CREATE INDEX IF NOT EXISTS idx_readingparagraphs_lesson ON public.readingparagraphs USING btree (lessonid, orderindex);
+CREATE INDEX IF NOT EXISTS idx_reading_questions_lesson ON public.readingquestions USING btree (lessonid, orderindex);
+CREATE INDEX IF NOT EXISTS idx_reading_vocab_lesson ON public.readingvocabulary USING btree (lessonid, orderindex);
+
+CREATE TABLE IF NOT EXISTS public.usererrorevents (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    userid uuid NOT NULL,
+    skill character varying(40) NOT NULL,
+    activitytype character varying(60) NOT NULL,
+    referencetype character varying(60),
+    referenceid character varying(120),
+    errortype character varying(80) NOT NULL,
+    errorkey character varying(140) NOT NULL,
+    severity integer DEFAULT 3,
+    prompt text,
+    useranswer text,
+    expectedanswer text,
+    feedback text,
+    metadata jsonb,
+    createdat timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT usererrorevents_pkey PRIMARY KEY (id),
+    CONSTRAINT usererrorevents_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.userweaknesses (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    userid uuid NOT NULL,
+    skill character varying(40) NOT NULL,
+    errortype character varying(80) NOT NULL,
+    errorkey character varying(140) NOT NULL,
+    label character varying(255) NOT NULL,
+    mistakecount integer DEFAULT 0 NOT NULL,
+    attemptcount integer DEFAULT 0 NOT NULL,
+    weight double precision DEFAULT 0 NOT NULL,
+    lastseenat timestamp without time zone DEFAULT now() NOT NULL,
+    updatedat timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT userweaknesses_pkey PRIMARY KEY (id),
+    CONSTRAINT userweaknesses_user_skill_error_key UNIQUE (userid, skill, errortype, errorkey),
+    CONSTRAINT userweaknesses_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.dailytasks (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    userid uuid NOT NULL,
+    taskdate date NOT NULL,
+    skill character varying(40) NOT NULL,
+    targettype character varying(80) NOT NULL,
+    targetid character varying(120) NOT NULL,
+    title character varying(255) NOT NULL,
+    description text,
+    reason text,
+    status character varying(30) DEFAULT 'pending'::character varying NOT NULL,
+    orderindex integer DEFAULT 0 NOT NULL,
+    airationale text,
+    completedat timestamp without time zone,
+    createdat timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT dailytasks_pkey PRIMARY KEY (id),
+    CONSTRAINT dailytasks_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_error_events_user_skill ON public.usererrorevents USING btree (userid, skill, createdat DESC);
+CREATE INDEX IF NOT EXISTS idx_user_error_events_reference ON public.usererrorevents USING btree (referencetype, referenceid);
+CREATE INDEX IF NOT EXISTS idx_user_weaknesses_user_weight ON public.userweaknesses USING btree (userid, weight DESC, lastseenat DESC);
+CREATE INDEX IF NOT EXISTS idx_daily_tasks_user_date ON public.dailytasks USING btree (userid, taskdate, orderindex);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_tasks_user_date_order ON public.dailytasks USING btree (userid, taskdate, orderindex);
+
+--
+-- PostgreSQL database dump complete
+--
