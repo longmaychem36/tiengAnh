@@ -543,6 +543,30 @@ Sau khi sửa:
 2. Bấm **Redeploy**.
 3. Nếu vẫn lỗi, vào **Settings** và xóa mọi command cũ kiểu `start.sh`.
 
+### 13.9 Whisper Báo `ModuleNotFoundError: No module named 'requests'`
+
+Lỗi:
+
+```text
+ModuleNotFoundError: No module named 'requests'
+```
+
+Nguyên nhân: môi trường Python thiếu package `requests`, trong khi `faster-whisper` cần import package này.
+
+Cách sửa trong repo:
+
+```text
+whisper/requirements.txt
+```
+
+Phải có:
+
+```text
+requests==2.32.3
+```
+
+Sau đó commit, push và redeploy Whisper service.
+
 ## 14. Checklist URL Cuối Cùng
 
 Ghi lại:
