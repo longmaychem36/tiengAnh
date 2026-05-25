@@ -175,7 +175,7 @@ english-whisper
 5. Cấu hình service:
 
 ```text
-Root Directory: backend
+Root Directory: whisper
 Build Command: pip install -r requirements.txt
 Start Command: python whisper_server.py
 ```
@@ -192,7 +192,7 @@ PYTHONUNBUFFERED=1
 Ghi chú:
 
 - Railway tự cấp biến `PORT`.
-- `backend/whisper_server.py` đã đọc `PORT`.
+- `whisper/whisper_server.py` đã đọc `PORT`.
 - Nên dùng `WHISPER_MODEL=tiny` trước vì nhẹ hơn.
 - Nếu service ổn định và muốn chính xác hơn, thử `WHISPER_MODEL=base`.
 
@@ -505,6 +505,44 @@ Nếu health chạy được mà backend vẫn lỗi, xem backend logs khi bấm
 
 Lần đầu truy cập có thể chậm. Whisper có thể chậm hơn vì cần load model. Nếu cần ổn định, nâng cấp plan Railway.
 
+### 13.8 Railpack Báo Không Xác Định Được Cách Build App
+
+Lỗi thường gặp:
+
+```text
+Script start.sh not found
+Railpack could not determine how to build the app.
+The app contents that Railpack analyzed contains:
+./
+├── backend/
+├── frontend/
+...
+```
+
+Nguyên nhân: Railway đang build ở thư mục gốc repo, trong khi app thật nằm trong `backend`.
+
+Nếu service này là Whisper, sửa trong Railway:
+
+```text
+Root Directory: whisper
+Build Command: pip install -r requirements.txt
+Start Command: python whisper_server.py
+```
+
+Nếu service này là backend Node.js, sửa trong Railway:
+
+```text
+Root Directory: backend
+Build Command: npm install
+Start Command: npm start
+```
+
+Sau khi sửa:
+
+1. Vào tab **Deployments**.
+2. Bấm **Redeploy**.
+3. Nếu vẫn lỗi, vào **Settings** và xóa mọi command cũ kiểu `start.sh`.
+
 ## 14. Checklist URL Cuối Cùng
 
 Ghi lại:
@@ -537,4 +575,3 @@ https://english-learning-api-production.up.railway.app/api/v1/billing/sepay/webh
 - Xóa public networking của PostgreSQL nếu không cần import từ máy local nữa.
 - Chỉ giữ private connection giữa backend và PostgreSQL trong Railway.
 - Không đưa secret vào frontend env `VITE_*`.
-
