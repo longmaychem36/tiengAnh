@@ -44,7 +44,7 @@ function AdminLayout() {
                 <div style={{ fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.2 }}>
                   {user?.username || 'Admin'}
                 </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>
                   {user?.role}
                 </div>
               </div>

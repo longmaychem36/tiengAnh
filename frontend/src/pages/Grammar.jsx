@@ -1,13 +1,36 @@
 // ============================================
 // Grammar Page — Category Listing + Topic Viewer + Quiz
 // ============================================
-import { useState, useEffect } from 'react';
+import { createElement, useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiChevronRight, FiCheck, FiX, FiArrowLeft, FiBookOpen, FiAward } from 'react-icons/fi';
+import DOMPurify from 'dompurify';
 import { grammarApi } from '../api/grammarApi';
 import Loading from '../components/common/Loading';
 
+const GRAMMAR_HTML_TAGS = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'h2', 'h3', 'h4', 'blockquote'];
+
+function renderGrammarNode(node, key) {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+  if (node.nodeType !== Node.ELEMENT_NODE) return null;
+
+  const tag = node.tagName.toLowerCase();
+  const children = Array.from(node.childNodes).map((child, index) => renderGrammarNode(child, `${key}-${index}`));
+  if (!GRAMMAR_HTML_TAGS.includes(tag)) return children;
+
+  return createElement(tag, { key }, children);
+}
+
+function renderGrammarContent(html) {
+  if (!html || typeof DOMParser === 'undefined') return null;
+  const safeHtml = DOMPurify.sanitize(html, { ALLOWED_TAGS: GRAMMAR_HTML_TAGS });
+  const doc = new DOMParser().parseFromString(safeHtml, 'text/html');
+  return Array.from(doc.body.childNodes).map((node, index) => renderGrammarNode(node, `grammar-${index}`));
+}
+
 function Grammar() {
+  const [searchParams] = useSearchParams();
   const [categories, setCategories] = useState([]);
   const [topics, setTopics] = useState([]);
   const [activeTopic, setActiveTopic] = useState(null);
@@ -20,12 +43,15 @@ function Grammar() {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [quizScore, setQuizScore] = useState(0);
   const [quizFinished, setQuizFinished] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState([]);
 
   useEffect(() => {
+    const topicId = searchParams.get('topicId');
     grammarApi.getCategories()
       .then(res => setCategories(res.data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
+    if (topicId) loadTopic(topicId);
   }, []);
 
   const loadTopics = async (categoryId) => {
@@ -44,6 +70,7 @@ function Grammar() {
     setCurrentQ(0);
     setQuizScore(0);
     setSelectedAnswer(null);
+    setQuizAnswers([]);
     try {
       const res = await grammarApi.getTopicDetail(topicId);
       setActiveTopic(res.data);
@@ -56,19 +83,33 @@ function Grammar() {
     setCurrentQ(0);
     setQuizScore(0);
     setSelectedAnswer(null);
+    setQuizAnswers([]);
   };
 
   const handleQuizAnswer = (answer) => {
     if (selectedAnswer !== null) return;
     setSelectedAnswer(answer);
     const quiz = activeTopic.quizzes[currentQ];
+    setQuizAnswers((current) => [
+      ...current.filter((item) => item.quizId !== quiz.Id),
+      { quizId: quiz.Id, answer }
+    ]);
     if (answer === quiz.CorrectAnswer) {
       setQuizScore(prev => prev + 1);
     }
   };
 
+  const submitQuizAttempt = (answers) => {
+    if (!activeTopic?.Id || answers.length === 0) return;
+    grammarApi.submitAttempt({
+      topicId: activeTopic.Id,
+      answers
+    }).catch(() => {});
+  };
+
   const nextQuizQuestion = () => {
     if (currentQ + 1 >= activeTopic.quizzes.length) {
+      submitQuizAttempt(quizAnswers);
       setQuizFinished(true);
     } else {
       setCurrentQ(prev => prev + 1);
@@ -109,10 +150,10 @@ function Grammar() {
               {activeTopic.TitleVI}
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center' }}>
-              <button className="btn btn-secondary" onClick={() => { setQuizStarted(false); setQuizFinished(false); }}>
+              <button type="button" className="btn btn-secondary" onClick={() => { setQuizStarted(false); setQuizFinished(false); }}>
                 <FiBookOpen /> Xem lại lý thuyết
               </button>
-              <button className="btn btn-primary" onClick={startQuiz}>Làm lại</button>
+              <button type="button" className="btn btn-primary" onClick={startQuiz}>Làm lại</button>
             </div>
           </motion.div>
         </div>
@@ -129,7 +170,7 @@ function Grammar() {
 
     return (
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
-        <button className="btn btn-ghost btn-sm" onClick={goBack} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={goBack} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
           <FiArrowLeft /> Quay lại
         </button>
         <div className="flex-between" style={{ marginBottom: 'var(--space-2)' }}>
@@ -160,13 +201,13 @@ function Grammar() {
                 }
               }
               return (
-                <button key={opt.key} onClick={() => handleQuizAnswer(opt.key)} disabled={selectedAnswer !== null}
+                <button type="button" key={opt.key} onClick={() => handleQuizAnswer(opt.key)} disabled={selectedAnswer !== null}
                   style={{
                     padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)',
                     border: `2px solid ${border}`, background: bg, color,
                     textAlign: 'left', cursor: selectedAnswer ? 'default' : 'pointer',
                     fontWeight: 500, display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-                    transition: 'all 150ms ease'
+                    transition: 'background 150ms ease, color 150ms ease, transform 150ms ease'
                   }}>
                   <span style={{ width: 30, height: 30, borderRadius: '50%', background: bg === 'var(--color-bg)' ? 'var(--color-bg-secondary)' : bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--font-size-sm)', fontWeight: 700, flexShrink: 0 }}>
                     {opt.key}
@@ -188,7 +229,7 @@ function Grammar() {
                 💡 {quiz.Explanation}
               </p>
               <div style={{ textAlign: 'right', marginTop: 'var(--space-3)' }}>
-                <button className="btn btn-primary btn-sm" onClick={nextQuizQuestion}>
+                <button type="button" className="btn btn-primary btn-sm" onClick={nextQuizQuestion}>
                   {currentQ + 1 >= activeTopic.quizzes.length ? 'Xem kết quả' : 'Câu tiếp'} <FiChevronRight />
                 </button>
               </div>
@@ -203,7 +244,7 @@ function Grammar() {
   if (activeTopic) {
     return (
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
-        <button className="btn btn-ghost btn-sm" onClick={goBack} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={goBack} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
           <FiArrowLeft /> Quay lại
         </button>
 
@@ -219,17 +260,15 @@ function Grammar() {
               <p style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{activeTopic.TitleVI}</p>
             </div>
             {activeTopic.quizzes?.length > 0 && (
-              <button className="btn btn-primary" onClick={startQuiz} style={{ whiteSpace: 'nowrap' }}>
+              <button type="button" className="btn btn-primary" onClick={startQuiz} style={{ whiteSpace: 'nowrap' }}>
                 <FiAward /> Làm bài test ({activeTopic.quizzes.length} câu)
               </button>
             )}
           </div>
 
-          <div
-            className="grammar-content"
-            dangerouslySetInnerHTML={{ __html: activeTopic.Content }}
-            style={{ lineHeight: 1.8, fontSize: 'var(--font-size-base)' }}
-          />
+          <div className="grammar-content" style={{ lineHeight: 1.8, fontSize: 'var(--font-size-base)' }}>
+            {renderGrammarContent(activeTopic.Content)}
+          </div>
         </div>
       </div>
     );
@@ -240,7 +279,7 @@ function Grammar() {
     const cat = categories.find(c => c.Id === activeCategoryId);
     return (
       <div>
-        <button className="btn btn-ghost btn-sm" onClick={goBack} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={goBack} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
           <FiArrowLeft /> Quay lại
         </button>
         <div className="page-header">

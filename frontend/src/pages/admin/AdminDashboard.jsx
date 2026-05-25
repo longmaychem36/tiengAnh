@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  FiUsers, FiBook, FiPlay, FiMic, FiEdit3,
+  FiUsers, FiPlay, FiMic, FiEdit3,
   FiBookOpen, FiArrowRight, FiTrendingUp,
-  FiUserPlus, FiLayers, FiHelpCircle, FiHeadphones
+  FiUserPlus, FiLayers, FiHeadphones
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import { adminApi } from '../../api/adminApi';
@@ -30,7 +30,7 @@ function AdminDashboard() {
   const statCards = [
     { icon: <FiUsers size={22} />, label: 'Tổng người dùng', value: stats?.totalUsers || 0, sub: `${stats?.activeUsers || 0} đang hoạt động`, color: '#6366f1', bg: 'linear-gradient(135deg, #6366f1, #818cf8)' },
     { icon: <FiUserPlus size={22} />, label: 'User mới (7 ngày)', value: stats?.newUsers7d || 0, sub: 'đăng ký gần đây', color: '#10b981', bg: 'linear-gradient(135deg, #10b981, #34d399)' },
-    { icon: <FiBook size={22} />, label: 'Khóa học', value: stats?.totalCourses || 0, sub: 'tổng số khóa học', color: '#8b5cf6', bg: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
+    { icon: <FiLayers size={22} />, label: 'Bài kỹ năng', value: stats?.totalSkillLessons || 0, sub: 'nghe, nói, đọc, viết', color: '#8b5cf6', bg: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
     { icon: <FiPlay size={22} />, label: 'Mini Games', value: stats?.totalGameSets || 0, sub: `${stats?.totalGameLevels || 0} levels · ${stats?.totalQuestions || 0} câu hỏi`, color: '#ec4899', bg: 'linear-gradient(135deg, #ec4899, #f472b6)' },
   ];
 
@@ -46,7 +46,6 @@ function AdminDashboard() {
   const quickActions = [
     { icon: <FiHeadphones size={18} />, label: 'Quản lý Listening', desc: 'Bài nghe, transcript, từ vựng & câu hỏi', to: '/admin/listening', color: '#0e7490' },
     { icon: <FiBookOpen size={18} />, label: 'Quản lý Reading', desc: 'Bài đọc, đoạn văn, từ vựng & câu hỏi', to: '/admin/reading', color: '#7c3aed' },
-    { icon: <FiBook size={18} />, label: 'Quản lý khóa học', desc: 'Thêm, sửa, xóa khóa học & bài học', to: '/admin/courses', color: '#8b5cf6' },
     { icon: <FiMic size={18} />, label: 'Quản lý Speaking', desc: 'Quản lý bài & câu hỏi speaking', to: '/admin/speaking', color: '#f59e0b' },
     { icon: <FiEdit3 size={18} />, label: 'Quản lý Writing', desc: 'Quản lý bài & bài tập writing', to: '/admin/writing', color: '#10b981' },
     { icon: <FiBookOpen size={18} />, label: 'Quản lý Grammar', desc: 'Danh mục, chủ đề & quiz grammar', to: '/admin/grammar', color: '#6366f1' },

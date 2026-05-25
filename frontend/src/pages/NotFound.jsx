@@ -19,8 +19,7 @@ function NotFound() {
       >
         <div style={{
           fontSize: '120px', fontWeight: 800, lineHeight: 1,
-          background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          color: 'var(--color-primary)',
           marginBottom: 'var(--space-4)'
         }}>
           404
@@ -32,7 +31,7 @@ function NotFound() {
           The page you're looking for doesn't exist or has been moved.
         </p>
         <Link to="/">
-          <button className="btn btn-primary btn-lg">
+          <button type="button" className="btn btn-primary btn-lg">
             Go Home
           </button>
         </Link>

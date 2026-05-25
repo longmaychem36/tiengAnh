@@ -181,8 +181,18 @@ const userService = {
       .input('userId', sql.UniqueIdentifier, userId)
       .query(`
         SELECT us.UserId, us.Exp, us.Level, us.StreakDays, us.LastLogin,
-               (SELECT COUNT(*)::int FROM UserProgress WHERE UserId = @userId AND Status = 'completed') as CompletedLessons,
-               (SELECT COUNT(*)::int FROM UserVocabulary WHERE UserId = @userId AND Status = 'mastered') as MasteredWords,
+               (
+                 (SELECT COUNT(*)::int FROM SpeakingProgress WHERE UserId = @userId AND Status = 'completed') +
+                 (SELECT COUNT(*)::int FROM WritingProgress WHERE UserId = @userId AND Status = 'completed') +
+                 (SELECT COUNT(*)::int FROM ListeningProgress WHERE UserId = @userId AND Status = 'completed') +
+                 (SELECT COUNT(*)::int FROM ReadingProgress WHERE UserId = @userId AND Status = 'completed')
+               ) as CompletedLessons,
+               (
+                 SELECT COUNT(*)::int
+                 FROM UserCollectionWords ucw
+                 INNER JOIN UserCollections uc ON uc.Id = ucw.CollectionId
+                 WHERE uc.UserId = @userId
+               ) as MasteredWords,
                (SELECT COALESCE(SUM(Attempts), 0)::int FROM UserGameProgress WHERE UserId = @userId) as GamesPlayed,
                (SELECT COUNT(*)::int FROM UserAchievements WHERE UserId = @userId) as AchievementsUnlocked
         FROM UserStats us

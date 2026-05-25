@@ -9,6 +9,7 @@ const axios = require('axios');
 const FormData = require('form-data');
 const billingService = require('../billing/billing.service');
 const gamificationService = require('../gamification/gamification.service');
+const dailyService = require('../daily/daily.service');
 const { EXP_REWARDS } = require('../../utils/constants');
 
 const WHISPER_SERVER_URL = process.env.WHISPER_SERVER_URL || 'http://127.0.0.1:5001';
@@ -322,6 +323,42 @@ function analyzeTranscript(transcript, targetTexts) {
   return { ...best, feedback };
 }
 
+async function recordSpeakingWeakness(req, analysis, transcript) {
+  const threshold = Number.parseInt(req.body.passThreshold, 10) || 80;
+  const score = Number(analysis?.score || 0);
+  if (score >= threshold) return;
+
+  const missingWords = analysis.missingWords || [];
+  const extraWords = analysis.extraWords || [];
+  const targetText = req.body.targetText || analysis.matchedText || '';
+  const label = missingWords.length > 0
+    ? `Nói thiếu/chưa rõ: ${missingWords.join(', ')}`
+    : 'Độ chính xác phát âm';
+
+  await dailyService.safeRecordErrorEvent(req.user.id, {
+    skill: 'speaking',
+    activityType: 'speaking_pronunciation',
+    referenceType: req.body.questionId ? 'speaking_question' : 'speaking_lesson',
+    referenceId: req.body.questionId || req.body.lessonId || null,
+    errorType: 'speaking_accuracy',
+    errorKey: missingWords[0] || targetText || 'speaking_accuracy',
+    label,
+    severity: score < 45 ? 5 : score < 65 ? 4 : 3,
+    prompt: req.body.prompt || targetText,
+    userAnswer: transcript,
+    expectedAnswer: targetText,
+    feedback: analysis.feedback,
+    metadata: {
+      lessonId: req.body.lessonId || null,
+      questionId: req.body.questionId || null,
+      score,
+      threshold,
+      missingWords,
+      extraWords
+    }
+  });
+}
+
 const speakingController = {
   /**
    * Transcribe audio file using Whisper server.
@@ -420,6 +457,7 @@ const speakingController = {
 
         const transcript = result.transcript || result.text || '';
         const localAnalysis = analyzeTranscript(transcript, textsArray);
+        await recordSpeakingWeakness(req, localAnalysis, transcript);
 
         return success(res, {
           transcript,
@@ -452,9 +490,7 @@ const speakingController = {
    */
   async createPersonalizedLesson(req, res, next) {
     try {
-      const canUseAi = req.user.role === 'admin'
-        || req.user.role === 'superadmin'
-        || await billingService.isPlusUser(req.user.id);
+      const canUseAi = await billingService.isPlusUser(req.user.id);
 
       if (!canUseAi) {
         return res.status(403).json({
@@ -599,6 +635,10 @@ const speakingController = {
           'speaking_lesson_complete'
         )
         : null;
+
+      dailyService.completeMatchingTasks(req.user.id, 'speaking_lesson', lessonId).catch((err) => {
+        console.error('[daily] failed to complete speaking task:', err.message);
+      });
 
       return success(res, { message: 'Progress saved', alreadyCompleted: wasCompleted, expReward });
     } catch (err) {

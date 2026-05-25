@@ -212,10 +212,10 @@ const writingLessons = [
     title: 'Một ngày thường nhật',
     description: 'Viết đoạn văn ngắn kể về lịch trình mỗi ngày.',
     orderIndex: 4,
-    passageEN: 'I usually wake up at six o’clock and drink a glass of water. After that, I have breakfast with my family before going to school. In the afternoon, I review my lessons and do my homework carefully. In the evening, I spend thirty minutes practicing English online. This routine helps me stay healthy and study better every day.',
+    passageEN: 'I usually wake up at six o'clock and drink a glass of water. After that, I have breakfast with my family before going to school. In the afternoon, I review my lessons and do my homework carefully. In the evening, I spend thirty minutes practicing English online. This routine helps me stay healthy and study better every day.',
     passageVI: 'Tôi thường thức dậy lúc sáu giờ và uống một ly nước. Sau đó, tôi ăn sáng với gia đình trước khi đến trường. Vào buổi chiều, tôi ôn lại bài và làm bài tập cẩn thận. Vào buổi tối, tôi dành ba mươi phút luyện tiếng Anh trực tuyến. Thói quen này giúp tôi khỏe mạnh và học tốt hơn mỗi ngày.',
     exercises: [
-      ['Tôi thường thức dậy lúc sáu giờ và uống một ly nước.', 'I usually wake up at six o’clock and drink a glass of water.', [['usually', 'thường'], ['wake up', 'thức dậy']]],
+      ['Tôi thường thức dậy lúc sáu giờ và uống một ly nước.', 'I usually wake up at six o'clock and drink a glass of water.', [['usually', 'thường'], ['wake up', 'thức dậy']]],
       ['Sau đó, tôi ăn sáng với gia đình trước khi đến trường.', 'After that, I have breakfast with my family before going to school.', [['after that', 'sau đó'], ['breakfast', 'bữa sáng']]],
       ['Vào buổi chiều, tôi ôn lại bài và làm bài tập cẩn thận.', 'In the afternoon, I review my lessons and do my homework carefully.', [['review', 'ôn lại'], ['carefully', 'cẩn thận']]],
       ['Vào buổi tối, tôi dành ba mươi phút luyện tiếng Anh trực tuyến.', 'In the evening, I spend thirty minutes practicing English online.', [['spend', 'dành thời gian'], ['online', 'trực tuyến']]],

@@ -109,7 +109,7 @@ function Collections() {
           <h1>📚 My Collections</h1>
           <p>Organize and review your vocabulary</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowColModal(true)}>
+        <button type="button" className="btn btn-primary" onClick={() => setShowColModal(true)}>
           <FiPlus /> New Collection
         </button>
       </div>
@@ -137,7 +137,7 @@ function Collections() {
                       <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>{c.WordCount || 0} words</div>
                     </div>
                   </div>
-                  <button className="btn btn-icon btn-ghost" onClick={(e) => handleDeleteCol(c.Id, e)} style={{ color: 'var(--color-error)' }}>
+                  <button type="button" className="btn btn-icon btn-ghost" onClick={(e) => handleDeleteCol(c.Id, e)} style={{ color: 'var(--color-error)' }}>
                     <FiTrash2 />
                   </button>
                 </div>
@@ -155,7 +155,7 @@ function Collections() {
                   <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>{selectedCol.Name}</h2>
                   <p style={{ color: 'var(--color-text-secondary)' }}>{selectedCol.Description}</p>
                 </div>
-                <button className="btn btn-primary btn-sm" onClick={() => setShowWordModal(true)}>
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowWordModal(true)}>
                   <FiPlus /> Add Word
                 </button>
               </div>
@@ -183,7 +183,7 @@ function Collections() {
                             {pos && <span className="badge badge-primary">{pos}</span>}
                             {!isDict && <span className="badge badge-warning">Custom</span>}
                           </div>
-                          <button className="btn btn-icon btn-ghost" onClick={() => handleRemoveWord(w.Id)} style={{ color: 'var(--color-error)' }}>
+                          <button type="button" className="btn btn-icon btn-ghost" onClick={() => handleRemoveWord(w.Id)} style={{ color: 'var(--color-error)' }}>
                             <FiTrash2 size={16} />
                           </button>
                         </div>
@@ -211,12 +211,12 @@ function Collections() {
             <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>New Collection</h3>
             <form onSubmit={handleCreateCol}>
               <div className="form-group">
-                <label className="form-label">Name</label>
-                <input className="form-input" type="text" autoFocus required value={colForm.name} onChange={e => setColForm({...colForm, name: e.target.value})} placeholder="e.g. IELTS Work" />
+                <span className="form-label">Name</span>
+                <input aria-label="Trường nhập" className="form-input" type="text" required value={colForm.name} onChange={e => setColForm({...colForm, name: e.target.value})} placeholder="e.g. IELTS Work" />
               </div>
               <div className="form-group">
-                <label className="form-label">Description</label>
-                <input className="form-input" type="text" value={colForm.description} onChange={e => setColForm({...colForm, description: e.target.value})} placeholder="Optional" />
+                <span className="form-label">Description</span>
+                <input aria-label="Trường nhập" className="form-input" type="text" value={colForm.description} onChange={e => setColForm({...colForm, description: e.target.value})} placeholder="Optional" />
               </div>
               <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
                 <button type="button" className="btn btn-secondary w-full" onClick={() => setShowColModal(false)}>Cancel</button>
@@ -233,16 +233,16 @@ function Collections() {
             <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>Add Custom Word</h3>
             <form onSubmit={handleAddCustomWord}>
               <div className="form-group">
-                <label className="form-label">Word/Phrase</label>
-                <input className="form-input" type="text" autoFocus required value={wordForm.customWord} onChange={e => setWordForm({...wordForm, customWord: e.target.value})} placeholder="e.g. piece of cake" />
+                <span className="form-label">Word/Phrase</span>
+                <input aria-label="Trường nhập" className="form-input" type="text" required value={wordForm.customWord} onChange={e => setWordForm({...wordForm, customWord: e.target.value})} placeholder="e.g. piece of cake" />
               </div>
               <div className="form-group">
-                <label className="form-label">Meaning (Vietnamese)</label>
-                <input className="form-input" type="text" required value={wordForm.customMeaning} onChange={e => setWordForm({...wordForm, customMeaning: e.target.value})} placeholder="Dễ như ăn bánh" />
+                <span className="form-label">Meaning (Vietnamese)</span>
+                <input aria-label="Trường nhập" className="form-input" type="text" required value={wordForm.customMeaning} onChange={e => setWordForm({...wordForm, customMeaning: e.target.value})} placeholder="Dá»… như ăn bánh" />
               </div>
               <div className="form-group">
-                <label className="form-label">Example (Optional)</label>
-                <input className="form-input" type="text" value={wordForm.customExample} onChange={e => setWordForm({...wordForm, customExample: e.target.value})} placeholder="The test was a piece of cake." />
+                <span className="form-label">Example (Optional)</span>
+                <input aria-label="Trường nhập" className="form-input" type="text" value={wordForm.customExample} onChange={e => setWordForm({...wordForm, customExample: e.target.value})} placeholder="The test was a piece of cake." />
               </div>
               <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
                 <button type="button" className="btn btn-secondary w-full" onClick={() => setShowWordModal(false)}>Cancel</button>

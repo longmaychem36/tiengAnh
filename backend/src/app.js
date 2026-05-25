@@ -13,22 +13,17 @@ const errorHandler = require('./middlewares/errorHandler');
 // Import Routes
 const authRoutes = require('./modules/auth/auth.routes');
 const userRoutes = require('./modules/user/user.routes');
-const courseRoutes = require('./modules/course/course.routes');
-const lessonRoutes = require('./modules/lesson/lesson.routes');
 const dictionaryRoutes = require('./modules/dictionary/dictionary.routes');
-const vocabularyRoutes = require('./modules/vocabulary/vocabulary.routes');
-const quizRoutes = require('./modules/quiz/quiz.routes');
 const gameRoutes = require('./modules/game/game.routes');
-const progressRoutes = require('./modules/progress/progress.routes');
 const gamificationRoutes = require('./modules/gamification/gamification.routes');
 const speakingRoutes = require('./modules/speaking/speaking.routes');
-const mediaRoutes = require('./modules/media/media.routes');
 const collectionRoutes = require('./modules/collection/collection.routes');
 const grammarRoutes = require('./modules/grammar/grammar.routes');
 const writingRoutes = require('./modules/writing/writing.routes');
 const billingRoutes = require('./modules/billing/billing.routes');
 const listeningRoutes = require('./modules/listening/listening.routes');
 const readingRoutes = require('./modules/reading/reading.routes');
+const dailyRoutes = require('./modules/daily/daily.routes');
 const app = express();
 
 // ==================
@@ -60,22 +55,17 @@ app.get('/api/v1/health', (req, res) => {
 // ==================
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/courses', courseRoutes);
-app.use('/api/v1/lessons', lessonRoutes);
 app.use('/api/v1/dictionary', dictionaryRoutes);
-app.use('/api/v1/vocabulary', vocabularyRoutes);
-app.use('/api/v1/quiz', quizRoutes);
 app.use('/api/v1/games', gameRoutes);
-app.use('/api/v1/progress', progressRoutes);
 app.use('/api/v1/gamification', gamificationRoutes);
 app.use('/api/v1/speaking', speakingRoutes);
-app.use('/api/v1/media', mediaRoutes);
 app.use('/api/v1/collections', collectionRoutes);
 app.use('/api/v1/grammar', grammarRoutes);
 app.use('/api/v1/writing', writingRoutes);
 app.use('/api/v1/billing', billingRoutes);
 app.use('/api/v1/listening', listeningRoutes);
 app.use('/api/v1/reading', readingRoutes);
+app.use('/api/v1/daily-tasks', dailyRoutes);
 
 // Admin routes (role-guarded internally)
 const adminRoutes = require('./modules/admin/admin.routes');
@@ -84,8 +74,9 @@ app.use('/api/v1/admin', adminRoutes);
 // Alias routes: GET /user/stats and POST /user/exp
 const gamificationController = require('./modules/gamification/gamification.controller');
 const authMiddlewareAlias = require('./middlewares/authMiddleware');
-app.get('/api/v1/user/stats', authMiddlewareAlias, gamificationController.getStats);
-app.post('/api/v1/user/exp', authMiddlewareAlias, gamificationController.addExp);
+const { learnerOnly } = require('./middlewares/roleMiddleware');
+app.get('/api/v1/user/stats', authMiddlewareAlias, learnerOnly(), gamificationController.getStats);
+app.post('/api/v1/user/exp', authMiddlewareAlias, learnerOnly(), gamificationController.addExp);
 
 // ==================
 // 404 Handler

@@ -20,7 +20,7 @@ const AI_TOPIC_OPTIONS = [
 function SpeakingAiBuilder() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const canUseAi = user?.isPlus || user?.role === 'admin' || user?.role === 'superadmin';
+  const canUseAi = user?.isPlus;
   const [topic, setTopic] = useState(AI_TOPIC_OPTIONS[0]);
   const [goal, setGoal] = useState('');
   const [level, setLevel] = useState('beginner');
@@ -61,7 +61,7 @@ function SpeakingAiBuilder() {
 
   return (
     <div className="fade-in" style={{ maxWidth: 820, margin: '0 auto', paddingBottom: 'var(--space-12)' }}>
-      <button className="btn btn-ghost btn-sm" onClick={() => navigate('/speaking/options')} style={{ marginBottom: 'var(--space-6)', padding: 0 }}>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/speaking/options')} style={{ marginBottom: 'var(--space-6)', padding: 0 }}>
         <FiArrowLeft /> Về lựa chọn Speaking
       </button>
 
@@ -83,8 +83,8 @@ function SpeakingAiBuilder() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
           <div>
-            <label className="form-label">Chủ đề</label>
-            <input
+            <span className="form-label">Chủ đề</span>
+            <input aria-label="Trường nhập"
               className="form-input"
               list="ai-speaking-topics"
               value={topic}
@@ -93,13 +93,13 @@ function SpeakingAiBuilder() {
               disabled={!canUseAi || isGenerating}
             />
             <datalist id="ai-speaking-topics">
-              {AI_TOPIC_OPTIONS.map(item => <option key={item} value={item} />)}
+              {AI_TOPIC_OPTIONS.map(item => <option key={item} value={item}>{item}</option>)}
             </datalist>
           </div>
 
           <div>
-            <label className="form-label">Trình độ</label>
-            <select className="form-input" value={level} onChange={(e) => setLevel(e.target.value)} disabled={!canUseAi || isGenerating}>
+            <span className="form-label">Trình độ</span>
+            <select aria-label="Lựa chọn" className="form-input" value={level} onChange={(e) => setLevel(e.target.value)} disabled={!canUseAi || isGenerating}>
               <option value="beginner">Cơ bản</option>
               <option value="intermediate">Trung bình</option>
               <option value="advanced">Nâng cao</option>
@@ -107,8 +107,8 @@ function SpeakingAiBuilder() {
           </div>
 
           <div>
-            <label className="form-label">Số câu</label>
-            <select className="form-input" value={questionCount} onChange={(e) => setQuestionCount(Number(e.target.value))} disabled={!canUseAi || isGenerating}>
+            <span className="form-label">Số câu</span>
+            <select aria-label="Lựa chọn" className="form-input" value={questionCount} onChange={(e) => setQuestionCount(Number(e.target.value))} disabled={!canUseAi || isGenerating}>
               <option value={3}>3 câu - nhanh</option>
               <option value={5}>5 câu</option>
               <option value={8}>8 câu - lâu hơn</option>
@@ -117,8 +117,8 @@ function SpeakingAiBuilder() {
         </div>
 
         <div style={{ marginBottom: 'var(--space-6)' }}>
-          <label className="form-label">Mục tiêu cá nhân</label>
-          <input
+          <span className="form-label">Mục tiêu cá nhân</span>
+          <input aria-label="Trường nhập"
             className="form-input"
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
@@ -127,7 +127,7 @@ function SpeakingAiBuilder() {
           />
         </div>
 
-        <button className="btn btn-primary" onClick={handleGenerate} disabled={isGenerating || !topic.trim()} style={{ minWidth: 180 }}>
+        <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={isGenerating || !topic.trim()} style={{ minWidth: 180 }}>
           <FiCpu /> {canUseAi ? (isGenerating ? 'Đang tạo...' : 'Tạo bài luyện') : 'Nâng cấp Plus'}
         </button>
       </motion.div>

@@ -23,7 +23,7 @@ import {
 } from '../../data/receptiveLessons';
 import { receptiveApi } from '../../api/receptiveApi';
 import Loading from '../common/Loading';
-import { hasSpeechSupport, speakText, stopAllPlayback } from '../../utils/audioControl';
+import { hasSpeechSupport, speakText, speakTextQueue, stopAllPlayback } from '../../utils/audioControl';
 
 const PASS_SCORE = 70;
 
@@ -68,13 +68,40 @@ const buildSpeechText = (lesson, skill) => {
   return lesson.paragraphs.join(' ');
 };
 
-const speak = (text, rate = 1) => {
+const FEMALE_VOICE_HINTS = ['aria', 'jenny', 'zira', 'sara', 'samantha', 'susan', 'victoria', 'alice', 'ava', 'emma', 'michelle', 'female'];
+const MALE_VOICE_HINTS = ['guy', 'david', 'mark', 'alex', 'daniel', 'george', 'fred', 'tom', 'male'];
+
+const pickSpeakerVoice = (speaker, voices) => {
+  if (!speaker || !voices.length) return null;
+  const byUri = speaker.voiceURI ? voices.find((voice) => voice.voiceURI === speaker.voiceURI) : null;
+  if (byUri) return byUri;
+
+  const byName = speaker.voiceName
+    ? voices.find((voice) => voice.name.toLowerCase().includes(speaker.voiceName.toLowerCase()))
+    : null;
+  if (byName) return byName;
+
+  const hints = speaker.gender === 'male' ? MALE_VOICE_HINTS : speaker.gender === 'female' ? FEMALE_VOICE_HINTS : [];
+  return voices.find((voice) => {
+    const name = voice.name.toLowerCase();
+    return hints.some((hint) => name.includes(hint));
+  }) || voices[0] || null;
+};
+
+const getSpeakerSpeechOptions = (speaker, voices) => {
+  return {
+    lang: 'en-US',
+    voice: pickSpeakerVoice(speaker, voices)
+  };
+};
+
+const speak = (text, options = {}) => {
   if (!hasSpeechSupport()) {
     toast.error('Trình duyệt chưa hỗ trợ đọc audio.');
     return;
   }
 
-  speakText(text, { lang: 'en-US', rate, pitch: 1 });
+  speakText(text, { lang: 'en-US', ...options });
 };
 
 const stopSpeech = () => {
@@ -126,6 +153,7 @@ const ReceptiveLesson = ({ skill }) => {
   const [result, setResult] = useState(null);
   const [showTranscript, setShowTranscript] = useState(false);
   const [speechRate, setSpeechRate] = useState(1);
+  const [voices, setVoices] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -169,6 +197,21 @@ const ReceptiveLesson = ({ skill }) => {
     };
   }, [skill, id]);
 
+  useEffect(() => {
+    if (!hasSpeechSupport()) return undefined;
+
+    const loadVoices = () => {
+      setVoices(window.speechSynthesis.getVoices().filter((voice) => voice.lang?.startsWith('en')));
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+
   const allAnswered = useMemo(() => {
     if (!lesson) return false;
     return lesson.questions.every((question) => {
@@ -182,7 +225,7 @@ const ReceptiveLesson = ({ skill }) => {
   if (!lesson) {
     return (
       <div className="receptive-page fade-in">
-        <button className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate(meta.listPath)}>
+        <button type="button" className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate(meta.listPath)}>
           <FiArrowLeft /> {meta.backLabel}
         </button>
         <div className="receptive-empty">
@@ -207,13 +250,25 @@ const ReceptiveLesson = ({ skill }) => {
 
     const correctCount = lesson.questions.filter((question) => isQuestionCorrect(question, answers[question.id])).length;
     const score = Math.round((correctCount / lesson.questions.length) * 100);
+    const mistakes = lesson.questions
+      .filter((question) => !isQuestionCorrect(question, answers[question.id]))
+      .map((question) => ({
+        questionId: question.id,
+        questionType: question.type,
+        prompt: question.prompt,
+        userAnswer: answers[question.id],
+        expectedAnswer: question.type === 'true_false' ? String(question.answer) : question.answer,
+        explanation: question.explanation
+      }));
+
     setResult({ correctCount, score });
     saveLessonProgress(skill, lesson.id, score);
     if (source === 'api') {
       receptiveApi.saveProgress(skill, {
         lessonId: lesson.id,
         score,
-        completed: score >= PASS_SCORE
+        completed: score >= PASS_SCORE,
+        mistakes
       }).catch(() => {});
     }
 
@@ -229,10 +284,28 @@ const ReceptiveLesson = ({ skill }) => {
   };
 
   const speechText = buildSpeechText(lesson, skill);
+  const speakListeningLesson = () => {
+    if (!hasSpeechSupport()) {
+      toast.error('Trình duyệt chưa hỗ trợ đọc audio.');
+      return;
+    }
+
+    const queue = lesson.transcript.map((line) => ({
+      text: line.text,
+      ...getSpeakerSpeechOptions(line.speakerProfile, voices),
+      rate: speechRate
+    }));
+
+    speakTextQueue(queue, { lang: 'en-US', rate: speechRate });
+  };
+
+  const speakTranscriptLine = (line) => {
+    speak(line.text, { ...getSpeakerSpeechOptions(line.speakerProfile, voices), rate: speechRate });
+  };
 
   return (
     <div className="receptive-page receptive-practice-page fade-in" style={{ '--receptive-accent': meta.accent }}>
-      <button className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate(meta.listPath)}>
+      <button type="button" className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate(meta.listPath)}>
         <FiArrowLeft /> {meta.backLabel}
       </button>
 
@@ -240,7 +313,6 @@ const ReceptiveLesson = ({ skill }) => {
         <div>
           <span className="receptive-eyebrow">{lesson.level} · {lesson.topic}</span>
           <h1>{lesson.title}</h1>
-          <p>{lesson.objective}</p>
         </div>
         <div className="practice-compact-meta">
           <span><SkillIcon /> {lesson.duration}</span>
@@ -260,27 +332,26 @@ const ReceptiveLesson = ({ skill }) => {
             <section className="receptive-panel practice-source-panel">
               <div className="receptive-panel-header">
                 <div>
-                  <h2>Nghe nội dung</h2>
-                  <p>Nghe bài, rồi mở transcript khi cần kiểm tra lại.</p>
+                  <h2>Nghe bài</h2>
                 </div>
               </div>
 
               <div className="receptive-listen-controls">
-                <button className="btn btn-primary" onClick={() => speak(speechText, speechRate)}>
+                <button type="button" className="btn btn-primary" onClick={speakListeningLesson}>
                   <FiVolume2 /> Nghe cả bài
                 </button>
-                <button className="btn btn-secondary" onClick={stopSpeech}>
+                <button type="button" className="btn btn-secondary" onClick={stopSpeech}>
                   <FiStopCircle /> Dừng
                 </button>
-                <label className="receptive-rate-control">
+                <span className="receptive-rate-control">
                   Tốc độ
-                  <select value={speechRate} onChange={(event) => setSpeechRate(Number(event.target.value))}>
+                  <select aria-label="Lựa chọn" value={speechRate} onChange={(event) => setSpeechRate(Number(event.target.value))}>
                     <option value={0.75}>0.75x</option>
                     <option value={1}>1x</option>
                     <option value={1.15}>1.15x</option>
                     <option value={1.3}>1.3x</option>
                   </select>
-                </label>
+                </span>
               </div>
 
               <button
@@ -296,7 +367,7 @@ const ReceptiveLesson = ({ skill }) => {
                 <div className="receptive-transcript">
                   {lesson.transcript.map((line, index) => (
                     <div key={`${line.speaker}-${index}`} className="receptive-transcript-line">
-                      <button type="button" onClick={() => speak(line.text, speechRate)} aria-label={`Nghe câu ${index + 1}`}>
+                      <button type="button" onClick={() => speakTranscriptLine(line)} aria-label={`Nghe câu ${index + 1}`}>
                         <FiVolume2 />
                       </button>
                       <div>
@@ -313,9 +384,8 @@ const ReceptiveLesson = ({ skill }) => {
               <div className="receptive-panel-header">
                 <div>
                   <h2>{lesson.passageTitle}</h2>
-                  <p>Đọc bài rồi trả lời câu hỏi bên cạnh.</p>
                 </div>
-                <button className="btn btn-secondary btn-sm" onClick={() => speak(speechText, speechRate)}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => speak(speechText, { rate: speechRate })}>
                   <FiVolume2 /> Nghe mẫu
                 </button>
               </div>
@@ -331,8 +401,7 @@ const ReceptiveLesson = ({ skill }) => {
           <section className="receptive-panel practice-question-panel">
             <div className="receptive-panel-header">
               <div>
-                <h2>Kiểm tra hiểu</h2>
-                <p>Trả lời đủ câu hỏi rồi chấm điểm.</p>
+                <h2>Câu hỏi</h2>
               </div>
             </div>
 
@@ -391,7 +460,7 @@ const ReceptiveLesson = ({ skill }) => {
                     )}
 
                     {question.type === 'fill_blank' && (
-                      <input
+                      <input aria-label="Trường nhập"
                         className="receptive-fill-input"
                         value={answer || ''}
                         placeholder="Nhập đáp án..."
@@ -413,7 +482,7 @@ const ReceptiveLesson = ({ skill }) => {
 
             <div className="receptive-actions">
               {!result ? (
-                <button className="btn btn-primary" onClick={handleSubmit} disabled={!allAnswered}>
+                <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={!allAnswered}>
                   Chấm điểm
                 </button>
               ) : (
@@ -422,11 +491,11 @@ const ReceptiveLesson = ({ skill }) => {
                     <strong>{result.score}%</strong>
                     <span>{result.correctCount}/{lesson.questions.length} câu đúng</span>
                   </div>
-                  <button className="btn btn-secondary" onClick={handleRetry}>
+                  <button type="button" className="btn btn-secondary" onClick={handleRetry}>
                     <FiRefreshCw /> Làm lại
                   </button>
                   {nextLesson && result.score >= PASS_SCORE && (
-                    <button className="btn btn-primary" onClick={() => navigate(`/${skill}/lessons/${nextLesson.id}`)}>
+                    <button type="button" className="btn btn-primary" onClick={() => navigate(`/${skill}/lessons/${nextLesson.id}`)}>
                       Bài tiếp theo <FiArrowRight />
                     </button>
                   )}

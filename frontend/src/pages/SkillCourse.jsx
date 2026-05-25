@@ -49,7 +49,7 @@ function SkillCourse() {
 
   return (
     <div className="fade-in" style={{ maxWidth: 800, margin: '0 auto' }}>
-      <button className="btn btn-ghost btn-sm" onClick={() => navigate('/courses')} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/courses')} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
         <FiArrowLeft /> Về Trung tâm Khoá học
       </button>
 

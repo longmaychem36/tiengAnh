@@ -60,8 +60,9 @@ const stats = [
 
 function Home() {
   const { user } = useAuth();
-  const primaryPath = user ? '/dashboard' : '/register';
-  const primaryText = user ? 'Vào bảng học tập' : 'Bắt đầu miễn phí';
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const primaryPath = user ? (isAdmin ? '/admin' : '/dashboard') : '/register';
+  const primaryText = user ? (isAdmin ? 'Vào trang quản trị' : 'Vào bảng học tập') : 'Bắt đầu miễn phí';
 
   return (
     <main style={{ minHeight: '100vh', background: '#f7fffb', color: '#20312f' }}>
@@ -130,13 +131,13 @@ function Home() {
               marginTop: 28
             }}>
               <Link to={primaryPath}>
-                <button className="btn btn-primary btn-lg" style={{ minWidth: 188 }}>
+                <button type="button" className="btn btn-primary btn-lg" style={{ minWidth: 188 }}>
                   {primaryText} <FiArrowRight />
                 </button>
               </Link>
               {!user && (
                 <Link to="/login">
-                  <button className="btn btn-lg" style={{
+                  <button type="button" className="btn btn-lg" style={{
                     minWidth: 136,
                     background: '#ffffff',
                     color: '#134e4a',
@@ -366,7 +367,7 @@ function Home() {
             Tạo tài khoản và bắt đầu với bài học đầu tiên. Bạn có thể học thử ngay, sau đó quay lại luyện tiếp bất cứ lúc nào.
           </p>
           <Link to={primaryPath}>
-            <button className="btn btn-lg" style={{
+            <button type="button" className="btn btn-lg" style={{
               background: '#ffffff',
               color: '#134e4a',
               minWidth: 200,

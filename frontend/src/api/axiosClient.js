@@ -5,6 +5,9 @@ import axios from 'axios';
 import { stopAllPlayback } from '../utils/audioControl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const TOKEN_STORAGE_KEY = 'token';
+const USER_STORAGE_KEY = 'user:v1';
+const LEGACY_USER_STORAGE_KEY = 'user';
 
 const axiosClient = axios.create({
   baseURL: API_URL,
@@ -15,7 +18,7 @@ const axiosClient = axios.create({
 // Request interceptor — attach JWT token
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -30,8 +33,9 @@ axiosClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       stopAllPlayback();
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(USER_STORAGE_KEY);
+      localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

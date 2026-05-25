@@ -73,6 +73,30 @@ export const speakText = (text, options = {}) => {
   return utterance;
 };
 
+export const speakTextQueue = (items, defaultOptions = {}) => {
+  if (!Array.isArray(items) || items.length === 0 || !hasSpeechSupport()) return [];
+  if (typeof document !== 'undefined' && document.hidden) return [];
+
+  stopSpeechPlayback();
+
+  const utterances = items
+    .filter((item) => item?.text)
+    .map((item) => {
+      const options = { ...defaultOptions, ...item };
+      const utterance = new SpeechSynthesisUtterance(item.text);
+      utterance.lang = options.lang || 'en-US';
+      utterance.rate = options.rate || 1;
+      utterance.pitch = options.pitch || 1;
+      if (options.voice) utterance.voice = options.voice;
+      if (options.onend) utterance.onend = options.onend;
+      if (options.onerror) utterance.onerror = options.onerror;
+      return utterance;
+    });
+
+  utterances.forEach((utterance) => window.speechSynthesis.speak(utterance));
+  return utterances;
+};
+
 export const playTrackedAudio = (url, fallback) => {
   if (!url || typeof Audio === 'undefined') {
     if (fallback) fallback();

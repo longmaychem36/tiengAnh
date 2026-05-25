@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiChevronRight, FiChevronDown, FiBook } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiChevronRight, FiChevronDown, FiBook, FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
@@ -68,6 +68,50 @@ const AdminWriting = () => {
       setVocabList(res.data.data);
     } catch (err) {
       toast.error('Lỗi tải từ vựng');
+    }
+  };
+
+  const getNextLessonOrder = () => (
+    lessons.length ? Math.max(...lessons.map((lesson) => Number(lesson.OrderIndex || 0))) + 1 : 1
+  );
+
+  const openNewLessonForm = () => {
+    setEditingLesson(null);
+    setLTitle('');
+    setLDesc('');
+    setLPassageEN('');
+    setLPassageVI('');
+    setLOrder(getNextLessonOrder());
+    setShowLessonForm(true);
+  };
+
+  const buildLessonPayload = (lesson, orderIndex = lesson.OrderIndex) => ({
+    Title: lesson.Title,
+    Description: lesson.Description || '',
+    PassageEN: lesson.PassageEN || '',
+    PassageVI: lesson.PassageVI || '',
+    OrderIndex: orderIndex
+  });
+
+  const handleMoveLesson = async (lessonId, direction) => {
+    const ordered = [...lessons].sort((a, b) => Number(a.OrderIndex || 0) - Number(b.OrderIndex || 0));
+    const currentIndex = ordered.findIndex((lesson) => lesson.Id === lessonId);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= ordered.length) return;
+
+    const moved = [...ordered];
+    [moved[currentIndex], moved[nextIndex]] = [moved[nextIndex], moved[currentIndex]];
+
+    try {
+      await Promise.all(moved.map((lesson, index) => (
+        axios.put(`${API_URL}/admin/writing/lessons/${lesson.Id}`, buildLessonPayload(lesson, index + 1), {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        })
+      )));
+      toast.success('Đã cập nhật thứ tự bài học');
+      fetchLessons();
+    } catch (err) {
+      toast.error('Lỗi cập nhật thứ tự bài học');
     }
   };
 
@@ -192,7 +236,7 @@ const AdminWriting = () => {
     <div className="fade-in" style={{ padding: 'var(--space-6)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
         <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>Quản lý Writing Skills</h1>
-        <button className="btn btn-primary" onClick={() => setShowLessonForm(true)}>
+        <button type="button" className="btn btn-primary" onClick={openNewLessonForm}>
           <FiPlus /> Thêm bài học
         </button>
       </div>
@@ -202,55 +246,57 @@ const AdminWriting = () => {
           <h3 style={{ marginBottom: 'var(--space-4)' }}>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
             <div>
-              <label className="form-label">Tiêu đề</label>
-              <input className="form-input" value={lTitle} onChange={e => setLTitle(e.target.value)} />
+              <span className="form-label">Tiêu đề</span>
+              <input aria-label="Trường nhập" className="form-input" value={lTitle} onChange={e => setLTitle(e.target.value)} />
             </div>
             <div>
-              <label className="form-label">Thứ tự</label>
-              <input className="form-input" type="number" value={lOrder} onChange={e => setLOrder(e.target.value)} />
+              <span className="form-label">Thứ tự</span>
+              <input aria-label="Trường nhập" className="form-input" type="number" value={lOrder} onChange={e => setLOrder(e.target.value)} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Mô tả</label>
-              <textarea className="form-input" value={lDesc} onChange={e => setLDesc(e.target.value)} rows={2} />
+              <span className="form-label">Mô tả</span>
+              <textarea aria-label="Nội dung" className="form-input" value={lDesc} onChange={e => setLDesc(e.target.value)} rows={2} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Bài văn hoàn chỉnh (English)</label>
-              <textarea className="form-input" value={lPassageEN} onChange={e => setLPassageEN(e.target.value)} rows={5} />
+              <span className="form-label">Bài văn hoàn chỉnh (English)</span>
+              <textarea aria-label="Nội dung" className="form-input" value={lPassageEN} onChange={e => setLPassageEN(e.target.value)} rows={5} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Bản dịch bài văn (Tiếng Việt)</label>
-              <textarea className="form-input" value={lPassageVI} onChange={e => setLPassageVI(e.target.value)} rows={4} />
+              <span className="form-label">Bản dịch bài văn (Tiếng Việt)</span>
+              <textarea aria-label="Nội dung" className="form-input" value={lPassageVI} onChange={e => setLPassageVI(e.target.value)} rows={4} />
             </div>
           </div>
           <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-2)' }}>
-            <button className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
-            <button className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
+            <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
+            <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Há»§y</button>
           </div>
         </div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-        {lessons.map(lesson => (
+        {lessons.map((lesson, index) => (
           <div key={lesson.Id} className="card">
             <div style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }} onClick={() => handleSelectLesson(lesson)}>
                 {selectedLesson?.Id === lesson.Id ? <FiChevronDown /> : <FiChevronRight />}
                 <div>
                   <div style={{ fontWeight: 600 }}>{lesson.Title}</div>
-                  <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>{lesson.Description}</div>
+                  <div className="admin-order-badge">STT {lesson.OrderIndex || index + 1}</div>
                   {lesson.PassageEN && (
-                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-primary)', marginTop: 4 }}>
+                    <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 6 }}>
                       {lesson.PassageEN.slice(0, 140)}{lesson.PassageEN.length > 140 ? '...' : ''}
                     </div>
                   )}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => {
+                <button type="button" className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => handleMoveLesson(lesson.Id, -1)} title="Đưa lên"><FiArrowUp size={14} /></button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={index === lessons.length - 1} onClick={() => handleMoveLesson(lesson.Id, 1)} title="Đưa xuống"><FiArrowDown size={14} /></button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
                   setEditingLesson(lesson); setLTitle(lesson.Title); setLDesc(lesson.Description); setLPassageEN(lesson.PassageEN || ''); setLPassageVI(lesson.PassageVI || ''); setLOrder(lesson.OrderIndex);
                   setShowLessonForm(true);
                 }}><FiEdit2 size={14} /></button>
-                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteLesson(lesson.Id)}><FiTrash2 size={14} /></button>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteLesson(lesson.Id)}><FiTrash2 size={14} /></button>
               </div>
             </div>
 
@@ -258,28 +304,28 @@ const AdminWriting = () => {
               <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.01)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
                   <h4 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Bài tập Writing</h4>
-                  <button className="btn btn-primary btn-sm" onClick={() => setShowExForm(true)}><FiPlus /> Thêm bài tập</button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowExForm(true)}><FiPlus /> Thêm bài tập</button>
                 </div>
 
                 {showExForm && (
                   <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-4)', background: 'white' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-3)' }}>
                       <div>
-                        <label className="form-label">Câu hỏi (Tiếng Việt)</label>
-                        <textarea className="form-input" value={exContent} onChange={e => setExContent(e.target.value)} />
+                        <span className="form-label">Câu hỏi (Tiếng Việt)</span>
+                        <textarea aria-label="Nội dung" className="form-input" value={exContent} onChange={e => setExContent(e.target.value)} />
                       </div>
                       <div>
-                        <label className="form-label">Đáp án đúng (English)</label>
-                        <input className="form-input" value={exAnswer} onChange={e => setExAnswer(e.target.value)} />
+                        <span className="form-label">Đáp án đúng (English)</span>
+                        <input aria-label="Trường nhập" className="form-input" value={exAnswer} onChange={e => setExAnswer(e.target.value)} />
                       </div>
                       <div>
-                        <label className="form-label">Thứ tự</label>
-                        <input className="form-input form-input-sm" type="number" value={exOrder} onChange={e => setExOrder(e.target.value)} />
+                        <span className="form-label">Thứ tự</span>
+                        <input aria-label="Trường nhập" className="form-input form-input-sm" type="number" value={exOrder} onChange={e => setExOrder(e.target.value)} />
                       </div>
                     </div>
                     <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-                      <button className="btn btn-primary btn-sm" onClick={handleSaveEx}><FiSave /> Lưu</button>
-                      <button className="btn btn-ghost btn-sm" onClick={closeExForm}><FiX /> Hủy</button>
+                      <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveEx}><FiSave /> Lưu</button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={closeExForm}><FiX /> Há»§y</button>
                     </div>
                   </div>
                 )}
@@ -293,17 +339,17 @@ const AdminWriting = () => {
                           <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)', marginTop: 4 }}>{ex.CorrectAnswerEN}</div>
                         </div>
                         <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-                          <button className="btn btn-ghost btn-xs" onClick={() => {
+                          <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
                             setEditingEx(ex); setExContent(ex.ContentVI); setExAnswer(ex.CorrectAnswerEN); setExOrder(ex.OrderIndex);
                             setShowExForm(true);
                           }}><FiEdit2 size={12} /></button>
-                          <button className="btn btn-ghost btn-xs" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteEx(ex.Id)}><FiTrash2 size={12} /></button>
+                          <button type="button" className="btn btn-ghost btn-xs" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteEx(ex.Id)}><FiTrash2 size={12} /></button>
                         </div>
                       </div>
 
                       {/* Vocab hints for this exercise */}
                       <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-2)', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
                           <FiBook size={10} /> GỢI Ý TỪ VỰNG
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 'var(--space-2)' }}>
@@ -374,14 +420,14 @@ const VocabManager = ({ exId }) => {
             <FiX size={10} style={{ cursor: 'pointer', color: 'var(--color-error)' }} onClick={() => del(v.Id)} />
           </span>
         ))}
-        {!showAdd && <button className="btn btn-ghost btn-xs" onClick={() => setShowAdd(true)} style={{ padding: '0 8px', height: 20, minHeight: 0 }}>+ Thêm gợi ý</button>}
+        {!showAdd && <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAdd(true)} style={{ padding: '0 8px', height: 20, minHeight: 0 }}>+ Thêm gợi ý</button>}
       </div>
       {showAdd && (
         <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-          <input className="input input-sm" style={{ height: 24 }} placeholder="Từ" value={w} onChange={e => setW(e.target.value)} />
-          <input className="input input-sm" style={{ height: 24 }} placeholder="Nghĩa" value={m} onChange={e => setM(e.target.value)} />
-          <button className="btn btn-primary btn-xs" onClick={add}>OK</button>
-          <button className="btn btn-ghost btn-xs" onClick={() => setShowAdd(false)}>X</button>
+          <input aria-label="Trường nhập" className="input input-sm" style={{ height: 24 }} placeholder="Từ" value={w} onChange={e => setW(e.target.value)} />
+          <input aria-label="Trường nhập" className="input input-sm" style={{ height: 24 }} placeholder="NghÄ©a" value={m} onChange={e => setM(e.target.value)} />
+          <button type="button" className="btn btn-primary btn-xs" onClick={add}>Lưu</button>
+          <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAdd(false)}>Há»§y</button>
         </div>
       )}
     </div>

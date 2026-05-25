@@ -7,6 +7,7 @@ const multer = require('multer');
 const path = require('path');
 const speakingController = require('./speaking.controller');
 const authMiddleware = require('../../middlewares/authMiddleware');
+const { learnerOnly } = require('../../middlewares/roleMiddleware');
 
 // Multer config for audio uploads
 const audioStorage = multer.diskStorage({
@@ -37,7 +38,7 @@ const audioUpload = multer({
   }
 });
 
-router.use(authMiddleware);
+router.use(authMiddleware, learnerOnly());
 
 // Whisper transcription endpoint
 router.post('/transcribe', audioUpload.single('audio'), speakingController.transcribeAudio);

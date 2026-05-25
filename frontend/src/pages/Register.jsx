@@ -68,37 +68,37 @@ function Register() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Username</label>
+            <span className="form-label">Username</span>
             <div style={{ position: 'relative' }}>
               <FiUser style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input className="form-input" type="text" placeholder="johndoe" value={form.username}
+              <input aria-label="Trường nhập" className="form-input" type="text" placeholder="johndoe" value={form.username}
                 onChange={e => setForm({ ...form, username: e.target.value })} required style={{ paddingLeft: 42 }} />
             </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <span className="form-label">Email</span>
             <div style={{ position: 'relative' }}>
               <FiMail style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input className="form-input" type="email" placeholder="your@email.com" value={form.email}
+              <input aria-label="Trường nhập" className="form-input" type="email" placeholder="your@email.com" value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })} required style={{ paddingLeft: 42 }} />
             </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Password</label>
+            <span className="form-label">Password</span>
             <div style={{ position: 'relative' }}>
               <FiLock style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input className="form-input" type="password" placeholder="Min. 6 characters" value={form.password}
+              <input aria-label="Trường nhập" className="form-input" type="password" placeholder="Min. 6 characters" value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })} required minLength={6} style={{ paddingLeft: 42 }} />
             </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Confirm Password</label>
+            <span className="form-label">Confirm Password</span>
             <div style={{ position: 'relative' }}>
               <FiLock style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input className="form-input" type="password" placeholder="Repeat password" value={form.confirmPassword}
+              <input aria-label="Trường nhập" className="form-input" type="password" placeholder="Repeat password" value={form.confirmPassword}
                 onChange={e => setForm({ ...form, confirmPassword: e.target.value })} required style={{ paddingLeft: 42 }} />
             </div>
           </div>
