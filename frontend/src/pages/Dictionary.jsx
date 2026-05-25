@@ -274,13 +274,13 @@ function Dictionary() {
 
       <section className="dictionary-search-shell" ref={autocompleteRef}>
         <FiSearch className="dictionary-search-icon" />
-        <input
+        <input aria-label="Trường nhập"
           className="dictionary-search-input"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => autocomplete.length > 0 && !sentenceMode && setShowAutocomplete(true)}
           placeholder={direction === 'en-vi' ? 'Nhập từ hoặc câu tiếng Anh...' : 'Nhập từ hoặc câu tiếng Việt...'}
-          autoFocus
+
         />
         {query && (
           <button className="dictionary-clear" type="button" onClick={() => setQuery('')} aria-label="Xóa tìm kiếm">

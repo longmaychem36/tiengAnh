@@ -4,10 +4,11 @@ const SKILL_CONFIG = {
   listening: {
     lessonTable: 'ListeningLessons',
     contentTable: 'ListeningSegments',
+    speakerTable: 'ListeningSpeakers',
     vocabTable: 'ListeningVocabulary',
     questionTable: 'ListeningQuestions',
     progressTable: 'ListeningProgress',
-    contentSelect: 'Id, Speaker, Text, StartSecond, EndSecond, OrderIndex',
+    contentSelect: 's.Id, s.SpeakerId, COALESCE(sp.Name, s.Speaker) AS Speaker, sp.Gender, sp.VoiceName, sp.VoiceURI, s.Text, s.OrderIndex',
     contentOrder: 'OrderIndex ASC'
   },
   reading: {
@@ -114,13 +115,32 @@ const receptiveService = {
     if (lessonResult.rows.length === 0) return null;
     const lessonRow = lessonResult.rows[0];
 
-    const [contentResult, vocabResult, questionResult] = await Promise.all([
-      pool.query(`
+    const contentQuery = skill === 'listening'
+      ? `
+        SELECT ${config.contentSelect}
+        FROM ${config.contentTable} s
+        LEFT JOIN ${config.speakerTable} sp ON sp.Id = s.SpeakerId
+        WHERE s.LessonId = $1
+        ORDER BY s.${config.contentOrder}
+      `
+      : `
         SELECT ${config.contentSelect}
         FROM ${config.contentTable}
         WHERE LessonId = $1
         ORDER BY ${config.contentOrder}
-      `, [lessonId]),
+      `;
+
+    const speakerQuery = skill === 'listening'
+      ? pool.query(`
+        SELECT Id, Name, Gender, VoiceName, VoiceURI, OrderIndex
+        FROM ${config.speakerTable}
+        WHERE LessonId = $1
+        ORDER BY OrderIndex ASC, Name ASC
+      `, [lessonId])
+      : Promise.resolve({ rows: [] });
+
+    const [contentResult, vocabResult, questionResult, speakerResult] = await Promise.all([
+      pool.query(contentQuery, [lessonId]),
       pool.query(`
         SELECT Id, Word, Meaning, OrderIndex
         FROM ${config.vocabTable}
@@ -132,7 +152,8 @@ const receptiveService = {
         FROM ${config.questionTable}
         WHERE LessonId = $1
         ORDER BY OrderIndex ASC
-      `, [lessonId])
+      `, [lessonId]),
+      speakerQuery
     ]);
 
     const lesson = {
@@ -145,6 +166,13 @@ const receptiveService = {
       duration: lessonRow.duration || '',
       passageTitle: lessonRow.passagetitle || lessonRow.title,
       audioUrl: lessonRow.audiourl || '',
+      speakers: speakerResult.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        gender: row.gender || 'female',
+        voiceName: row.voicename || '',
+        voiceURI: row.voiceuri || ''
+      })),
       vocabulary: vocabResult.rows.map((row) => ({
         id: row.id,
         word: row.word,
@@ -156,10 +184,16 @@ const receptiveService = {
     if (skill === 'listening') {
       lesson.transcript = contentResult.rows.map((row) => ({
         id: row.id,
+        speakerId: row.speakerid || '',
         speaker: row.speaker || '',
-        text: row.text || '',
-        start: row.startsecond,
-        end: row.endsecond
+        speakerProfile: {
+          id: row.speakerid || '',
+          name: row.speaker || '',
+          gender: row.gender || 'female',
+          voiceName: row.voicename || '',
+          voiceURI: row.voiceuri || ''
+        },
+        text: row.text || ''
       }));
     } else {
       lesson.paragraphs = contentResult.rows.map((row) => row.content || '');

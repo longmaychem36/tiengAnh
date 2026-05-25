@@ -166,7 +166,13 @@ const SpeakingLesson = () => {
     setIsAnalyzing(true);
 
     try {
-      const res = await speakingApi.transcribeAndAnalyze(audioBlob, [selectedOption.text]);
+      const res = await speakingApi.transcribeAndAnalyze(audioBlob, [selectedOption.text], {
+        lessonId: id || sessionId || '',
+        questionId: currentSentence.id || '',
+        targetText: selectedOption.text,
+        prompt: currentSentence.question,
+        passThreshold
+      });
       const data = res.data;
 
       if (!data.transcript || data.transcript.trim() === '') {
@@ -275,21 +281,21 @@ const SpeakingLesson = () => {
           </div>
 
           <div className="receptive-actions">
-            <button className="btn btn-secondary" onClick={() => navigate('/speaking/options')}>
+            <button type="button" className="btn btn-secondary" onClick={() => navigate('/speaking/options')}>
               <FiArrowLeft /> Thoát
             </button>
             {isPersonalized && (
-              <button className="btn btn-primary" onClick={() => navigate('/speaking/ai')}>
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/speaking/ai')}>
                 <FiCpu /> Tạo bài nói khác
               </button>
             )}
             {!isPersonalized && (
-              <button className="btn btn-secondary" onClick={() => navigate('/speaking/lessons')}>
+              <button type="button" className="btn btn-secondary" onClick={() => navigate('/speaking/lessons')}>
                 Về danh sách
               </button>
             )}
             {!isPersonalized && nextLesson && (
-              <button className="btn btn-primary" onClick={() => navigate(`/speaking/lessons/${nextLesson.id}`)}>
+              <button type="button" className="btn btn-primary" onClick={() => navigate(`/speaking/lessons/${nextLesson.id}`)}>
                 Bài tiếp theo <FiArrowRight />
               </button>
             )}
@@ -308,10 +314,10 @@ const SpeakingLesson = () => {
   return (
     <div className="receptive-page receptive-practice-page fade-in" style={{ '--receptive-accent': '#2563eb' }}>
       <div className="productive-topbar">
-        <button className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate(isPersonalized ? '/speaking/options' : '/speaking/lessons')}>
+        <button type="button" className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate(isPersonalized ? '/speaking/options' : '/speaking/lessons')}>
           <FiArrowLeft /> Thoát
         </button>
-        <button className="btn btn-secondary btn-sm" onClick={() => setShowSettings(true)}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowSettings(true)}>
           <FiSettings /> Cài đặt
         </button>
       </div>
@@ -334,7 +340,7 @@ const SpeakingLesson = () => {
         <section className="receptive-panel speaking-question-panel">
           <div className="compact-panel-title">
             <h2>Câu hỏi</h2>
-            <button className="btn btn-secondary btn-sm" onClick={() => playTTS(currentSentence.question)}>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => playTTS(currentSentence.question)}>
               <FiVolume2 /> Nghe
             </button>
           </div>
@@ -415,12 +421,12 @@ const SpeakingLesson = () => {
 
               <div className="receptive-actions">
                 {!isPassed && (
-                  <button className="btn btn-secondary" onClick={handleRetry}>
+                  <button type="button" className="btn btn-secondary" onClick={handleRetry}>
                     <FiRefreshCw /> Thử lại
                   </button>
                 )}
                 {isPassed && (
-                  <button className="btn btn-primary" onClick={handleNext}>
+                  <button type="button" className="btn btn-primary" onClick={handleNext}>
                     Tiếp tục <FiArrowRight />
                   </button>
                 )}
@@ -435,14 +441,14 @@ const SpeakingLesson = () => {
           <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="productive-modal">
             <div className="productive-modal-head">
               <h3>Cài đặt phần nói</h3>
-              <button className="btn btn-ghost btn-icon" onClick={() => setShowSettings(false)}>
+              <button type="button" className="btn btn-ghost btn-icon" onClick={() => setShowSettings(false)}>
                 <FiX />
               </button>
             </div>
 
             <div className="productive-setting">
-              <label>Yêu cầu độ chính xác ({passThreshold}%)</label>
-              <input
+              <span>Yêu cầu độ chính xác ({passThreshold}%)</span>
+              <input aria-label="Trường nhập"
                 type="range"
                 min="50"
                 max="100"
@@ -454,8 +460,8 @@ const SpeakingLesson = () => {
             </div>
 
             <div className="productive-setting">
-              <label>Giọng đọc mẫu</label>
-              <select value={selectedVoiceURI} onChange={(event) => setSelectedVoiceURI(event.target.value)}>
+              <span>Giọng đọc mẫu</span>
+              <select aria-label="Lựa chọn" value={selectedVoiceURI} onChange={(event) => setSelectedVoiceURI(event.target.value)}>
                 {voices.length === 0 && <option value="">Đang tải giọng đọc...</option>}
                 {voices.map((voice) => (
                   <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name}</option>
@@ -463,7 +469,7 @@ const SpeakingLesson = () => {
               </select>
             </div>
 
-            <button className="btn btn-primary w-full" onClick={handleSaveSettings}>
+            <button type="button" className="btn btn-primary w-full" onClick={handleSaveSettings}>
               Lưu cài đặt
             </button>
           </motion.div>

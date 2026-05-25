@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const collectionController = require('./collection.controller');
 const authMiddleware = require('../../middlewares/authMiddleware');
+const { learnerOnly } = require('../../middlewares/roleMiddleware');
 
 // All collection routes are protected
-router.use(authMiddleware);
+router.use(authMiddleware, learnerOnly());
 
 // Collections
 router.get('/', collectionController.getMyCollections);

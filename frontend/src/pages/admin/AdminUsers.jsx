@@ -42,7 +42,7 @@ function AdminUsers() {
       await adminApi.updateUserRole(userId, role);
       toast.success(`Đã đổi role thành ${role}`);
       loadUsers(); loadStats();
-    } catch (err) { toast.error(err.response?.data?.message || 'Lỗi'); }
+    } catch (err) { toast.error(err.response?.data?.message || 'Lá»—i'); }
   };
 
   const toggleActive = async (userId) => {
@@ -50,7 +50,7 @@ function AdminUsers() {
       await adminApi.toggleUserActive(userId);
       toast.success('Đã thay đổi trạng thái');
       loadUsers(); loadStats();
-    } catch (err) { toast.error(err.response?.data?.message || 'Lỗi'); }
+    } catch (err) { toast.error(err.response?.data?.message || 'Lá»—i'); }
   };
 
   const roleColors = {
@@ -88,7 +88,7 @@ function AdminUsers() {
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-          <input className="form-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên hoặc email..." style={{ paddingLeft: 36 }} />
+          <input aria-label="Trường nhập" className="form-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên hoặc email..." style={{ paddingLeft: 36 }} />
         </div>
         <button className="btn btn-primary" type="submit">Tìm</button>
       </form>
@@ -129,14 +129,14 @@ function AdminUsers() {
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {/* Role change dropdown */}
-                      <select value={u.Role} onChange={e => changeRole(u.Id, e.target.value)}
+                      <select aria-label="Lựa chọn" value={u.Role} onChange={e => changeRole(u.Id, e.target.value)}
                         style={{ padding: '4px 8px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', fontSize: 'var(--font-size-xs)', cursor: 'pointer' }}>
                         <option value="member">Member</option>
                         <option value="admin">Admin</option>
                         <option value="superadmin">SuperAdmin</option>
                       </select>
                       {/* Lock/Unlock */}
-                      <button onClick={() => toggleActive(u.Id)} title={u.IsActive !== false ? 'Khóa' : 'Mở khóa'}
+                      <button type="button" onClick={() => toggleActive(u.Id)} title={u.IsActive !== false ? 'Khóa' : 'Mở khóa'}
                         style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '4px 8px', cursor: 'pointer', color: u.IsActive !== false ? '#ef4444' : '#10b981' }}>
                         {u.IsActive !== false ? <FiLock size={14} /> : <FiUnlock size={14} />}
                       </button>
@@ -154,9 +154,9 @@ function AdminUsers() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
-          <button className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><FiChevronLeft /> Trước</button>
+          <button type="button" className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><FiChevronLeft /> Trước</button>
           <span style={{ padding: '8px 16px', color: 'var(--color-text-muted)' }}>Trang {page}/{totalPages}</span>
-          <button className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Sau <FiChevronRight /></button>
+          <button type="button" className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Sau <FiChevronRight /></button>
         </div>
       )}
     </div>

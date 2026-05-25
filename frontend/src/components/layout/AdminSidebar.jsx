@@ -1,16 +1,15 @@
 // ============================================
 // Admin Sidebar — Admin-specific navigation
 // ============================================
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
-  FiGrid, FiBook, FiBookOpen, FiMic, FiEdit3, FiHeadphones,
-  FiPlay, FiUsers, FiShield, FiArrowLeft, FiLogOut
+  FiGrid, FiBookOpen, FiMic, FiEdit3, FiHeadphones,
+  FiPlay, FiUsers, FiShield, FiLogOut
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 
 const adminItems = [
   { to: '/admin', icon: FiGrid, label: 'Tổng quan', exact: true },
-  { to: '/admin/courses', icon: FiBook, label: 'Khóa học' },
   { to: '/admin/listening', icon: FiHeadphones, label: 'Listening' },
   { to: '/admin/reading', icon: FiBookOpen, label: 'Reading' },
   { to: '/admin/speaking', icon: FiMic, label: 'Speaking' },
@@ -23,11 +22,8 @@ const superAdminItems = [
   { to: '/admin/users', icon: FiUsers, label: 'Người dùng' },
 ];
 
-function AdminSidebar() {
-  const { user, logout } = useAuth();
-  const isSuperAdmin = user?.role === 'superadmin';
-
-  const NavItem = ({ to, icon: Icon, label, exact }) => (
+function NavItem({ to, icon: Icon, label, exact }) {
+  return (
     <NavLink
       to={to}
       end={exact}
@@ -42,7 +38,7 @@ function AdminSidebar() {
         fontWeight: isActive ? 600 : 500,
         color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
         background: isActive ? 'rgba(194,24,91,0.32)' : 'transparent',
-        transition: 'all 150ms ease',
+        transition: 'background 150ms ease, color 150ms ease',
         textDecoration: 'none',
         letterSpacing: '0.01em'
       })}
@@ -51,6 +47,11 @@ function AdminSidebar() {
       {label}
     </NavLink>
   );
+}
+
+function AdminSidebar() {
+  const { user, logout } = useAuth();
+  const isSuperAdmin = user?.role === 'superadmin';
 
   return (
     <aside className="admin-sidebar">
@@ -66,7 +67,7 @@ function AdminSidebar() {
           <div style={{ fontWeight: 700, fontSize: '1rem', color: '#fff', lineHeight: 1.2 }}>
             EngLearn
           </div>
-          <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Admin Panel
           </div>
         </div>
@@ -111,27 +112,12 @@ function AdminSidebar() {
           </span>
         </div>
 
-        {/* Back to learning */}
-        <Link to="/dashboard" style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '10px 16px', borderRadius: '10px',
-          color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem',
-          textDecoration: 'none', transition: 'all 150ms ease',
-          fontWeight: 500
-        }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
-        >
-          <FiArrowLeft size={16} />
-          Về trang học
-        </Link>
-
         {/* Logout */}
-        <button onClick={logout} style={{
+        <button type="button" onClick={logout} style={{
           display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
           padding: '10px 16px', borderRadius: '10px', border: 'none',
           background: 'transparent', color: 'rgba(255,255,255,0.4)',
-          fontSize: '0.85rem', cursor: 'pointer', transition: 'all 150ms ease',
+          fontSize: '0.85rem', cursor: 'pointer', transition: 'background 150ms ease, color 150ms ease',
           fontWeight: 500
         }}
         onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = '#fca5a5'; }}

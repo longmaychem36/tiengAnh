@@ -4,28 +4,100 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiAward, FiBook, FiPlay, FiSearch, FiTarget, FiTrendingUp } from 'react-icons/fi';
+import {
+  FiAward,
+  FiBook,
+  FiCheckCircle,
+  FiEdit3,
+  FiHeadphones,
+  FiLock,
+  FiMic,
+  FiPlay,
+  FiSearch,
+  FiTarget,
+  FiTrendingUp
+} from 'react-icons/fi';
 import { HiOutlineFire } from 'react-icons/hi';
 import { useAuth } from '../hooks/useAuth';
-import { courseApi } from '../api/courseApi';
 import { gamificationApi } from '../api/progressApi';
+import { dailyTaskApi } from '../api/dailyTaskApi';
 import Loading from '../components/common/Loading';
+
+const learningTracks = [
+  {
+    icon: <FiHeadphones />,
+    label: 'Listening',
+    desc: 'Luyện nghe theo bài học hiện tại',
+    to: '/listening/lessons',
+    color: '#0e7490'
+  },
+  {
+    icon: <FiMic />,
+    label: 'Speaking',
+    desc: 'Luyện phát âm và phản xạ nói',
+    to: '/speaking/options',
+    color: '#f59e0b'
+  },
+  {
+    icon: <FiBook />,
+    label: 'Reading',
+    desc: 'Đọc hiểu và trả lời câu hỏi',
+    to: '/reading/lessons',
+    color: '#7c3aed'
+  },
+  {
+    icon: <FiEdit3 />,
+    label: 'Writing',
+    desc: 'Viết câu, đoạn văn và nhận góp ý',
+    to: '/writing/lessons',
+    color: '#10b981'
+  },
+  {
+    icon: <FiPlay />,
+    label: 'Mini Games',
+    desc: 'Ôn nhanh bằng trò chơi',
+    to: '/games',
+    color: '#c2185b'
+  }
+];
 
 function Dashboard() {
   const { user } = useAuth();
-  const [courses, setCourses] = useState([]);
   const [stats, setStats] = useState(null);
+  const [dailyTasks, setDailyTasks] = useState([]);
+  const [dailyLocked, setDailyLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      courseApi.getAll({ page: 1, limit: 6 }).catch(() => ({ data: [] })),
-      gamificationApi.getStats().catch(() => ({ data: null }))
-    ]).then(([courseRes, statsRes]) => {
-      setCourses(courseRes.data || []);
+      gamificationApi.getStats().catch(() => ({ data: null })),
+      dailyTaskApi.getToday().catch(() => ({ data: { tasks: [], locked: false } }))
+    ]).then(([statsRes, dailyRes]) => {
       setStats(statsRes.data);
+      setDailyTasks(dailyRes.data?.tasks || []);
+      setDailyLocked(Boolean(dailyRes.data?.locked));
     }).finally(() => setLoading(false));
   }, []);
+
+  const handleCompleteTask = async (taskId) => {
+    setDailyTasks((current) => current.map((task) => (
+      task.id === taskId ? { ...task, status: 'completed' } : task
+    )));
+
+    try {
+      const res = await dailyTaskApi.complete(taskId);
+      const updatedTask = res.data?.task;
+      if (updatedTask) {
+        setDailyTasks((current) => current.map((task) => (
+          task.id === taskId ? updatedTask : task
+        )));
+      }
+    } catch {
+      setDailyTasks((current) => current.map((task) => (
+        task.id === taskId ? { ...task, status: 'pending' } : task
+      )));
+    }
+  };
 
   if (loading) return <Loading />;
 
@@ -42,7 +114,7 @@ function Dashboard() {
         <div className="lingo-hero-copy">
           <span className="lingo-eyebrow">Học tiếng Anh mỗi ngày</span>
           <h1>Xin chào, {user?.username || 'bạn'}!</h1>
-          <p>Luyện nghe, nói, viết, từ vựng và mini game trong một không gian học tập nhẹ nhàng, rõ mục tiêu.</p>
+          <p>Luyện nghe, nói, đọc, viết, từ vựng và mini game trong một không gian học tập rõ mục tiêu.</p>
           <div className="lingo-hero-actions">
             <Link className="btn btn-primary btn-lg" to="/courses">Bắt đầu học</Link>
             <Link className="btn btn-secondary btn-lg" to="/games">Chơi mini game</Link>
@@ -82,6 +154,60 @@ function Dashboard() {
         </div>
       </section>
 
+      <section className="lingo-section daily-task-section">
+        <div className="lingo-section-title">
+          <h2>Nhiệm vụ hôm nay</h2>
+          <p>AI chọn 3 hoạt động dựa trên lỗi sai và thói quen học gần đây của bạn.</p>
+        </div>
+
+        {dailyLocked ? (
+          <div className="daily-task-locked">
+            <FiLock />
+            <div>
+              <strong>Nhiệm vụ AI dành cho tài khoản Plus</strong>
+              <p>Nâng cấp để hệ thống tự theo dõi lỗi sai và giao bài luyện hằng ngày.</p>
+            </div>
+            <Link className="btn btn-primary btn-sm" to="/profile">Xem gói Plus</Link>
+          </div>
+        ) : dailyTasks.length > 0 ? (
+          <div className="daily-task-grid">
+            {dailyTasks.map((task, index) => {
+              const completed = task.status === 'completed';
+              return (
+                <motion.article
+                  key={task.id}
+                  className={`daily-task-card ${completed ? 'is-completed' : ''}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <div className="daily-task-top">
+                    <span>{task.skill}</span>
+                    {completed && <FiCheckCircle />}
+                  </div>
+                  <h3>{task.title}</h3>
+                  <p>{task.reason || task.description}</p>
+                  <div className="daily-task-actions">
+                    <Link className="btn btn-primary btn-sm" to={task.url || '/dashboard'}>
+                      Luyện ngay
+                    </Link>
+                    {!completed && (
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleCompleteTask(task.id)}>
+                        Đánh dấu xong
+                      </button>
+                    )}
+                  </div>
+                </motion.article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="daily-task-empty">
+            Hệ thống chưa có đủ dữ liệu để giao nhiệm vụ. Hãy hoàn thành thêm vài bài luyện.
+          </div>
+        )}
+      </section>
+
       <section className="lingo-section">
         <div className="lingo-section-title">
           <h2>Lối tắt học tập</h2>
@@ -102,29 +228,22 @@ function Dashboard() {
 
       <section className="lingo-section">
         <div className="lingo-section-title">
-          <h2>Khóa học gần đây</h2>
-          <Link to="/courses/all">Xem tất cả →</Link>
+          <h2>Khu vực luyện tập</h2>
+          <Link to="/courses">Xem tất cả →</Link>
         </div>
 
-        {courses.length > 0 ? (
-          <div className="grid grid-3">
-            {courses.map((course, index) => (
-              <motion.div key={course.Id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}>
-                <Link to={`/courses/${course.Id}`} className="lingo-course-card">
-                  <span className="lingo-course-level">{course.LevelName || 'All Levels'}</span>
-                  <h3>{course.Title}</h3>
-                  <p>{course.Description?.substring(0, 92)}...</p>
-                  <small>{course.LessonCount || 0} bài học</small>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="lingo-empty-state">
-            <FiBook />
-            <p>Chưa có khóa học nào.</p>
-          </div>
-        )}
+        <div className="grid grid-3">
+          {learningTracks.map((track, index) => (
+            <motion.div key={track.to} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}>
+              <Link to={track.to} className="lingo-course-card" style={{ '--action-color': track.color }}>
+                <span className="lingo-course-level">{track.icon}</span>
+                <h3>{track.label}</h3>
+                <p>{track.desc}</p>
+                <small>Đi tới luyện tập</small>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
       </section>
     </div>
   );

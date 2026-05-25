@@ -4,6 +4,7 @@ const RECEPTIVE_CONFIG = {
   listening: {
     lessonTable: 'ListeningLessons',
     contentTable: 'ListeningSegments',
+    speakerTable: 'ListeningSpeakers',
     vocabTable: 'ListeningVocabulary',
     questionTable: 'ListeningQuestions',
     contentLabel: 'segments'
@@ -45,10 +46,11 @@ function mapContent(skill, row) {
     return {
       Id: row.id,
       LessonId: row.lessonid,
+      SpeakerId: row.speakerid,
       Speaker: row.speaker,
+      SpeakerName: row.speakername || row.speaker,
+      SpeakerGender: row.speakergender,
       Text: row.text,
-      StartSecond: row.startsecond,
-      EndSecond: row.endsecond,
       OrderIndex: row.orderindex
     };
   }
@@ -58,6 +60,20 @@ function mapContent(skill, row) {
     LessonId: row.lessonid,
     Content: row.content,
     OrderIndex: row.orderindex
+  };
+}
+
+function mapSpeaker(row) {
+  return {
+    Id: row.id,
+    LessonId: row.lessonid,
+    Name: row.name,
+    Gender: row.gender,
+    VoiceName: row.voicename,
+    VoiceURI: row.voiceuri,
+    OrderIndex: row.orderindex,
+    CreatedAt: row.createdat,
+    UpdatedAt: row.updatedat
   };
 }
 
@@ -363,9 +379,81 @@ const adminContentService = {
     await pool.query(`DELETE FROM ${config.lessonTable} WHERE Id = $1`, [id]);
   },
 
+  async getListeningSpeakers(lessonId) {
+    const config = getReceptiveConfig('listening');
+    const pool = getPool();
+    const res = await pool.query(`
+      SELECT *
+      FROM ${config.speakerTable}
+      WHERE LessonId = $1
+      ORDER BY OrderIndex ASC, Name ASC
+    `, [lessonId]);
+    return res.rows.map(mapSpeaker);
+  },
+
+  async createListeningSpeaker(data) {
+    const config = getReceptiveConfig('listening');
+    const pool = getPool();
+    const res = await pool.query(`
+      INSERT INTO ${config.speakerTable}
+        (LessonId, Name, Gender, VoiceName, VoiceURI, OrderIndex, UpdatedAt)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      RETURNING *
+    `, [
+      data.LessonId,
+      data.Name || 'Narrator',
+      data.Gender || 'female',
+      data.VoiceName || '',
+      data.VoiceURI || '',
+      Number(data.OrderIndex || 0)
+    ]);
+    return mapSpeaker(res.rows[0]);
+  },
+
+  async updateListeningSpeaker(id, data) {
+    const config = getReceptiveConfig('listening');
+    const pool = getPool();
+    await pool.query(`
+      UPDATE ${config.speakerTable}
+      SET Name = $1,
+          Gender = $2,
+          VoiceName = $3,
+          VoiceURI = $4,
+          OrderIndex = $5,
+          UpdatedAt = NOW()
+      WHERE Id = $6
+    `, [
+      data.Name || 'Narrator',
+      data.Gender || 'female',
+      data.VoiceName || '',
+      data.VoiceURI || '',
+      Number(data.OrderIndex || 0),
+      id
+    ]);
+  },
+
+  async deleteListeningSpeaker(id) {
+    const config = getReceptiveConfig('listening');
+    const pool = getPool();
+    await pool.query(`DELETE FROM ${config.speakerTable} WHERE Id = $1`, [id]);
+  },
+
   async getReceptiveContent(skill, lessonId) {
     const config = getReceptiveConfig(skill);
     const pool = getPool();
+    if (skill === 'listening') {
+      const res = await pool.query(`
+        SELECT s.*,
+               sp.Name AS SpeakerName,
+               sp.Gender AS SpeakerGender
+        FROM ${config.contentTable} s
+        LEFT JOIN ${config.speakerTable} sp ON sp.Id = s.SpeakerId
+        WHERE s.LessonId = $1
+        ORDER BY s.OrderIndex ASC
+      `, [lessonId]);
+      return res.rows.map((row) => mapContent(skill, row));
+    }
+
     const res = await pool.query(`
       SELECT *
       FROM ${config.contentTable}
@@ -381,17 +469,23 @@ const adminContentService = {
     let res;
 
     if (skill === 'listening') {
+      const speakerResult = await pool.query(`
+        SELECT Name
+        FROM ${config.speakerTable}
+        WHERE Id = $1 AND LessonId = $2
+      `, [data.SpeakerId || null, data.LessonId]);
+      const speakerName = speakerResult.rows[0]?.name || data.Speaker || '';
+
       res = await pool.query(`
         INSERT INTO ${config.contentTable}
-          (LessonId, Speaker, Text, StartSecond, EndSecond, OrderIndex)
-        VALUES ($1, $2, $3, $4, $5, $6)
+          (LessonId, SpeakerId, Speaker, Text, OrderIndex)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
       `, [
         data.LessonId,
-        data.Speaker || '',
+        data.SpeakerId || null,
+        speakerName,
         data.Text || '',
-        data.StartSecond === '' ? null : data.StartSecond,
-        data.EndSecond === '' ? null : data.EndSecond,
         Number(data.OrderIndex || 0)
       ]);
     } else {
@@ -415,15 +509,21 @@ const adminContentService = {
     const pool = getPool();
 
     if (skill === 'listening') {
+      const speakerResult = await pool.query(`
+        SELECT Name
+        FROM ${config.speakerTable}
+        WHERE Id = $1
+      `, [data.SpeakerId || null]);
+      const speakerName = speakerResult.rows[0]?.name || data.Speaker || '';
+
       await pool.query(`
         UPDATE ${config.contentTable}
-        SET Speaker = $1, Text = $2, StartSecond = $3, EndSecond = $4, OrderIndex = $5
-        WHERE Id = $6
+        SET SpeakerId = $1, Speaker = $2, Text = $3, OrderIndex = $4
+        WHERE Id = $5
       `, [
-        data.Speaker || '',
+        data.SpeakerId || null,
+        speakerName,
         data.Text || '',
-        data.StartSecond === '' ? null : data.StartSecond,
-        data.EndSecond === '' ? null : data.EndSecond,
         Number(data.OrderIndex || 0),
         id
       ]);

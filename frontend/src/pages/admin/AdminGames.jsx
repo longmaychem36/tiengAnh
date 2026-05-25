@@ -11,28 +11,38 @@ import { useAuth } from '../../hooks/useAuth';
 
 // ========== SHARED FORM MODAL ==========
 const FormModal = ({ title, fields, onSave, formData, setFormData, setShowForm }) => (
-  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowForm(false)}>
+  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowForm(false)}>
     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 'var(--radius-xl)', padding: 'var(--space-8)', width: '100%', maxWidth: 500, maxHeight: '80vh', overflow: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
         <h3 style={{ fontWeight: 700 }}>{title}</h3>
-        <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><FiX size={20} /></button>
+        <button type="button" onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><FiX size={20} /></button>
       </div>
       {fields.map(f => (
         <div key={f.key} style={{ marginBottom: 'var(--space-4)' }}>
-          <label style={{ display: 'block', fontWeight: 600, fontSize: 'var(--font-size-sm)', marginBottom: 4, color: 'var(--color-text-secondary)' }}>{f.label}</label>
+          <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--font-size-sm)', marginBottom: 4, color: 'var(--color-text-secondary)' }}>{f.label}</span>
           {f.type === 'select' ? (
-            <select className="form-input" value={formData[f.key] || ''} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))}>
+            <select aria-label="Lựa chọn" className="form-input" value={formData[f.key] || ''} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))}>
               {f.options.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           ) : (
-            <input className="form-input" type={f.type || 'text'} value={formData[f.key] || ''} onChange={e => setFormData(p => ({ ...p, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))} placeholder={f.placeholder || ''} />
+            <input aria-label="Trường nhập" className="form-input" type={f.type || 'text'} value={formData[f.key] || ''} onChange={e => setFormData(p => ({ ...p, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))} placeholder={f.placeholder || ''} />
           )}
         </div>
       ))}
-      <button className="btn btn-primary" onClick={onSave} style={{ width: '100%' }}><FiSave /> Lưu</button>
+      <button type="button" className="btn btn-primary" onClick={onSave} style={{ width: '100%' }}><FiSave /> Lưu</button>
     </motion.div>
   </div>
 );
+
+function Breadcrumb({ view, activeSet, activeLevel, onSets, onLevels }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
+      <span onClick={onSets} style={{ cursor: 'pointer', fontWeight: view === 'sets' ? 700 : 400 }}>Game Sets</span>
+      {activeSet && <><FiChevronRight size={14} /><span onClick={onLevels} style={{ cursor: 'pointer', fontWeight: view === 'levels' ? 700 : 400 }}>{activeSet.Name}</span></>}
+      {activeLevel && <><FiChevronRight size={14} /><span style={{ fontWeight: 700 }}>{activeLevel.Name}</span></>}
+    </div>
+  );
+}
 
 function AdminGames() {
   const { user } = useAuth();
@@ -147,15 +157,6 @@ function AdminGames() {
 
 
 
-  // ========== BREADCRUMB ==========
-  const Breadcrumb = () => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-      <span onClick={() => { setView('sets'); setActiveSet(null); }} style={{ cursor: 'pointer', fontWeight: view === 'sets' ? 700 : 400 }}>Game Sets</span>
-      {activeSet && <><FiChevronRight size={14} /><span onClick={() => { setView('levels'); setActiveLevel(null); }} style={{ cursor: 'pointer', fontWeight: view === 'levels' ? 700 : 400 }}>{activeSet.Name}</span></>}
-      {activeLevel && <><FiChevronRight size={14} /><span style={{ fontWeight: 700 }}>{activeLevel.Name}</span></>}
-    </div>
-  );
-
   const getQuestionFields = () => {
     const qType = formData.questionType || 'matching';
     const base = [
@@ -199,11 +200,17 @@ function AdminGames() {
           <p style={{ color: 'var(--color-text-muted)' }}>Tạo, sửa, xóa bộ game, level và câu hỏi</p>
         </div>
         {isSuperAdmin && view === 'sets' && (
-          <button className="btn btn-primary btn-sm" onClick={openSetForm}><FiPlus /> Tạo Game Set</button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={openSetForm}><FiPlus /> Tạo Game Set</button>
         )}
       </div>
 
-      <Breadcrumb />
+      <Breadcrumb
+        view={view}
+        activeSet={activeSet}
+        activeLevel={activeLevel}
+        onSets={() => { setView('sets'); setActiveSet(null); }}
+        onLevels={() => { setView('levels'); setActiveLevel(null); }}
+      />
 
       {/* ========== SETS VIEW ========== */}
       {view === 'sets' && (
@@ -217,8 +224,8 @@ function AdminGames() {
                 <span style={{ marginLeft: 8, color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>{set.LevelCount} levels</span>
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
-                <button style={btnIcon} onClick={() => loadLevels(set)}><FiChevronRight size={16} /></button>
-                {isSuperAdmin && <button style={btnIcon} onClick={() => deleteSet(set.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>}
+                <button type="button" style={btnIcon} onClick={() => loadLevels(set)}><FiChevronRight size={16} /></button>
+                {isSuperAdmin && <button type="button" style={btnIcon} onClick={() => deleteSet(set.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>}
               </div>
             </div>
           ))}
@@ -229,8 +236,8 @@ function AdminGames() {
       {view === 'levels' && (
         <>
           <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => { setView('sets'); setActiveSet(null); }}><FiArrowLeft /> Quay lại</button>
-            <button className="btn btn-primary btn-sm" onClick={() => openLevelForm()}><FiPlus /> Thêm level</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setView('sets'); setActiveSet(null); }}><FiArrowLeft /> Quay lại</button>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => openLevelForm()}><FiPlus /> Thêm level</button>
           </div>
           {levels.map(lv => (
             <div key={lv.Id} style={cardStyle}>
@@ -241,9 +248,9 @@ function AdminGames() {
                 <span style={{ marginLeft: 8, color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>{lv.QuestionCount} câu · {lv.TimeLimit}s · Đạt {lv.PassScore}%</span>
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
-                <button style={btnIcon} onClick={() => openLevelForm(lv)}><FiEdit2 size={16} style={{ color: 'var(--color-primary)' }} /></button>
-                {isSuperAdmin && <button style={btnIcon} onClick={() => deleteLevel(lv.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>}
-                <button style={btnIcon} onClick={() => loadQuestions(lv)}><FiList size={16} /></button>
+                <button type="button" style={btnIcon} onClick={() => openLevelForm(lv)}><FiEdit2 size={16} style={{ color: 'var(--color-primary)' }} /></button>
+                {isSuperAdmin && <button type="button" style={btnIcon} onClick={() => deleteLevel(lv.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>}
+                <button type="button" style={btnIcon} onClick={() => loadQuestions(lv)}><FiList size={16} /></button>
               </div>
             </div>
           ))}
@@ -254,8 +261,8 @@ function AdminGames() {
       {view === 'questions' && (
         <>
           <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => { setView('levels'); setActiveLevel(null); }}><FiArrowLeft /> Quay lại</button>
-            <button className="btn btn-primary btn-sm" onClick={() => openQuestionForm()}><FiPlus /> Thêm câu hỏi</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setView('levels'); setActiveLevel(null); }}><FiArrowLeft /> Quay lại</button>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => openQuestionForm()}><FiPlus /> Thêm câu hỏi</button>
           </div>
           {questions.length === 0 && <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: 'var(--space-8)' }}>Chưa có câu hỏi nào.</p>}
           {questions.map((q, i) => {
@@ -273,8 +280,8 @@ function AdminGames() {
                 {q.Options && q.Options.length > 0 && <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 2 }}>Options: {q.Options.join(' | ')}</div>}
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
-                <button style={btnIcon} onClick={() => openQuestionForm(q)}><FiEdit2 size={16} style={{ color: 'var(--color-primary)' }} /></button>
-                <button style={btnIcon} onClick={() => deleteQuestion(q.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>
+                <button type="button" style={btnIcon} onClick={() => openQuestionForm(q)}><FiEdit2 size={16} style={{ color: 'var(--color-primary)' }} /></button>
+                <button type="button" style={btnIcon} onClick={() => deleteQuestion(q.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>
               </div>
             </div>
             );

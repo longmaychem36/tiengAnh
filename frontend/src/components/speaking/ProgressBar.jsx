@@ -12,7 +12,7 @@ const ProgressBar = ({ current, total, compact = false }) => {
         </div>
       )}
       <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-        <div style={{ width: `${percentage}%`, height: '100%', background: 'var(--color-primary)', transition: 'width 0.3s ease' }} />
+        <div style={{ width: '100%', height: '100%', background: 'var(--color-primary)', transform: `scaleX(${percentage / 100})`, transformOrigin: 'left', transition: 'transform 0.3s ease' }} />
       </div>
     </div>
   );

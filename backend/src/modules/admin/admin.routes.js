@@ -176,6 +176,36 @@ function registerReceptiveAdminRoutes(skill, contentPath, itemName) {
     } catch (err) { next(err); }
   });
 
+  if (skill === 'listening') {
+    router.get('/listening/lessons/:id/speakers', requireRole('admin'), async (req, res, next) => {
+      try {
+        const data = await adminContentService.getListeningSpeakers(req.params.id);
+        return success(res, data);
+      } catch (err) { next(err); }
+    });
+
+    router.post('/listening/speakers', requireRole('admin'), async (req, res, next) => {
+      try {
+        const data = await adminContentService.createListeningSpeaker(req.body);
+        return success(res, data, 'Speaker created');
+      } catch (err) { next(err); }
+    });
+
+    router.put('/listening/speakers/:id', requireRole('admin'), async (req, res, next) => {
+      try {
+        await adminContentService.updateListeningSpeaker(req.params.id, req.body);
+        return success(res, null, 'Speaker updated');
+      } catch (err) { next(err); }
+    });
+
+    router.delete('/listening/speakers/:id', requireRole('admin'), async (req, res, next) => {
+      try {
+        await adminContentService.deleteListeningSpeaker(req.params.id);
+        return success(res, null, 'Speaker deleted');
+      } catch (err) { next(err); }
+    });
+  }
+
   router.get(`/${skill}/lessons/:id/${contentPath}`, requireRole('admin'), async (req, res, next) => {
     try {
       const data = await adminContentService.getReceptiveContent(skill, req.params.id);
@@ -441,7 +471,6 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       countTable('Users'),
       pool.query("SELECT count(*) as count FROM Users WHERE isactive = true"),
       pool.query("SELECT count(*) as count FROM Users WHERE createdat >= NOW() - INTERVAL '7 days'"),
-      countTable('Courses'),
       countTable('GameSets'),
       countTable('GameLevels'),
       countTable('MiniGameQuestions'),
@@ -460,21 +489,21 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       totalUsers: parseInt(queries[0].rows[0].count),
       activeUsers: parseInt(queries[1].rows[0].count),
       newUsers7d: parseInt(queries[2].rows[0].count),
-      totalCourses: parseInt(queries[3].rows[0].count),
-      totalGameSets: parseInt(queries[4].rows[0].count),
-      totalGameLevels: parseInt(queries[5].rows[0].count),
-      totalQuestions: parseInt(queries[6].rows[0].count),
-      totalSpeakingLessons: parseInt(queries[7].rows[0].count),
-      totalSpeakingQuestions: parseInt(queries[8].rows[0].count),
-      totalWritingLessons: parseInt(queries[9].rows[0].count),
-      totalWritingExercises: parseInt(queries[10].rows[0].count),
-      totalGrammarCategories: parseInt(queries[11].rows[0].count),
-      totalGrammarTopics: parseInt(queries[12].rows[0].count),
-      totalListeningLessons: parseInt(queries[13].rows[0].count),
-      totalListeningQuestions: parseInt(queries[14].rows[0].count),
-      totalReadingLessons: parseInt(queries[15].rows[0].count),
-      totalReadingQuestions: parseInt(queries[16].rows[0].count),
+      totalGameSets: parseInt(queries[3].rows[0].count),
+      totalGameLevels: parseInt(queries[4].rows[0].count),
+      totalQuestions: parseInt(queries[5].rows[0].count),
+      totalSpeakingLessons: parseInt(queries[6].rows[0].count),
+      totalSpeakingQuestions: parseInt(queries[7].rows[0].count),
+      totalWritingLessons: parseInt(queries[8].rows[0].count),
+      totalWritingExercises: parseInt(queries[9].rows[0].count),
+      totalGrammarCategories: parseInt(queries[10].rows[0].count),
+      totalGrammarTopics: parseInt(queries[11].rows[0].count),
+      totalListeningLessons: parseInt(queries[12].rows[0].count),
+      totalListeningQuestions: parseInt(queries[13].rows[0].count),
+      totalReadingLessons: parseInt(queries[14].rows[0].count),
+      totalReadingQuestions: parseInt(queries[15].rows[0].count),
     };
+    stats.totalSkillLessons = stats.totalSpeakingLessons + stats.totalWritingLessons + stats.totalListeningLessons + stats.totalReadingLessons;
     return success(res, stats);
   } catch (err) { next(err); }
 });

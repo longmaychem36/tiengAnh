@@ -18,7 +18,7 @@ function Navbar() {
               <span>{user.stats.streakDays || 0} ngày</span>
             </div>
             <div className="lingo-chip lingo-chip-indigo">
-              ⚡ {user.stats.exp || 0} EXP
+              âš¡ {user.stats.exp || 0} EXP
             </div>
           </>
         )}
@@ -27,7 +27,7 @@ function Navbar() {
           {user?.isPlus ? 'PLUS' : 'FREE'}
         </div>
 
-        <button className="btn btn-icon btn-ghost" title="Thông báo">
+        <button type="button" className="btn btn-icon btn-ghost" title="Thông báo">
           <FiBell size={18} />
         </button>
 
@@ -42,7 +42,7 @@ function Navbar() {
           <span>{user?.username || 'User'}</span>
         </div>
 
-        <button className="btn btn-icon btn-ghost" onClick={logout} title="Đăng xuất">
+        <button type="button" className="btn btn-icon btn-ghost" onClick={logout} title="Đăng xuất">
           <FiLogOut size={18} />
         </button>
       </div>

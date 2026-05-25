@@ -90,7 +90,7 @@ function Games() {
 
     return (
       <div className="game-shell game-shell-map">
-        <button className="btn btn-ghost btn-sm game-back-btn" onClick={goBack}>
+        <button type="button" className="btn btn-ghost btn-sm game-back-btn" onClick={goBack}>
           <FiArrowLeft /> Quay lại
         </button>
 

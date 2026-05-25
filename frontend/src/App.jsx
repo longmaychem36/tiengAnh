@@ -11,8 +11,6 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import CourseDetail from './pages/CourseDetail';
-import LessonPage from './pages/LessonPage';
 import Dictionary from './pages/Dictionary';
 import Collections from './pages/Collections';
 import Games from './pages/Games';
@@ -38,8 +36,6 @@ import ReadingLesson from './components/reading/ReadingLesson';
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminCourses from './pages/admin/AdminCourses';
-import AdminLessons from './pages/admin/AdminLessons';
 import AdminGames from './pages/admin/AdminGames';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminSpeaking from './pages/admin/AdminSpeaking';
@@ -49,13 +45,12 @@ import AdminReceptive from './pages/admin/AdminReceptive';
 
 function App() {
   const { user } = useAuth();
-  const location = useLocation();
+  const { pathname } = useLocation();
   const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
-  const isSuperAdmin = user && user.role === 'superadmin';
 
   useEffect(() => {
     stopAllPlayback();
-  }, [location.pathname]);
+  }, [pathname]);
 
   useEffect(() => {
     const stopWhenHidden = () => {
@@ -77,14 +72,13 @@ function App() {
       {/* Public routes */}
       <Route path="/" element={<Home />} />
       <Route path="/login" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to="/dashboard" />) : <Login />} />
-      <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+      <Route path="/register" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to="/dashboard" />) : <Register />} />
 
-      {/* Protected routes — wrapped in Layout (for regular users) */}
-      <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+      {/* Learning routes - regular learners only */}
+      <Route element={<ProtectedRoute learnerOnly><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/courses" element={<CoursesHub />} />
         <Route path="/skill/:type" element={<SkillCourse />} />
-        <Route path="/courses/:id" element={<CourseDetail />} />
         
         {/* Speaking & Writing Module */}
         <Route path="/speaking/options" element={<SpeakingOptions />} />
@@ -99,7 +93,6 @@ function App() {
         <Route path="/reading/lessons" element={<ReadingList />} />
         <Route path="/reading/lessons/:id" element={<ReadingLesson />} />
         
-        <Route path="/lessons/:id" element={<LessonPage />} />
         <Route path="/dictionary" element={<Dictionary />} />
         <Route path="/collections" element={<Collections />} />
         <Route path="/games" element={<Games />} />
@@ -112,8 +105,6 @@ function App() {
       {/* Admin routes — separate AdminLayout */}
       <Route element={<AdminLayout />}>
         <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/courses" element={<AdminCourses />} />
-        <Route path="/admin/courses/:courseId/lessons" element={<AdminLessons />} />
         <Route path="/admin/speaking" element={<AdminSpeaking />} />
         <Route path="/admin/writing" element={<AdminWriting />} />
         <Route path="/admin/listening" element={<AdminReceptive skill="listening" />} />

@@ -151,7 +151,10 @@ const WritingLesson = () => {
     try {
       const res = await writingApi.checkWriting({
         userText,
-        targetText: currentExercise.correctAnswerEN
+        targetText: currentExercise.correctAnswerEN,
+        lessonId: id,
+        exerciseId: currentExercise.id,
+        prompt: currentExercise.contentVI
       });
       const newResult = res.data;
       setResult(newResult);
@@ -253,15 +256,15 @@ const WritingLesson = () => {
           </div>
 
           <div className="receptive-actions">
-            <button className="btn btn-secondary" onClick={() => navigate('/writing/lessons')}>
+            <button type="button" className="btn btn-secondary" onClick={() => navigate('/writing/lessons')}>
               <FiArrowLeft /> Về danh sách
             </button>
             {nextLesson && (
-              <button className="btn btn-primary" onClick={() => navigate(`/writing/lessons/${nextLesson.id}`)}>
+              <button type="button" className="btn btn-primary" onClick={() => navigate(`/writing/lessons/${nextLesson.id}`)}>
                 Bài tiếp theo <FiArrowRight />
               </button>
             )}
-            <button
+            <button type="button"
               className="btn btn-secondary"
               onClick={() => {
                 setShowCompletion(false);
@@ -287,7 +290,7 @@ const WritingLesson = () => {
 
   return (
     <div className="receptive-page receptive-practice-page fade-in" style={{ '--receptive-accent': '#059669' }}>
-      <button className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate('/writing/lessons')}>
+      <button type="button" className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate('/writing/lessons')}>
         <FiArrowLeft /> Thoát
       </button>
 
@@ -336,7 +339,7 @@ const WritingLesson = () => {
             {!result && <span>Enter để kiểm tra</span>}
           </div>
 
-          <textarea
+          <textarea aria-label="Nội dung"
             className="productive-textarea"
             rows={4}
             value={userText}
@@ -355,7 +358,7 @@ const WritingLesson = () => {
 
           {!result ? (
             <div className="receptive-actions">
-              <button className="btn btn-primary" onClick={handleCheck} disabled={isChecking || !userText.trim()}>
+              <button type="button" className="btn btn-primary" onClick={handleCheck} disabled={isChecking || !userText.trim()}>
                 {isChecking ? 'Đang chấm...' : 'Kiểm tra'}
               </button>
             </div>
@@ -387,11 +390,11 @@ const WritingLesson = () => {
 
               <div className="receptive-actions">
                 {!isWritingPassed ? (
-                  <button className="btn btn-secondary" onClick={handleRetry}>
+                  <button type="button" className="btn btn-secondary" onClick={handleRetry}>
                     <FiRefreshCw /> Sửa lại
                   </button>
                 ) : (
-                  <button className="btn btn-primary" onClick={handleNext}>
+                  <button type="button" className="btn btn-primary" onClick={handleNext}>
                     Tiếp tục <FiArrowRight />
                   </button>
                 )}

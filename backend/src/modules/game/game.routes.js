@@ -3,11 +3,9 @@
 // ============================================
 const router = require('express').Router();
 const authMiddleware = require('../../middlewares/authMiddleware');
+const { learnerOnly } = require('../../middlewares/roleMiddleware');
 const gameController = require('./game.controller');
 const axios = require('axios');
-
-// Public
-router.get('/sets', gameController.getSets);
 
 // Audio proxy endpoint — avoid CORS issues
 router.get('/audio/proxy', async (req, res) => {
@@ -32,9 +30,11 @@ router.get('/audio/proxy', async (req, res) => {
   }
 });
 
-// Needs auth (for progress tracking)
-router.get('/sets/:setId/levels', authMiddleware, gameController.getLevels);
-router.get('/levels/:levelId/questions', authMiddleware, gameController.getQuestions);
-router.post('/submit', authMiddleware, gameController.submit);
+// Learning endpoints
+router.use(authMiddleware, learnerOnly());
+router.get('/sets', gameController.getSets);
+router.get('/sets/:setId/levels', gameController.getLevels);
+router.get('/levels/:levelId/questions', gameController.getQuestions);
+router.post('/submit', gameController.submit);
 
 module.exports = router;

@@ -1,31 +1,39 @@
 // ============================================
 // Auth Context — Global Authentication State
 // ============================================
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authApi } from '../api/authApi';
 import { stopAllPlayback } from '../utils/audioControl';
 
 export const AuthContext = createContext(null);
+const USER_STORAGE_KEY = 'user:v1';
+const LEGACY_USER_STORAGE_KEY = 'user';
+const TOKEN_STORAGE_KEY = 'token';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('user');
+    const saved = localStorage.getItem(USER_STORAGE_KEY) || localStorage.getItem(LEGACY_USER_STORAGE_KEY);
+    if (saved && !localStorage.getItem(USER_STORAGE_KEY)) {
+      localStorage.setItem(USER_STORAGE_KEY, saved);
+      localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
+    }
     return saved ? JSON.parse(saved) : null;
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
     if (token) {
       authApi.getMe()
         .then(res => {
           setUser(res.data);
-          localStorage.setItem('user', JSON.stringify(res.data));
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.data));
         })
         .catch(() => {
           stopAllPlayback();
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          localStorage.removeItem(USER_STORAGE_KEY);
+          localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
           setUser(null);
         })
         .finally(() => setLoading(false));
@@ -34,38 +42,48 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const login = async (credentials) => {
+  const login = useCallback(async (credentials) => {
     const res = await authApi.login(credentials);
     const { user: userData, token } = res.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
     setUser(userData);
     return userData;
-  };
+  }, []);
 
-  const register = async (data) => {
+  const register = useCallback(async (data) => {
     const res = await authApi.register(data);
     const { user: userData, token } = res.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
     setUser(userData);
     return userData;
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     stopAllPlayback();
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(USER_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
     setUser(null);
-  };
+  }, []);
 
-  const updateUser = (userData) => {
+  const updateUser = useCallback((userData) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-  };
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+  }, []);
+
+  const value = useMemo(() => ({ user, loading, login, register, logout, updateUser }), [
+    user,
+    loading,
+    login,
+    register,
+    logout,
+    updateUser
+  ]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -90,7 +90,7 @@ async function migrate() {
       pool,
       'Listening',
       'ListeningSegments',
-      'Speaker varchar(120), Text text NOT NULL, StartSecond double precision, EndSecond double precision'
+      'Speaker varchar(120), Text text NOT NULL'
     );
 
     await createSkillTables(

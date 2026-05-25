@@ -4,11 +4,19 @@
 const { getPool } = require('../../config/database');
 const { EXP_REWARDS } = require('../../utils/constants');
 const gamificationService = require('../gamification/gamification.service');
+const dailyService = require('../daily/daily.service');
 
 const GAME_DIFFICULTY_EXP = {
   easy: 24,
   medium: 34,
   hard: 46
+};
+
+const GAME_ERROR_LABELS = {
+  matching: 'Mini game nối từ',
+  listening: 'Mini game nghe chọn đáp án',
+  listenbuild: 'Mini game nghe xếp câu',
+  truefalse: 'Mini game đúng sai'
 };
 
 function calculateGameExp({ difficulty, scorePercent, totalQuestions, alreadyCompleted }) {
@@ -162,13 +170,14 @@ const gameService = {
       : [];
 
     const allQRes = await pool.query(`
-      SELECT Id, QuestionType, ContentVI, CorrectAnswer, Options FROM MiniGameQuestions WHERE LevelId = $1
+      SELECT Id, QuestionType, ContentEN, ContentVI, CorrectAnswer, Options FROM MiniGameQuestions WHERE LevelId = $1
     `, [levelId]);
     const allQuestions = allQRes.rows
       .filter(q => playedQuestionIds.length === 0 || playedQuestionIds.includes(q.id))
       .map(q => ({
         Id: q.id,
         QuestionType: q.questiontype,
+        ContentEN: q.contenten,
         ContentVI: q.contentvi,
         CorrectAnswer: q.correctanswer,
         Options: q.options ? JSON.parse(q.options) : null
@@ -199,7 +208,13 @@ const gameService = {
       }
 
       if (isCorrect) correctCount++;
-      results.push({ questionId: q.Id, correct: isCorrect, correctAnswer: q.CorrectAnswer, userAnswer: userAnswer.answer });
+      results.push({
+        questionId: q.Id,
+        questionType: q.QuestionType,
+        correct: isCorrect,
+        correctAnswer: q.CorrectAnswer,
+        userAnswer: userAnswer.answer
+      });
     }
 
     const totalQuestions = allQuestions.length || answers.length;
@@ -245,6 +260,32 @@ const gameService = {
         );
       } catch (e) { console.error('EXP error (non-fatal):', e.message); }
     }
+
+    for (const item of results.filter((entry) => !entry.correct)) {
+      const question = allQuestions.find((entry) => entry.Id === item.questionId);
+      await dailyService.safeRecordErrorEvent(userId, {
+        skill: 'game',
+        activityType: 'mini_game',
+        referenceType: 'game_question',
+        referenceId: item.questionId,
+        errorType: item.questionType || 'game_answer',
+        errorKey: `game_${item.questionType || 'answer'}`,
+        label: GAME_ERROR_LABELS[item.questionType] || `Mini game: ${item.questionType || 'câu hỏi'}`,
+        severity: scorePercent < 50 ? 4 : 3,
+        prompt: question?.ContentEN || question?.ContentVI || '',
+        userAnswer: item.userAnswer,
+        expectedAnswer: item.correctAnswer,
+        feedback: `Đáp án đúng: ${item.correctAnswer}`,
+        metadata: {
+          levelId,
+          scorePercent,
+          passed,
+          duration: duration || 0
+        }
+      });
+    }
+
+    await dailyService.completeMatchingTasks(userId, 'game_level', levelId);
 
     return {
       score: scorePercent,

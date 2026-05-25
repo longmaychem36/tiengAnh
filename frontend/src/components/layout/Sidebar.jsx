@@ -18,12 +18,8 @@ const navItems = [
   { to: '/profile', icon: FiUser, label: 'Hồ sơ' }
 ];
 
-function Sidebar() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
-  const isSuperAdmin = user?.role === 'superadmin';
-
-  const NavItem = ({ to, icon: Icon, label, isAdminLink }) => (
+function NavItem({ to, icon: Icon, label, isAdminLink }) {
+  return (
     <NavLink
       to={to}
       className={({ isActive }) => `lingo-nav-item ${isActive ? 'is-active' : ''} ${isAdminLink ? 'is-admin' : ''}`}
@@ -32,6 +28,12 @@ function Sidebar() {
       <span>{label}</span>
     </NavLink>
   );
+}
+
+function Sidebar() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isSuperAdmin = user?.role === 'superadmin';
 
   return (
     <aside className="lingo-sidebar">

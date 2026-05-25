@@ -21,6 +21,69 @@ const TYPE_LABELS = {
   truefalse: { icon: '✅', label: 'Đúng hay Sai', color: '#8a4b35' }
 };
 
+function TimerBar({ type, timerColor, timerPct, timeLeft, currentQ, totalQuestions }) {
+  return (
+    <div className="game-hud-card">
+      <div className="game-hud-label">
+        <span style={{ '--type-color': type.color }}>{type.icon}</span>
+        <strong>{type.label}</strong>
+      </div>
+      <div className="game-hud-timer">
+        <FiClock style={{ color: timerColor }} />
+        <div className="game-time-track">
+          <motion.div
+            className="game-time-fill"
+            style={{ background: timerColor }}
+            animate={{ width: `${timerPct}%` }}
+            transition={{ duration: 0.25 }}
+          />
+        </div>
+        <strong style={{ color: timerColor }}>{timeLeft}s</strong>
+      </div>
+      <div className="game-progress-label">Câu {currentQ + 1}/{totalQuestions}</div>
+    </div>
+  );
+}
+
+function GameProgressBar({ progressPct }) {
+  return (
+    <div className="game-question-progress">
+      <span style={{ width: `${progressPct}%` }} />
+    </div>
+  );
+}
+
+function FeedbackBtn({ lastCorrect, question, isLastQuestion, onNext }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`game-feedback ${lastCorrect ? 'is-correct' : 'is-wrong'}`}
+    >
+      <div>
+        {lastCorrect ? <FiCheck /> : <FiX />}
+        <strong>{lastCorrect ? 'Đúng rồi!' : `Sai! Đáp án: ${question.CorrectAnswer}`}</strong>
+      </div>
+      <button type="button" className="btn btn-primary btn-sm" onClick={onNext}>
+        {isLastQuestion ? 'Xem kết quả' : 'Câu tiếp →'}
+      </button>
+    </motion.div>
+  );
+}
+
+function AnswerButton({ children, correct, wrong, disabled, onClick }) {
+  return (
+    <button
+      type="button"
+      className={`game-answer-btn ${correct ? 'is-correct' : ''} ${wrong ? 'is-wrong' : ''}`}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
 function GamePlay() {
   const { levelId } = useParams();
   const navigate = useNavigate();
@@ -279,7 +342,7 @@ function GamePlay() {
             {[1, 2, 3].map(star => (
               <motion.span
                 key={star}
-                initial={{ scale: 0, rotate: -120 }}
+                initial={{ scale: 0.95, opacity: 0, rotate: -120 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ delay: 0.2 + star * 0.12 }}
               >
@@ -297,13 +360,13 @@ function GamePlay() {
           <ExpReward reward={result.expReward} fallbackExp={result.expEarned} />
 
           <div className="game-result-actions">
-            <button className="btn btn-secondary" onClick={() => navigate('/games')}><FiArrowLeft /> Quay lại</button>
+            <button type="button" className="btn btn-secondary" onClick={() => navigate('/games')}><FiArrowLeft /> Quay lại</button>
             {result.passed && nextLevel && (
-              <button className="btn btn-primary" onClick={() => navigate(`/games/play/${nextLevel.Id}`)}>
+              <button type="button" className="btn btn-primary" onClick={() => navigate(`/games/play/${nextLevel.Id}`)}>
                 Level tiếp theo <FiArrowRight />
               </button>
             )}
-            <button className="btn btn-primary" onClick={() => window.location.reload()}><FiRefreshCw /> Chơi lại</button>
+            <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}><FiRefreshCw /> Chơi lại</button>
           </div>
         </motion.section>
       </div>
@@ -328,7 +391,7 @@ function GamePlay() {
             <span><FiStar /> Đạt {level.PassScore}%</span>
           </div>
 
-          <button className="btn btn-primary btn-lg" onClick={startGame}>
+          <button type="button" className="btn btn-primary btn-lg" onClick={startGame}>
             <FiPlay /> Bắt đầu chơi
           </button>
         </motion.section>
@@ -345,65 +408,18 @@ function GamePlay() {
 
   const selectedAnswer = answers.find(item => item.questionId === question.Id)?.answer;
 
-  const TimerBar = () => (
-    <div className="game-hud-card">
-      <div className="game-hud-label">
-        <span style={{ '--type-color': type.color }}>{type.icon}</span>
-        <strong>{type.label}</strong>
-      </div>
-      <div className="game-hud-timer">
-        <FiClock style={{ color: timerColor }} />
-        <div className="game-time-track">
-          <motion.div
-            className="game-time-fill"
-            style={{ background: timerColor }}
-            animate={{ width: `${timerPct}%` }}
-            transition={{ duration: 0.25 }}
-          />
-        </div>
-        <strong style={{ color: timerColor }}>{timeLeft}s</strong>
-      </div>
-      <div className="game-progress-label">Câu {currentQ + 1}/{questions.length}</div>
-    </div>
-  );
-
-  const ProgressBar = () => (
-    <div className="game-question-progress">
-      <span style={{ width: `${progressPct}%` }} />
-    </div>
-  );
-
-  const FeedbackBtn = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`game-feedback ${lastCorrect ? 'is-correct' : 'is-wrong'}`}
-    >
-      <div>
-        {lastCorrect ? <FiCheck /> : <FiX />}
-        <strong>{lastCorrect ? 'Đúng rồi!' : `Sai! Đáp án: ${question.CorrectAnswer}`}</strong>
-      </div>
-      <button className="btn btn-primary btn-sm" onClick={handleNext}>
-        {currentQ + 1 >= questions.length ? 'Xem kết quả' : 'Câu tiếp →'}
-      </button>
-    </motion.div>
-  );
-
-  const AnswerButton = ({ children, correct, wrong, disabled, onClick }) => (
-    <button
-      type="button"
-      className={`game-answer-btn ${correct ? 'is-correct' : ''} ${wrong ? 'is-wrong' : ''}`}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
 
   return (
     <div className="game-play-shell">
-      <TimerBar />
-      <ProgressBar />
+      <TimerBar
+        type={type}
+        timerColor={timerColor}
+        timerPct={timerPct}
+        timeLeft={timeLeft}
+        currentQ={currentQ}
+        totalQuestions={questions.length}
+      />
+      <GameProgressBar progressPct={progressPct} />
 
       <motion.section
         key={currentQ}
@@ -503,7 +519,7 @@ function GamePlay() {
             )}
 
             {!buildChecked && builtWords.length > 0 && wordBank.length === 0 && (
-              <button className="btn btn-primary" onClick={checkBuild}>Kiểm tra câu</button>
+              <button type="button" className="btn btn-primary" onClick={checkBuild}>Kiểm tra câu</button>
             )}
           </>
         )}
@@ -538,7 +554,14 @@ function GamePlay() {
           <div className="game-empty">Loại game "{question?.QuestionType}" chưa được hỗ trợ.</div>
         )}
 
-        {showFeedback && <FeedbackBtn />}
+        {showFeedback && (
+          <FeedbackBtn
+            lastCorrect={lastCorrect}
+            question={question}
+            isLastQuestion={currentQ + 1 >= questions.length}
+            onNext={handleNext}
+          />
+        )}
       </motion.section>
     </div>
   );

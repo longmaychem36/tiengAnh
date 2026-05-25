@@ -72,13 +72,13 @@ function Login() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <span className="form-label">Email</span>
             <div style={{ position: 'relative' }}>
               <FiMail style={{
                 position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
                 color: 'var(--color-text-muted)'
               }} />
-              <input
+              <input aria-label="Trường nhập"
                 className="form-input"
                 type="email"
                 placeholder="your@email.com"
@@ -91,13 +91,13 @@ function Login() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Password</label>
+            <span className="form-label">Password</span>
             <div style={{ position: 'relative' }}>
               <FiLock style={{
                 position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
                 color: 'var(--color-text-muted)'
               }} />
-              <input
+              <input aria-label="Trường nhập"
                 className="form-input"
                 type="password"
                 placeholder="••••••••"

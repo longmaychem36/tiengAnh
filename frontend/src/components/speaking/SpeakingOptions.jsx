@@ -15,11 +15,11 @@ const bulletStyle = {
 function SpeakingOptions() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const canUseAi = user?.isPlus || user?.role === 'admin' || user?.role === 'superadmin';
+  const canUseAi = user?.isPlus;
 
   return (
     <div className="fade-in" style={{ maxWidth: 1060, margin: '0 auto', paddingBottom: 'var(--space-12)' }}>
-      <button className="btn btn-ghost btn-sm" onClick={() => navigate('/courses')} style={{ marginBottom: 'var(--space-6)', padding: 0 }}>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/courses')} style={{ marginBottom: 'var(--space-6)', padding: 0 }}>
         <FiArrowLeft /> Về khóa học
       </button>
 
@@ -40,7 +40,7 @@ function SpeakingOptions() {
             <div style={{ width: 112, height: 112, borderRadius: 28, background: '#dbeafe', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
               <FiMic size={56} />
             </div>
-            <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); navigate('/speaking/lessons'); }}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); navigate('/speaking/lessons'); }}>
               Khóa học
             </button>
           </div>
@@ -69,7 +69,7 @@ function SpeakingOptions() {
             <div style={{ width: 112, height: 112, borderRadius: 28, background: '#fce7f3', color: '#db2777', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
               {canUseAi ? <FiCpu size={56} /> : <FiLock size={56} />}
             </div>
-            <button className={canUseAi ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'} onClick={(e) => { e.stopPropagation(); navigate(canUseAi ? '/speaking/ai' : '/profile'); }}>
+            <button type="button" className={canUseAi ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'} onClick={(e) => { e.stopPropagation(); navigate(canUseAi ? '/speaking/ai' : '/profile'); }}>
               {canUseAi ? 'Truy cập' : 'Nâng cấp'}
             </button>
           </div>

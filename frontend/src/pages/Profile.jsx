@@ -10,6 +10,11 @@ import { userApi } from '../api/userApi';
 import { billingApi } from '../api/billingApi';
 import toast from 'react-hot-toast';
 
+const VND_FORMATTER = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND'
+});
+
 function Profile() {
   const { user, updateUser } = useAuth();
   const cropPreviewSize = 320;
@@ -25,10 +30,7 @@ function Profile() {
   const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
   const [cropDragging, setCropDragging] = useState(null);
 
-  const formatVnd = (amount) => new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND'
-  }).format(amount || 0);
+  const formatVnd = (amount) => VND_FORMATTER.format(amount || 0);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -263,13 +265,13 @@ function Profile() {
             </div>
 
             {!billingInfo && (
-              <button className="btn btn-secondary" onClick={loadBillingInfo} disabled={loadingBilling}>
+              <button type="button" className="btn btn-secondary" onClick={loadBillingInfo} disabled={loadingBilling}>
                 {loadingBilling ? 'Đang tải...' : 'Xem thông tin gói'}
               </button>
             )}
 
             {billingInfo && !plusOrder && (
-              <button className="btn btn-primary" onClick={createPlusOrder} disabled={loadingBilling}>
+              <button type="button" className="btn btn-primary" onClick={createPlusOrder} disabled={loadingBilling}>
                 {loadingBilling ? 'Đang tạo...' : 'Tạo QR thanh toán SePay'}
               </button>
             )}
@@ -295,14 +297,14 @@ function Profile() {
                   <div><strong>Số tài khoản:</strong><br />{billingInfo.upgrade.transfer.accountNumber || 'Chưa cấu hình'}</div>
                   <div><strong>Chủ tài khoản:</strong><br />{billingInfo.upgrade.transfer.accountName || 'Chưa cấu hình'}</div>
                   <div><strong>Số tiền:</strong><br />{formatVnd(plusOrder.amount)}</div>
-                  <div style={{ gridColumn: '1 / -1' }}><strong>Nội dung:</strong><br />{plusOrder.transferContent}</div>
+                  <div style={{ gridColumn: '1 / -1' }}><strong>Ná»™i dung:</strong><br />{plusOrder.transferContent}</div>
                   <div><strong>Trạng thái:</strong><br />{plusOrder.status}</div>
                 </div>
                 <div style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-3)', background: '#fff7ed', color: '#9a3412', borderRadius: 'var(--radius-lg)', fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
                   Giữ nguyên nội dung chuyển khoản.
                 </div>
 
-                <button className="btn btn-primary" onClick={checkPaymentStatus} disabled={checkingPayment}>
+                <button type="button" className="btn btn-primary" onClick={checkPaymentStatus} disabled={checkingPayment}>
                   {checkingPayment ? 'Đang kiểm tra...' : 'Kiểm tra thanh toán'}
                 </button>
               </div>
@@ -347,7 +349,7 @@ function Profile() {
               }}
             >
               <FiCamera size={16} />
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleAvatarChange} disabled={uploadingAvatar} style={{ display: 'none' }} />
+              <input aria-label="Trường nhập" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleAvatarChange} disabled={uploadingAvatar} style={{ display: 'none' }} />
             </label>
           </div>
           <div>
@@ -392,14 +394,14 @@ function Profile() {
 
         <form onSubmit={handleSave}>
           <div className="form-group">
-            <label className="form-label">Tên người dùng</label>
-            <input className="form-input" type="text" value={username}
+            <label className="form-label" htmlFor="profile-username">Tên người dùng</label>
+            <input aria-label="Trường nhập" id="profile-username" className="form-input" type="text" value={username}
               onChange={e => setUsername(e.target.value)} required minLength={3} />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Email</label>
-            <input className="form-input" type="email" value={user?.email || ''} disabled
+            <label className="form-label" htmlFor="profile-email">Email</label>
+            <input aria-label="Trường nhập" id="profile-email" className="form-input" type="email" value={user?.email || ''} readOnly disabled
               style={{ opacity: 0.6, cursor: 'not-allowed' }} />
           </div>
 
@@ -471,8 +473,9 @@ function Profile() {
               />
             </div>
 
-            <label className="form-label">Phóng to</label>
-            <input
+            <label className="form-label" htmlFor="avatar-zoom">Phóng to</label>
+            <input aria-label="Trường nhập"
+              id="avatar-zoom"
               type="range"
               min="1"
               max="3"
@@ -483,7 +486,7 @@ function Profile() {
             />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
-              <button className="btn btn-secondary" type="button" onClick={closeAvatarCrop} disabled={uploadingAvatar}>Hủy</button>
+              <button className="btn btn-secondary" type="button" onClick={closeAvatarCrop} disabled={uploadingAvatar}>Há»§y</button>
               <button className="btn btn-primary" type="button" onClick={uploadCroppedAvatar} disabled={uploadingAvatar}>
                 {uploadingAvatar ? 'Đang tải...' : 'Lưu ảnh'}
               </button>

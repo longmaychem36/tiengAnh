@@ -4,7 +4,7 @@
 const router = require('express').Router();
 const multer = require('multer');
 const authMiddleware = require('../../middlewares/authMiddleware');
-const { authorize } = require('../../middlewares/roleMiddleware');
+const { authorize, learnerOnly } = require('../../middlewares/roleMiddleware');
 const userController = require('./user.controller');
 
 const avatarUpload = multer({
@@ -25,9 +25,9 @@ const avatarUpload = multer({
 router.use(authMiddleware);
 
 router.get('/', authorize('admin'), userController.getAll);
-router.put('/:id/avatar', avatarUpload.single('avatar'), userController.updateAvatar);
-router.get('/:id', userController.getById);
-router.put('/:id', userController.update);
-router.get('/:id/stats', userController.getStats);
+router.put('/:id/avatar', learnerOnly(), avatarUpload.single('avatar'), userController.updateAvatar);
+router.get('/:id', learnerOnly(), userController.getById);
+router.put('/:id', learnerOnly(), userController.update);
+router.get('/:id/stats', learnerOnly(), userController.getStats);
 
 module.exports = router;

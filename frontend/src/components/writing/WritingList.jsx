@@ -48,7 +48,7 @@ const WritingList = () => {
 
   return (
     <div className="receptive-page fade-in" style={{ '--receptive-accent': '#059669' }}>
-      <button className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate('/courses')}>
+      <button type="button" className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate('/courses')}>
         <FiArrowLeft /> Về trang khóa học
       </button>
 
