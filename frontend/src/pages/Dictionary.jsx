@@ -175,13 +175,7 @@ function Dictionary() {
           return;
         }
 
-        dictionaryApi.getById(exactMatch.Id)
-          .then((detailRes) => {
-            if (requestIdRef.current === requestId) setSelectedWord(detailRes.data);
-          })
-          .catch(() => {
-            if (requestIdRef.current === requestId) setSelectedWord(exactMatch);
-          });
+        setSelectedWord(exactMatch);
       })
       .catch((err) => {
         if (requestIdRef.current !== requestId) return;
@@ -211,12 +205,6 @@ function Dictionary() {
 
   const viewWordDetail = async (entry) => {
     setSelectedWord(entry);
-    try {
-      const res = await dictionaryApi.getById(entry.Id);
-      setSelectedWord(res.data);
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Không tải được chi tiết từ.'));
-    }
   };
 
   const speakText = (text, lang = 'en-US') => {
@@ -247,7 +235,11 @@ function Dictionary() {
     if (!selectedWord) return;
     setSavingCollection(true);
     try {
-      await collectionApi.addWord(collectionId, { dictionaryEntryId: selectedWord.Id });
+      await collectionApi.addWord(collectionId, {
+        customWord: selectedWord.Word,
+        customMeaning: selectedWord.MeaningVI || selectedWord.MeaningEN || '',
+        customExample: selectedWord.Example || ''
+      });
       toast.success('Đã lưu từ vào bộ sưu tập.');
       setShowSaveModal(false);
     } catch (err) {

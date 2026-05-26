@@ -38,10 +38,8 @@ class CollectionRepository extends BaseRepository {
     const result = await pool.request()
       .input('collectionId', sql.UniqueIdentifier, collectionId)
       .query(`
-        SELECT w.*, 
-               d.Word as DictWord, d.Phonetic, d.PartOfSpeech, d.MeaningVI as DictMeaningVI, d.MeaningEN as DictMeaningEN, d.AudioUrl
+        SELECT w.*
         FROM UserCollectionWords w
-        LEFT JOIN DictionaryEntries d ON w.DictionaryEntryId = d.Id
         WHERE w.CollectionId = @collectionId
         ORDER BY w.AddedAt DESC
       `);
@@ -58,7 +56,7 @@ class CollectionRepository extends BaseRepository {
       .input('customExample', sql.NVarChar, wordData.customExample || null)
       .query(`
         INSERT INTO UserCollectionWords (CollectionId, DictionaryEntryId, CustomWord, CustomMeaning, CustomExample)
-        VALUES (@collectionId, @dictionaryEntryId, @customWord, @customMeaning, @customExample) RETURNING *
+        VALUES (@collectionId, NULL, @customWord, @customMeaning, @customExample) RETURNING *
       `);
     return result.recordset[0];
   }

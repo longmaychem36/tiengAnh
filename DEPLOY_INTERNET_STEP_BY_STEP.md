@@ -599,3 +599,33 @@ https://english-learning-api-production.up.railway.app/api/v1/billing/sepay/webh
 - Xóa public networking của PostgreSQL nếu không cần import từ máy local nữa.
 - Chỉ giữ private connection giữa backend và PostgreSQL trong Railway.
 - Không đưa secret vào frontend env `VITE_*`.
+
+## 16. Cập Nhật Sau Khi Chuyển Từ Điển Sang API-Only
+
+Từ điển hiện tra hoàn toàn qua API ngoài:
+
+- Free Dictionary API cho nghĩa tiếng Anh, phát âm, audio, từ loại.
+- MyMemory API cho dịch Anh-Việt hoặc Việt-Anh.
+- Datamuse API cho gợi ý/autocomplete tiếng Anh.
+
+Backend không insert từ tra cứu vào bảng `DictionaryEntries` nữa. Khi người dùng lưu từ vào bộ sưu tập, hệ thống lưu trực tiếp vào `UserCollectionWords` qua các cột:
+
+```text
+CustomWord
+CustomMeaning
+CustomExample
+```
+
+Nếu database Railway đã deploy trước đó, chạy thêm lệnh này để bỏ phụ thuộc collection vào bảng từ điển:
+
+```powershell
+psql "POSTGRES_PUBLIC_URL" -c "ALTER TABLE public.usercollectionwords DROP CONSTRAINT IF EXISTS usercollectionwords_dictionaryentryid_fkey;"
+```
+
+Sau đó:
+
+1. Commit và push code mới.
+2. Redeploy backend Railway.
+3. Redeploy frontend Vercel.
+4. Test lại trang Dictionary.
+5. Tra một từ bất kỳ rồi lưu vào collection.

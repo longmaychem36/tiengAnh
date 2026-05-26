@@ -1,11 +1,10 @@
 // ============================================
-// Dictionary Module — Service
+// Dictionary Module - Service
+// API-only lookup. Database is used for search history and saved collections only.
 // ============================================
 const { sql, getPool } = require('../../config/database');
-const { parsePagination } = require('../../utils/pagination');
 
-// Safe fetch wrapper with timeout
-const safeFetch = async (url, timeoutMs = 5000) => {
+const safeFetch = async (url, timeoutMs = 6000) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -18,285 +17,174 @@ const safeFetch = async (url, timeoutMs = 5000) => {
   }
 };
 
+const makeExternalId = (source, word) => {
+  const value = Buffer.from(`${source}:${word || ''}`).toString('base64url');
+  return `external_${value}`;
+};
+
+const parseDictionaryApiEntry = async ({ apiEntry, originalQuery, direction }) => {
+  const allMeanings = [];
+  const synonyms = new Set();
+
+  apiEntry.meanings?.forEach((meaning) => {
+    meaning.definitions?.forEach((definition) => {
+      allMeanings.push({
+        partOfSpeech: meaning.partOfSpeech || '',
+        definition: definition.definition || '',
+        example: definition.example || ''
+      });
+    });
+    meaning.synonyms?.forEach((synonym) => synonyms.add(synonym));
+  });
+
+  let phonetic = apiEntry.phonetic || '';
+  const audios = { uk: '', us: '' };
+  apiEntry.phonetics?.forEach((item) => {
+    if (item.text && !phonetic) phonetic = item.text;
+    if (!item.audio) return;
+    if (item.audio.includes('-uk')) audios.uk = item.audio;
+    else if (item.audio.includes('-us')) audios.us = item.audio;
+    else if (!audios.us) audios.us = item.audio;
+  });
+
+  let meaningVI = direction === 'vi-en' ? originalQuery : '';
+  const transRes = await safeFetch(
+    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(apiEntry.word)}&langpair=en|vi`,
+    6000
+  );
+  if (transRes && transRes.ok) {
+    const transData = await transRes.json();
+    const matches = transData.matches || [];
+    const uniqueTranslations = [...new Set(matches.map((m) => m.translation).filter(Boolean))];
+    const filtered = uniqueTranslations
+      .filter((item) => item.toLowerCase() !== apiEntry.word.toLowerCase())
+      .slice(0, 6)
+      .join('; ');
+    meaningVI = filtered || transData.responseData?.translatedText || meaningVI;
+  }
+
+  return {
+    Id: makeExternalId('dictionaryapi', apiEntry.word),
+    Word: apiEntry.word?.toLowerCase() || originalQuery.toLowerCase(),
+    Phonetic: phonetic.replaceAll('/', ''),
+    PartOfSpeech: apiEntry.meanings?.[0]?.partOfSpeech || '',
+    MeaningEN: JSON.stringify(allMeanings),
+    MeaningVI: meaningVI || 'Chưa có bản dịch',
+    Example: allMeanings.find((item) => item.example)?.example || '',
+    AudioUrl: JSON.stringify(audios),
+    LevelId: null,
+    LevelCode: null,
+    LevelName: null,
+    synonyms: [...synonyms].slice(0, 8),
+    Source: 'dictionaryapi'
+  };
+};
+
+const translateWord = async (text, langpair) => {
+  const res = await safeFetch(
+    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langpair}`,
+    6000
+  );
+  if (!res || !res.ok) return '';
+  const data = await res.json();
+  return (data.responseData?.translatedText || '').trim();
+};
+
 const dictionaryService = {
-  /**
-   * Main search — accepts direction: 'en-vi' | 'vi-en'
-   */
-  async search({ query, page, limit, levelId, direction = 'en-vi' }) {
-    const pool = getPool();
-    const { offset } = parsePagination({ page, limit });
-
+  async search({ query, page = 1, limit = 20, direction = 'en-vi' }) {
     const normalizedQuery = query.trim();
-    const likeQuery = `%${normalizedQuery}%`;
-    let whereClause = 'WHERE (d.Word ILIKE @query OR d.MeaningVI ILIKE @query OR d.MeaningEN ILIKE @query)';
-    const request = pool.request()
-      .input('query', sql.NVarChar, likeQuery)
-      .input('offset', sql.Int, offset)
-      .input('limit', sql.Int, parseInt(limit));
+    if (!normalizedQuery) return { entries: [], total: 0, suggestions: [] };
 
-    if (levelId) {
-      whereClause += ' AND d.LevelId = @levelId';
-      request.input('levelId', sql.Int, parseInt(levelId));
+    const pageNumber = Number.parseInt(page, 10) || 1;
+    const resultLimit = Number.parseInt(limit, 10) || 20;
+    if (pageNumber > 1) return { entries: [], total: 0, suggestions: [] };
+
+    let targetWord = normalizedQuery;
+    if (direction === 'vi-en') {
+      const translated = await translateWord(normalizedQuery, 'vi|en');
+      if (translated) targetWord = translated.toLowerCase();
     }
 
-    const countReq = pool.request().input('query', sql.NVarChar, likeQuery);
-    if (levelId) countReq.input('levelId', sql.Int, parseInt(levelId));
-    const countResult = await countReq.query(
-      `SELECT COUNT(*)::int as total FROM DictionaryEntries d ${whereClause}`
+    const entries = [];
+    const extRes = await safeFetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(targetWord)}`,
+      7000
     );
 
-    const result = await request.query(`
-      SELECT d.Id, d.Word, d.Phonetic, d.PartOfSpeech, d.MeaningEN, d.MeaningVI,
-             d.Example, d.AudioUrl, d.LevelId,
-             ll.Code as LevelCode, ll.Name as LevelName
-      FROM DictionaryEntries d
-      LEFT JOIN LearningLevels ll ON d.LevelId = ll.Id
-      ${whereClause}
-      ORDER BY d.Word ASC
-      LIMIT @limit OFFSET @offset
-    `);
-    
-    let entries = result.recordset;
-    let total = countResult.recordset[0].total;
-    let suggestions = [];
-
-    const trimmedQuery = normalizedQuery;
-
-    // Exact match check
-    const exactMatch = entries.find(e => e.Word.toLowerCase() === trimmedQuery.toLowerCase() || (e.MeaningVI && e.MeaningVI.toLowerCase().includes(trimmedQuery.toLowerCase())));
-    
-    if (!exactMatch && trimmedQuery.length >= 2 && parseInt(page) === 1 && !query.includes('%')) {
-      try {
-        let targetWord = trimmedQuery;
-        
-        // Direction-based translation
-        if (direction === 'vi-en') {
-          // Step 1: Translate VI → EN using MyMemory
-          const vi2en = await safeFetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(targetWord)}&langpair=vi|en`);
-          if (vi2en && vi2en.ok) {
-            const viData = await vi2en.json();
-            if (viData.responseData && viData.responseData.translatedText) {
-              targetWord = viData.responseData.translatedText.toLowerCase().trim();
-            }
-          }
-        }
-
-        // Step 2: Fetch Free Dictionary API (always EN)
-        const extRes = await safeFetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(targetWord)}`, 6000);
-        
-        if (extRes && extRes.ok) {
-          const extData = await extRes.json();
-          const first = extData[0];
-          
-          let allMeanings = [];
-          let allSynonyms = new Set();
-          
-          first.meanings?.forEach(m => {
-            let pos = m.partOfSpeech;
-            m.definitions?.forEach(d => {
-              allMeanings.push({
-                partOfSpeech: pos,
-                definition: d.definition,
-                example: d.example || ''
-              });
-            });
-            m.synonyms?.forEach(s => allSynonyms.add(s));
-          });
-
-          const meaningEN = JSON.stringify(allMeanings);
-
-          let audios = { uk: '', us: '' };
-          let phonetic = first.phonetic || '';
-          
-          first.phonetics?.forEach(p => {
-             if (p.text && !phonetic) phonetic = p.text;
-             if (p.audio) {
-               if (p.audio.includes('-uk')) audios.uk = p.audio;
-               else if (p.audio.includes('-us')) audios.us = p.audio;
-               else if (!audios.us) audios.us = p.audio;
-             }
-          });
-          const audioUrl = JSON.stringify(audios);
-
-          // Step 3: Translate EN → VI
-          let meaningVI = '';
-          if (direction === 'vi-en') {
-            meaningVI = trimmedQuery; // original Vietnamese input
-          }
-          try {
-            const en2vi = await safeFetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(first.word)}&langpair=en|vi`);
-            if (en2vi && en2vi.ok) {
-              const transData = await en2vi.json();
-              if (transData.matches && transData.matches.length > 0) {
-                const uniqueTrans = [...new Set(transData.matches.map(m => m.translation))];
-                const viMeaning = uniqueTrans.filter(t => t.toLowerCase() !== first.word.toLowerCase()).join('; ');
-                if (viMeaning) meaningVI = viMeaning;
-              } else if (transData.responseData && transData.responseData.translatedText) {
-                if (!meaningVI) meaningVI = transData.responseData.translatedText;
-              }
-            }
-          } catch(e) { console.error('EN->VI Translation error', e); }
-          if (!meaningVI) meaningVI = "Chưa có bản dịch";
-
-          const synonymsArray = Array.from(allSynonyms).slice(0, 8);
-
-          // Step 4: Create in Local DB
-          const newEntry = await this.create({
-            word: first.word.toLowerCase(),
-            phonetic: phonetic.split('/').join(''),
-            partOfSpeech: first.meanings?.[0]?.partOfSpeech || '',
-            meaningEN,
-            meaningVI,
-            example: '',
-            audioUrl,
-            synonyms: synonymsArray
-          });
-
-          entries.unshift(newEntry);
-          total += 1;
-        } else {
-          // Dictionary API failed — try translation fallback for compound words/phrases
-          const fallbackEntry = await this._translateFallback(targetWord, trimmedQuery, direction);
-          if (fallbackEntry) {
-            entries.unshift(fallbackEntry);
-            total += 1;
-          } else {
-            suggestions = await this._getSpellSuggestions(targetWord, direction, pool);
-          }
-        }
-      } catch (err) {
-        console.error('External Dictionary API error:', err.message);
+    if (extRes && extRes.ok) {
+      const data = await extRes.json();
+      for (const item of data.slice(0, resultLimit)) {
+        entries.push(await parseDictionaryApiEntry({
+          apiEntry: item,
+          originalQuery: normalizedQuery,
+          direction
+        }));
       }
     }
 
-    return { entries, total, suggestions };
+    if (entries.length === 0) {
+      const fallback = await this._translateFallback(targetWord, normalizedQuery, direction);
+      if (fallback) entries.push(fallback);
+    }
+
+    const suggestions = entries.length === 0
+      ? await this._getSpellSuggestions(targetWord)
+      : [];
+
+    return { entries, total: entries.length, suggestions };
   },
 
-  /**
-   * Fallback: translate compound words / phrases via MyMemory when dictionary API fails
-   */
   async _translateFallback(targetWord, originalQuery, direction) {
-    try {
-      let translated = null;
+    const langpair = direction === 'en-vi' ? 'en|vi' : 'vi|en';
+    const translated = await translateWord(direction === 'en-vi' ? targetWord : originalQuery, langpair);
+    if (!translated || translated.toLowerCase() === String(targetWord).toLowerCase()) return null;
 
-      if (direction === 'en-vi') {
-        const res = await safeFetch(
-          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(targetWord)}&langpair=en|vi`,
-          6000
-        );
-        if (!res || !res.ok) return null;
-        const data = await res.json();
-        translated = data.responseData?.translatedText;
-        if (!translated || translated.toLowerCase() === targetWord.toLowerCase()) return null;
-      } else {
-        // For vi-en, originalQuery is VI, targetWord is EN (translated in step 1).
-        if (targetWord.toLowerCase() === originalQuery.toLowerCase()) return null;
-        translated = targetWord;
-      }
-
-      // Check if already exists in DB
-      const englishWord = direction === 'vi-en' ? translated.toLowerCase() : targetWord.toLowerCase();
-      
-      const pool = getPool();
-      const existing = await pool.request()
-        .input('w', sql.NVarChar, englishWord)
-        .query('SELECT * FROM DictionaryEntries WHERE LOWER(Word) = @w LIMIT 1');
-      if (existing.recordset.length > 0) return existing.recordset[0];
-
-      // Create new entry
-      const meaningVI = direction === 'vi-en' ? originalQuery : translated;
-      const meaningEN = direction === 'vi-en' ? translated : null;
-
-      const newEntry = await this.create({
-        word: englishWord,
-        phonetic: '',
-        partOfSpeech: '',
-        meaningEN: meaningEN || '',
-        meaningVI,
-        example: '',
-        audioUrl: '',
-        synonyms: []
-      });
-      return newEntry;
-    } catch (e) {
-      console.error('Translate fallback error:', e.message);
-      return null;
-    }
+    const word = direction === 'vi-en' ? translated.toLowerCase() : targetWord.toLowerCase();
+    return {
+      Id: makeExternalId('translation', `${direction}:${originalQuery}`),
+      Word: word,
+      Phonetic: '',
+      PartOfSpeech: '',
+      MeaningEN: direction === 'vi-en' ? translated : '',
+      MeaningVI: direction === 'en-vi' ? translated : originalQuery,
+      Example: '',
+      AudioUrl: JSON.stringify({ uk: '', us: '' }),
+      LevelId: null,
+      LevelCode: null,
+      LevelName: null,
+      synonyms: [],
+      Source: 'translation'
+    };
   },
 
-  /**
-   * Spell-check / suggestion engine
-   * Tries multiple sources to suggest correct words
-   */
-  async _getSpellSuggestions(word, direction, pool) {
+  async _getSpellSuggestions(word) {
     const suggestions = [];
 
-    try {
-      // Source 1: Datamuse API — free spell-check + suggestions
-      const datamuseRes = await safeFetch(`https://api.datamuse.com/sug?s=${encodeURIComponent(word)}&max=6`);
-      if (datamuseRes && datamuseRes.ok) {
-        const datamuseData = await datamuseRes.json();
-        datamuseData.forEach(item => {
-          if (item.word && item.word.toLowerCase() !== word.toLowerCase()) {
-            suggestions.push(item.word);
-          }
-        });
+    const addSuggestion = (item) => {
+      if (item?.word && item.word.toLowerCase() !== word.toLowerCase()) {
+        suggestions.push(item.word);
       }
-    } catch (e) { /* ignore */ }
+    };
 
-    try {
-      // Source 2: Datamuse "sounds like" for phonetic misspellings
-      if (suggestions.length < 3) {
-        const soundsLikeRes = await safeFetch(`https://api.datamuse.com/words?sl=${encodeURIComponent(word)}&max=4`);
-        if (soundsLikeRes && soundsLikeRes.ok) {
-          const slData = await soundsLikeRes.json();
-          slData.forEach(item => {
-            if (item.word && !suggestions.includes(item.word) && item.word.toLowerCase() !== word.toLowerCase()) {
-              suggestions.push(item.word);
-            }
-          });
-        }
+    const sugRes = await safeFetch(`https://api.datamuse.com/sug?s=${encodeURIComponent(word)}&max=6`, 4000);
+    if (sugRes && sugRes.ok) {
+      const data = await sugRes.json();
+      data.forEach(addSuggestion);
+    }
+
+    if (suggestions.length < 3) {
+      const soundRes = await safeFetch(`https://api.datamuse.com/words?sl=${encodeURIComponent(word)}&max=5`, 4000);
+      if (soundRes && soundRes.ok) {
+        const data = await soundRes.json();
+        data.forEach(addSuggestion);
       }
-    } catch (e) { /* ignore */ }
+    }
 
-    try {
-      // Source 3: Local DB — fuzzy match with LIKE
-      const fuzzyResult = await pool.request()
-        .input('fuzzy', sql.NVarChar, `${word.substring(0, Math.max(2, Math.floor(word.length * 0.6)))}%`)
-        .query('SELECT Word FROM DictionaryEntries WHERE Word ILIKE @fuzzy ORDER BY Word LIMIT 5');
-      fuzzyResult.recordset.forEach(r => {
-        if (!suggestions.includes(r.Word) && r.Word.toLowerCase() !== word.toLowerCase()) {
-          suggestions.push(r.Word);
-        }
-      });
-    } catch (e) { /* ignore */ }
-
-    // Deduplicate + limit
     return [...new Set(suggestions)].slice(0, 8);
   },
 
-  async getById(entryId) {
-    const pool = getPool();
-
-    const entryResult = await pool.request()
-      .input('entryId', sql.UniqueIdentifier, entryId)
-      .query(`
-        SELECT d.*, ll.Code as LevelCode, ll.Name as LevelName
-        FROM DictionaryEntries d
-        LEFT JOIN LearningLevels ll ON d.LevelId = ll.Id
-        WHERE d.Id = @entryId
-      `);
-
-    if (entryResult.recordset.length === 0) return null;
-    const entry = entryResult.recordset[0];
-
-    // Get synonyms
-    const synonymResult = await pool.request()
-      .input('wordId', sql.UniqueIdentifier, entryId)
-      .query('SELECT Id, Synonym FROM DictionarySynonyms WHERE WordId = @wordId');
-
-    entry.synonyms = synonymResult.recordset.map(s => s.Synonym);
-    return entry;
+  async getById() {
+    return null;
   },
 
   async logSearch(userId, word) {
@@ -322,92 +210,53 @@ const dictionaryService = {
   },
 
   async create(data) {
-    const pool = getPool();
-    const result = await pool.request()
-      .input('word', sql.NVarChar, data.word)
-      .input('phonetic', sql.NVarChar, data.phonetic || null)
-      .input('partOfSpeech', sql.NVarChar, data.partOfSpeech || null)
-      .input('meaningEN', sql.NVarChar, data.meaningEN || null)
-      .input('meaningVI', sql.NVarChar, data.meaningVI)
-      .input('example', sql.NVarChar, data.example || null)
-      .input('audioUrl', sql.NVarChar, data.audioUrl || null)
-      .input('levelId', sql.Int, data.levelId || null)
-      .query(`
-        INSERT INTO DictionaryEntries (Word, Phonetic, PartOfSpeech, MeaningEN, MeaningVI, Example, AudioUrl, LevelId)
-        VALUES (@word, @phonetic, @partOfSpeech, @meaningEN, @meaningVI, @example, @audioUrl, @levelId) RETURNING *
-      `);
-
-    // Add synonyms if provided
-    if (data.synonyms && data.synonyms.length > 0) {
-      for (const synonym of data.synonyms) {
-        await pool.request()
-          .input('wordId', sql.UniqueIdentifier, result.recordset[0].Id)
-          .input('synonym', sql.NVarChar, synonym)
-          .query('INSERT INTO DictionarySynonyms (WordId, Synonym) VALUES (@wordId, @synonym)');
-      }
-    }
-
-    return result.recordset[0];
+    return {
+      Id: makeExternalId('manual', data.word),
+      Word: data.word,
+      Phonetic: data.phonetic || '',
+      PartOfSpeech: data.partOfSpeech || '',
+      MeaningEN: data.meaningEN || '',
+      MeaningVI: data.meaningVI || '',
+      Example: data.example || '',
+      AudioUrl: data.audioUrl || '',
+      synonyms: data.synonyms || [],
+      Source: 'manual'
+    };
   },
 
-  /**
-   * Autocomplete — fast keyword suggestions as user types
-   */
   async autocomplete(query, limit = 8, direction = 'en-vi') {
-    const pool = getPool();
-    const searchColumn = direction === 'vi-en' ? 'MeaningVI' : 'Word';
-    const secondaryColumn = direction === 'vi-en' ? 'Word' : 'MeaningVI';
-    const result = await pool.request()
-      .input('q', sql.NVarChar, `${query}%`)
-      .input('limit', sql.Int, limit)
-      .query(`
-        SELECT Word, PartOfSpeech, MeaningVI
-        FROM DictionaryEntries
-        WHERE ${searchColumn} ILIKE @q OR ${secondaryColumn} ILIKE @q
-        ORDER BY 
-          CASE WHEN ${searchColumn} ILIKE @q THEN 0 ELSE 1 END,
-          LENGTH(Word) ASC, 
-          Word ASC
-        LIMIT @limit
-      `);
-    
-    // Also try Datamuse for words not in local DB
-    let external = [];
-    if (direction === 'en-vi' && result.recordset.length < limit && query.length >= 2) {
-      try {
-        const res = await safeFetch(`https://api.datamuse.com/sug?s=${encodeURIComponent(query)}&max=${limit}`, 3000);
-        if (res && res.ok) {
-          const data = await res.json();
-          const localWords = result.recordset.map(r => r.Word.toLowerCase());
-          external = data
-            .filter(d => !localWords.includes(d.word.toLowerCase()))
-            .map(d => ({ Word: d.word, PartOfSpeech: null, MeaningVI: null }))
-            .slice(0, limit - result.recordset.length);
-        }
-      } catch (e) { /* ignore */ }
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) return [];
+
+    if (direction === 'vi-en') {
+      const translated = await translateWord(normalizedQuery, 'vi|en');
+      if (!translated) return [];
+      return [{
+        Word: translated.toLowerCase(),
+        PartOfSpeech: null,
+        MeaningVI: normalizedQuery
+      }];
     }
 
-    return [...result.recordset, ...external];
+    const res = await safeFetch(
+      `https://api.datamuse.com/sug?s=${encodeURIComponent(normalizedQuery)}&max=${Number.parseInt(limit, 10) || 8}`,
+      3000
+    );
+    if (!res || !res.ok) return [];
+    const data = await res.json();
+    return data.map((item) => ({
+      Word: item.word,
+      PartOfSpeech: null,
+      MeaningVI: null
+    }));
   },
 
-  /**
-   * Translate a full sentence (EN->VI or VI->EN)
-   */
   async translateSentence(text, direction = 'en-vi') {
     const langpair = direction === 'en-vi' ? 'en|vi' : 'vi|en';
-    
     try {
-      const res = await safeFetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langpair}`,
-        8000
-      );
-      if (!res || !res.ok) return { translated: null, error: 'Translation service unavailable' };
-      
-      const data = await res.json();
-      const translated = data.responseData?.translatedText || null;
-      
-      return { 
-        translated,
+      const translated = await translateWord(text, langpair);
+      return {
+        translated: translated || null,
         source: text,
         direction
       };

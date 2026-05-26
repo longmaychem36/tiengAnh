@@ -36,13 +36,13 @@ const collectionService = {
     if (!collection) throw new Error('Collection not found');
     if (collection.UserId !== userId) throw new Error('Unauthorized to modify this collection');
 
-    if (!data.dictionaryEntryId && !data.customWord) {
-      throw new Error('Must provide either a dictionary entry ID or a custom word');
+    if (!data.customWord) {
+      throw new Error('Custom word is required');
     }
 
     return await collectionRepo.addWord({
       collectionId,
-      dictionaryEntryId: data.dictionaryEntryId,
+      dictionaryEntryId: null,
       customWord: data.customWord,
       customMeaning: data.customMeaning,
       customExample: data.customExample

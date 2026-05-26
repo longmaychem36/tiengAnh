@@ -1778,6 +1778,13 @@ ALTER TABLE public.writinglessons
     ADD COLUMN IF NOT EXISTS passageen text,
     ADD COLUMN IF NOT EXISTS passagevi text;
 
+--
+-- Dictionary lookup is API-only. Saved collection words are stored as custom words.
+--
+
+ALTER TABLE public.usercollectionwords
+    DROP CONSTRAINT IF EXISTS usercollectionwords_dictionaryentryid_fkey;
+
 CREATE TABLE IF NOT EXISTS public.paymentrequests (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     userid uuid NOT NULL,
