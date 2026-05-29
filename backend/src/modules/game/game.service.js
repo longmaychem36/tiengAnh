@@ -12,13 +12,6 @@ const GAME_DIFFICULTY_EXP = {
   hard: 46
 };
 
-const GAME_ERROR_LABELS = {
-  matching: 'Mini game nối từ',
-  listening: 'Mini game nghe chọn đáp án',
-  listenbuild: 'Mini game nghe xếp câu',
-  truefalse: 'Mini game đúng sai'
-};
-
 function calculateGameExp({ difficulty, scorePercent, totalQuestions, alreadyCompleted }) {
   if (scorePercent < 50) return 0;
 
@@ -260,31 +253,6 @@ const gameService = {
         );
       } catch (e) { console.error('EXP error (non-fatal):', e.message); }
     }
-
-    for (const item of results.filter((entry) => !entry.correct)) {
-      const question = allQuestions.find((entry) => entry.Id === item.questionId);
-      await dailyService.safeRecordErrorEvent(userId, {
-        skill: 'game',
-        activityType: 'mini_game',
-        referenceType: 'game_question',
-        referenceId: item.questionId,
-        errorType: item.questionType || 'game_answer',
-        errorKey: `game_${item.questionType || 'answer'}`,
-        label: GAME_ERROR_LABELS[item.questionType] || `Mini game: ${item.questionType || 'câu hỏi'}`,
-        severity: scorePercent < 50 ? 4 : 3,
-        prompt: question?.ContentEN || question?.ContentVI || '',
-        userAnswer: item.userAnswer,
-        expectedAnswer: item.correctAnswer,
-        feedback: `Đáp án đúng: ${item.correctAnswer}`,
-        metadata: {
-          levelId,
-          scorePercent,
-          passed,
-          duration: duration || 0
-        }
-      });
-    }
-
     await dailyService.completeMatchingTasks(userId, 'game_level', levelId);
 
     return {
@@ -303,3 +271,5 @@ const gameService = {
 };
 
 module.exports = gameService;
+
+

@@ -7,6 +7,5 @@ router.use(authMiddleware, learnerOnly());
 
 router.get('/today', dailyController.getToday);
 router.post('/:id/complete', dailyController.completeTask);
-router.get('/weaknesses', dailyController.getWeaknesses);
 
 module.exports = router;

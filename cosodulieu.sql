@@ -1967,43 +1967,6 @@ CREATE INDEX IF NOT EXISTS idx_readingparagraphs_lesson ON public.readingparagra
 CREATE INDEX IF NOT EXISTS idx_reading_questions_lesson ON public.readingquestions USING btree (lessonid, orderindex);
 CREATE INDEX IF NOT EXISTS idx_reading_vocab_lesson ON public.readingvocabulary USING btree (lessonid, orderindex);
 
-CREATE TABLE IF NOT EXISTS public.usererrorevents (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    userid uuid NOT NULL,
-    skill character varying(40) NOT NULL,
-    activitytype character varying(60) NOT NULL,
-    referencetype character varying(60),
-    referenceid character varying(120),
-    errortype character varying(80) NOT NULL,
-    errorkey character varying(140) NOT NULL,
-    severity integer DEFAULT 3,
-    prompt text,
-    useranswer text,
-    expectedanswer text,
-    feedback text,
-    metadata jsonb,
-    createdat timestamp without time zone DEFAULT now() NOT NULL,
-    CONSTRAINT usererrorevents_pkey PRIMARY KEY (id),
-    CONSTRAINT usererrorevents_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS public.userweaknesses (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    userid uuid NOT NULL,
-    skill character varying(40) NOT NULL,
-    errortype character varying(80) NOT NULL,
-    errorkey character varying(140) NOT NULL,
-    label character varying(255) NOT NULL,
-    mistakecount integer DEFAULT 0 NOT NULL,
-    attemptcount integer DEFAULT 0 NOT NULL,
-    weight double precision DEFAULT 0 NOT NULL,
-    lastseenat timestamp without time zone DEFAULT now() NOT NULL,
-    updatedat timestamp without time zone DEFAULT now() NOT NULL,
-    CONSTRAINT userweaknesses_pkey PRIMARY KEY (id),
-    CONSTRAINT userweaknesses_user_skill_error_key UNIQUE (userid, skill, errortype, errorkey),
-    CONSTRAINT userweaknesses_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS public.dailytasks (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     userid uuid NOT NULL,
@@ -2023,9 +1986,6 @@ CREATE TABLE IF NOT EXISTS public.dailytasks (
     CONSTRAINT dailytasks_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_error_events_user_skill ON public.usererrorevents USING btree (userid, skill, createdat DESC);
-CREATE INDEX IF NOT EXISTS idx_user_error_events_reference ON public.usererrorevents USING btree (referencetype, referenceid);
-CREATE INDEX IF NOT EXISTS idx_user_weaknesses_user_weight ON public.userweaknesses USING btree (userid, weight DESC, lastseenat DESC);
 CREATE INDEX IF NOT EXISTS idx_daily_tasks_user_date ON public.dailytasks USING btree (userid, taskdate, orderindex);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_tasks_user_date_order ON public.dailytasks USING btree (userid, taskdate, orderindex);
 

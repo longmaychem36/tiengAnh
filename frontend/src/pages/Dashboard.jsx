@@ -20,8 +20,8 @@ import {
 import { HiOutlineFire } from 'react-icons/hi';
 import { useAuth } from '../hooks/useAuth';
 import { gamificationApi } from '../api/progressApi';
-import { dailyTaskApi } from '../api/dailyTaskApi';
 import Loading from '../components/common/Loading';
+import Mascot from '../components/common/Mascot';
 
 const learningTracks = [
   {
@@ -64,40 +64,17 @@ const learningTracks = [
 function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
-  const [dailyTasks, setDailyTasks] = useState([]);
-  const [dailyLocked, setDailyLocked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const dailyTasks = [];
+  const dailyLocked = false;
+  const handleCompleteTask = () => {};
 
   useEffect(() => {
-    Promise.all([
-      gamificationApi.getStats().catch(() => ({ data: null })),
-      dailyTaskApi.getToday().catch(() => ({ data: { tasks: [], locked: false } }))
-    ]).then(([statsRes, dailyRes]) => {
-      setStats(statsRes.data);
-      setDailyTasks(dailyRes.data?.tasks || []);
-      setDailyLocked(Boolean(dailyRes.data?.locked));
-    }).finally(() => setLoading(false));
+    gamificationApi.getStats()
+      .then((res) => setStats(res.data))
+      .catch(() => setStats(null))
+      .finally(() => setLoading(false));
   }, []);
-
-  const handleCompleteTask = async (taskId) => {
-    setDailyTasks((current) => current.map((task) => (
-      task.id === taskId ? { ...task, status: 'completed' } : task
-    )));
-
-    try {
-      const res = await dailyTaskApi.complete(taskId);
-      const updatedTask = res.data?.task;
-      if (updatedTask) {
-        setDailyTasks((current) => current.map((task) => (
-          task.id === taskId ? updatedTask : task
-        )));
-      }
-    } catch {
-      setDailyTasks((current) => current.map((task) => (
-        task.id === taskId ? { ...task, status: 'pending' } : task
-      )));
-    }
-  };
 
   if (loading) return <Loading />;
 
@@ -121,14 +98,12 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="lingo-progress-phone">
+        <div className="lingo-progress-phone lingo-mascot-card">
           <div className="lingo-phone-top">
             <span>Today's goal</span>
             <strong>{stats?.levelProgress || 0}%</strong>
           </div>
-          <div className="lingo-ring">
-            <span>Lv.{stats?.Level || 1}</span>
-          </div>
+          <Mascot mood="happy" size={180} />
           <div className="lingo-phone-row">
             <span><HiOutlineFire /> {stats?.StreakDays || 0} ngày</span>
             <span><FiTarget /> {stats?.Exp || 0} EXP</span>
@@ -152,6 +127,14 @@ function Dashboard() {
           <span>Tổng EXP</span>
           <strong>{stats?.Exp || 0}</strong>
         </div>
+      </section>
+
+      <section className="daily-dashboard-banner">
+        <div>
+          <span>Nhiệm vụ hằng ngày</span>
+          <h2>Nhận EXP đăng nhập và hoàn thành kế hoạch học hôm nay.</h2>
+        </div>
+        <Link className="btn btn-primary" to="/daily-tasks">Mở nhiệm vụ</Link>
       </section>
 
       <section className="lingo-section daily-task-section">

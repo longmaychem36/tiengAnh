@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -16,6 +16,8 @@ import { writingApi } from '../../api/writingApi';
 import ProgressBar from '../speaking/ProgressBar';
 import Loading from '../common/Loading';
 import ExpReward from '../common/ExpReward';
+import VocabularyGate from '../common/VocabularyGate';
+import QuestionNavigator from '../common/QuestionNavigator';
 
 const WRITING_PASS_SCORE = 80;
 
@@ -28,6 +30,7 @@ const normalizeText = (value) => {
 };
 
 const canPassWriting = (result) => Number(result?.score || 0) >= WRITING_PASS_SCORE;
+const getExerciseKey = (item, index) => item?.id || index;
 
 const getPassageParts = (text, highlights) => {
   const source = text || '';
@@ -96,8 +99,10 @@ const WritingLesson = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState(null);
   const [attempts, setAttempts] = useState({});
+  const [drafts, setDrafts] = useState({});
   const [showCompletion, setShowCompletion] = useState(false);
   const [expReward, setExpReward] = useState(null);
+  const [vocabPassed, setVocabPassed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +114,7 @@ const WritingLesson = () => {
     setUserText('');
     setResult(null);
     setAttempts({});
+    setDrafts({});
     setShowCompletion(false);
     setExpReward(null);
 
@@ -139,7 +145,36 @@ const WritingLesson = () => {
   }, [id]);
 
   const currentExercise = exercises[currentIndex];
-  const currentAttempt = currentExercise ? attempts[currentExercise.id] : null;
+  const currentExerciseKey = getExerciseKey(currentExercise, currentIndex);
+  const currentAttempt = currentExercise ? attempts[currentExerciseKey] : null;
+  const passedCount = useMemo(() => (
+    exercises.filter((exercise, index) => canPassWriting(attempts[getExerciseKey(exercise, index)])).length
+  ), [attempts, exercises]);
+  const vocabularyItems = useMemo(() => {
+    const seen = new Set();
+
+    return exercises
+      .flatMap((exercise) => exercise.vocab || [])
+      .filter((item) => item?.word && item?.meaning)
+      .filter((item) => {
+        const key = `${String(item.word).trim().toLowerCase()}:${String(item.meaning).trim().toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [exercises]);
+  const vocabularyGateKey = `vocab_gate:writing:${lessonData?.id || id}`;
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (!vocabularyItems.length) {
+      setVocabPassed(true);
+      return;
+    }
+
+    setVocabPassed(localStorage.getItem(vocabularyGateKey) === 'passed');
+  }, [loading, vocabularyGateKey, vocabularyItems.length]);
 
   const handleCheck = async () => {
     if (!userText.trim()) {
@@ -160,7 +195,7 @@ const WritingLesson = () => {
       setResult(newResult);
       setAttempts((current) => ({
         ...current,
-        [currentExercise.id]: {
+        [currentExerciseKey]: {
           ...newResult,
           userText,
           targetText: currentExercise.correctAnswerEN,
@@ -177,16 +212,34 @@ const WritingLesson = () => {
 
   const handleRetry = () => setResult(null);
 
+  const handleUserTextChange = (value) => {
+    setUserText(value);
+    setDrafts((current) => ({ ...current, [currentExerciseKey]: value }));
+  };
+
+  const handleSelectQuestion = (index) => {
+    const exercise = exercises[index];
+    const key = getExerciseKey(exercise, index);
+    const previousAttempt = attempts[key] || null;
+
+    setCurrentIndex(index);
+    setUserText(drafts[key] || previousAttempt?.userText || '');
+    setResult(previousAttempt);
+  };
+
   const handleNext = async () => {
     if (!canPassWriting(result)) {
       toast.error(`Bạn cần đạt từ ${WRITING_PASS_SCORE}% để qua câu này.`);
       return;
     }
 
-    if (currentIndex + 1 < exercises.length) {
-      setCurrentIndex((index) => index + 1);
-      setUserText('');
-      setResult(null);
+    const mergedAttempts = { ...attempts, [currentExerciseKey]: { ...result, userText } };
+    const nextIndex = exercises.findIndex((exercise, index) => (
+      index !== currentIndex && !canPassWriting(mergedAttempts[getExerciseKey(exercise, index)])
+    ));
+
+    if (nextIndex >= 0) {
+      handleSelectQuestion(nextIndex);
       return;
     }
 
@@ -244,7 +297,7 @@ const WritingLesson = () => {
 
           <div className="speaking-summary-grid">
             {exercises.map((exercise, index) => {
-              const attempt = attempts[exercise.id];
+              const attempt = attempts[getExerciseKey(exercise, index)];
               return (
                 <div key={exercise.id} className="speaking-summary-item">
                   <span>Câu {index + 1}</span>
@@ -271,6 +324,7 @@ const WritingLesson = () => {
                 setCurrentIndex(0);
                 setUserText('');
                 setResult(null);
+                setDrafts({});
               }}
             >
               <FiRefreshCw /> Luyện lại
@@ -285,8 +339,25 @@ const WritingLesson = () => {
     return <div style={{ textAlign: 'center', padding: 'var(--space-12)' }}>Bài học không có dữ liệu.</div>;
   }
 
+  if (!vocabPassed && vocabularyItems.length > 0) {
+    return (
+      <VocabularyGate
+        items={vocabularyItems}
+        title={lessonData?.title || 'Luyen viet'}
+        skillLabel="Writing"
+        gateKey={vocabularyGateKey}
+        onPassed={() => setVocabPassed(true)}
+        onExit={() => navigate('/writing/lessons')}
+      />
+    );
+  }
+
   const isWritingPassed = canPassWriting(result);
-  const currentVocab = currentExercise.vocab || [];
+  const getQuestionStatus = (index) => {
+    const attempt = attempts[getExerciseKey(exercises[index], index)];
+    if (attempt) return canPassWriting(attempt) ? 'passed' : 'failed';
+    return drafts[getExerciseKey(exercises[index], index)] ? 'answered' : 'todo';
+  };
 
   return (
     <div className="receptive-page receptive-practice-page fade-in" style={{ '--receptive-accent': '#059669' }}>
@@ -304,11 +375,12 @@ const WritingLesson = () => {
         </div>
         <div className="practice-compact-meta">
           <span><FiEdit3 /> {currentIndex + 1}/{exercises.length} câu</span>
+          <span>{passedCount}/{exercises.length} đạt</span>
           <strong>Pass {WRITING_PASS_SCORE}%</strong>
         </div>
       </section>
 
-      <div className="productive-compact-layout">
+      <div className="productive-compact-layout writing-compact-layout">
         <section className="receptive-panel writing-prompt-panel">
           <div className="compact-panel-title">
             <h2>Đề bài</h2>
@@ -318,22 +390,9 @@ const WritingLesson = () => {
             <span>Dịch sang tiếng Anh</span>
             <h3>{currentExercise.contentVI}</h3>
           </div>
-
-          <div className="compact-vocab-box">
-            <h3>Từ vựng</h3>
-            {currentVocab.length > 0 ? (
-              <div className="practice-vocab-strip is-inside">
-                {currentVocab.map((item) => (
-                  <span key={`${item.word}-${item.meaning}`}><strong>{item.word}</strong> {item.meaning}</span>
-                ))}
-              </div>
-            ) : (
-              <p className="productive-muted">Bài này không có từ vựng gợi ý riêng.</p>
-            )}
-          </div>
         </section>
 
-        <section className="receptive-panel">
+        <section className="receptive-panel writing-answer-panel">
           <div className="compact-panel-title">
             <h2>Bài làm</h2>
             {!result && <span>Enter để kiểm tra</span>}
@@ -343,7 +402,7 @@ const WritingLesson = () => {
             className="productive-textarea"
             rows={4}
             value={userText}
-            onChange={(event) => setUserText(event.target.value)}
+            onChange={(event) => handleUserTextChange(event.target.value)}
             disabled={result != null || isChecking}
             placeholder="Nhập câu tiếng Anh của bạn..."
             onKeyDown={(event) => {
@@ -364,10 +423,22 @@ const WritingLesson = () => {
             </div>
           ) : (
             <motion.div className="writing-feedback is-compact" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <div className={`speaking-score ${isWritingPassed ? 'is-pass' : 'is-fail'}`}>
+              <div className="writing-result-toolbar">
+                <div className={`speaking-score ${isWritingPassed ? 'is-pass' : 'is-fail'}`}>
                 {isWritingPassed ? <FiCheckCircle /> : <FiXCircle />}
                 <strong>{result.score}%</strong>
                 <span>{isWritingPassed ? 'Đạt yêu cầu' : 'Cần sửa thêm'}</span>
+                </div>
+
+                {!isWritingPassed ? (
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={handleRetry}>
+                    <FiRefreshCw /> Sá»­a láº¡i
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-primary btn-sm" onClick={handleNext}>
+                    Tiáº¿p tá»¥c <FiArrowRight />
+                  </button>
+                )}
               </div>
 
               {result.feedback && <p className="speaking-feedback-note">{result.feedback}</p>}
@@ -402,6 +473,14 @@ const WritingLesson = () => {
             </motion.div>
           )}
         </section>
+        <QuestionNavigator
+          total={exercises.length}
+          current={currentIndex}
+          onSelect={handleSelectQuestion}
+          getStatus={getQuestionStatus}
+          title="Bảng câu hỏi"
+          summary={`${passedCount}/${exercises.length}`}
+        />
       </div>
     </div>
   );

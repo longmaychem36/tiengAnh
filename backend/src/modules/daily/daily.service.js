@@ -1,11 +1,18 @@
-const axios = require('axios');
 const { getPool } = require('../../config/database');
-const billingService = require('../billing/billing.service');
+const gamificationService = require('../gamification/gamification.service');
 
-const NIM_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const DAILY_TASK_MODEL = process.env.DAILY_TASK_NVIDIA_MODEL || process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
-const DAILY_TASK_TIMEOUT_MS = Number.parseInt(process.env.DAILY_TASK_TIMEOUT_MS, 10) || 12000;
 const DAILY_TASK_COUNT = 3;
+const DAILY_TASK_REWARDS = {
+  daily_login: 10,
+  listening_lesson: 20,
+  speaking_lesson: 25,
+  reading_lesson: 20,
+  writing_lesson: 25,
+  game_level: 15,
+  vocabulary_review: 10,
+  grammar_topic: 15,
+  default: 10
+};
 
 let schemaReady = false;
 
@@ -17,27 +24,12 @@ function safeString(value, fallback = '') {
   return String(value ?? fallback).trim();
 }
 
-function toErrorKey(value, fallback = 'general') {
-  return safeString(value, fallback)
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 120) || fallback;
-}
-
-function clampSeverity(value) {
-  const severity = Number.parseInt(value, 10);
-  if (!Number.isFinite(severity)) return 3;
-  return Math.min(5, Math.max(1, severity));
-}
-
 function shapeTask(row) {
   const targetType = row.targettype || row.TargetType;
   const targetId = row.targetid || row.TargetId;
   const status = row.status || row.Status || 'pending';
   const urlByType = {
+    daily_login: '/daily-tasks',
     writing_lesson: `/writing/lessons/${targetId}`,
     speaking_lesson: `/speaking/lessons/${targetId}`,
     listening_lesson: `/listening/lessons/${targetId}`,
@@ -60,64 +52,14 @@ function shapeTask(row) {
     orderIndex: row.orderindex ?? row.OrderIndex ?? 0,
     aiRationale: row.airationale || row.AiRationale || '',
     completedAt: row.completedat || row.CompletedAt || null,
-    url: urlByType[targetType] || '/dashboard'
-  };
-}
-
-function shapeWeakness(row) {
-  return {
-    skill: row.skill || row.Skill,
-    errorType: row.errortype || row.ErrorType,
-    errorKey: row.errorkey || row.ErrorKey,
-    label: row.label || row.Label,
-    mistakeCount: Number(row.mistakecount || row.MistakeCount || 0),
-    attemptCount: Number(row.attemptcount || row.AttemptCount || 0),
-    weight: Number(row.weight || row.Weight || 0),
-    lastSeenAt: row.lastseenat || row.LastSeenAt,
-    updatedAt: row.updatedat || row.UpdatedAt
+    url: urlByType[targetType] || '/dashboard',
+    rewardExp: Number(row.rewardexp || row.RewardExp || DAILY_TASK_REWARDS[targetType] || DAILY_TASK_REWARDS.default)
   };
 }
 
 async function ensureInsightsSchema() {
   if (schemaReady) return;
   const pool = getPool();
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS UserErrorEvents (
-      Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      UserId UUID NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
-      Skill VARCHAR(40) NOT NULL,
-      ActivityType VARCHAR(60) NOT NULL,
-      ReferenceType VARCHAR(60),
-      ReferenceId VARCHAR(120),
-      ErrorType VARCHAR(80) NOT NULL,
-      ErrorKey VARCHAR(140) NOT NULL,
-      Severity INTEGER DEFAULT 3,
-      Prompt TEXT,
-      UserAnswer TEXT,
-      ExpectedAnswer TEXT,
-      Feedback TEXT,
-      Metadata JSONB,
-      CreatedAt TIMESTAMP NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS UserWeaknesses (
-      Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      UserId UUID NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
-      Skill VARCHAR(40) NOT NULL,
-      ErrorType VARCHAR(80) NOT NULL,
-      ErrorKey VARCHAR(140) NOT NULL,
-      Label VARCHAR(255) NOT NULL,
-      MistakeCount INTEGER NOT NULL DEFAULT 0,
-      AttemptCount INTEGER NOT NULL DEFAULT 0,
-      Weight DOUBLE PRECISION NOT NULL DEFAULT 0,
-      LastSeenAt TIMESTAMP NOT NULL DEFAULT NOW(),
-      UpdatedAt TIMESTAMP NOT NULL DEFAULT NOW(),
-      UNIQUE (UserId, Skill, ErrorType, ErrorKey)
-    )
-  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS DailyTasks (
@@ -133,95 +75,18 @@ async function ensureInsightsSchema() {
       Status VARCHAR(30) NOT NULL DEFAULT 'pending',
       OrderIndex INTEGER NOT NULL DEFAULT 0,
       AiRationale TEXT,
+      RewardExp INTEGER NOT NULL DEFAULT 10,
       CompletedAt TIMESTAMP,
       CreatedAt TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `);
 
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_user_error_events_user_skill ON UserErrorEvents (UserId, Skill, CreatedAt DESC)');
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_user_error_events_reference ON UserErrorEvents (ReferenceType, ReferenceId)');
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_user_weaknesses_user_weight ON UserWeaknesses (UserId, Weight DESC, LastSeenAt DESC)');
+  await pool.query('ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS RewardExp INTEGER NOT NULL DEFAULT 10');
+
   await pool.query('CREATE INDEX IF NOT EXISTS idx_daily_tasks_user_date ON DailyTasks (UserId, TaskDate, OrderIndex)');
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_tasks_user_date_order ON DailyTasks (UserId, TaskDate, OrderIndex)');
 
   schemaReady = true;
-}
-
-async function recordErrorEvent(userId, event = {}) {
-  if (!userId) return null;
-  await ensureInsightsSchema();
-  const pool = getPool();
-
-  const skill = toErrorKey(event.skill, 'general').slice(0, 40);
-  const activityType = toErrorKey(event.activityType, skill).slice(0, 60);
-  const errorType = toErrorKey(event.errorType, 'accuracy').slice(0, 80);
-  const errorKey = toErrorKey(event.errorKey || event.label || errorType, errorType);
-  const label = safeString(event.label, errorKey).slice(0, 255);
-  const severity = clampSeverity(event.severity);
-  const weight = Math.max(1, severity * 1.5);
-
-  const inserted = await pool.query(`
-    INSERT INTO UserErrorEvents (
-      UserId, Skill, ActivityType, ReferenceType, ReferenceId,
-      ErrorType, ErrorKey, Severity, Prompt, UserAnswer, ExpectedAnswer, Feedback, Metadata
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb)
-    RETURNING *
-  `, [
-    userId,
-    skill,
-    activityType,
-    safeString(event.referenceType || ''),
-    event.referenceId ? String(event.referenceId) : null,
-    errorType,
-    errorKey,
-    severity,
-    event.prompt || null,
-    event.userAnswer == null ? null : String(event.userAnswer),
-    event.expectedAnswer == null ? null : String(event.expectedAnswer),
-    event.feedback || null,
-    JSON.stringify(event.metadata || {})
-  ]);
-
-  await pool.query(`
-    INSERT INTO UserWeaknesses (
-      UserId, Skill, ErrorType, ErrorKey, Label, MistakeCount, AttemptCount, Weight, LastSeenAt, UpdatedAt
-    )
-    VALUES ($1, $2, $3, $4, $5, 1, 1, $6, NOW(), NOW())
-    ON CONFLICT (UserId, Skill, ErrorType, ErrorKey)
-    DO UPDATE SET
-      Label = EXCLUDED.Label,
-      MistakeCount = UserWeaknesses.MistakeCount + 1,
-      AttemptCount = UserWeaknesses.AttemptCount + 1,
-      Weight = LEAST(100, UserWeaknesses.Weight + EXCLUDED.Weight),
-      LastSeenAt = NOW(),
-      UpdatedAt = NOW()
-  `, [userId, skill, errorType, errorKey, label, weight]);
-
-  return inserted.rows[0];
-}
-
-async function safeRecordErrorEvent(userId, event) {
-  try {
-    return await recordErrorEvent(userId, event);
-  } catch (err) {
-    console.error('[daily] failed to record error event:', err.message);
-    return null;
-  }
-}
-
-async function getWeaknesses(userId, limit = 10) {
-  await ensureInsightsSchema();
-  const pool = getPool();
-  const result = await pool.query(`
-    SELECT Skill, ErrorType, ErrorKey, Label, MistakeCount, AttemptCount, Weight, LastSeenAt, UpdatedAt
-    FROM UserWeaknesses
-    WHERE UserId = $1
-    ORDER BY Weight DESC, LastSeenAt DESC
-    LIMIT $2
-  `, [userId, limit]);
-
-  return result.rows.map(shapeWeakness);
 }
 
 function addCandidate(list, candidate) {
@@ -402,120 +267,49 @@ async function collectCandidateTargets(userId) {
   return candidates;
 }
 
-function selectFallbackTasks(weaknesses, candidates) {
-  const selected = [];
-  const usedIds = new Set();
-  const weakSkills = weaknesses.map((item) => item.skill);
-  const skillOrder = [...new Set([...weakSkills, 'writing', 'speaking', 'grammar', 'listening', 'reading', 'game', 'vocabulary'])];
+function getStarterTask() {
+  return {
+    id: 'daily_login:today',
+    targetType: 'daily_login',
+    targetId: 'today',
+    skill: 'habit',
+    title: 'Đăng nhập hôm nay',
+    description: 'Mở hệ thống học tập để giữ nhịp học mỗi ngày.',
+    reason: 'Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.',
+    aiRationale: 'habit',
+    rewardExp: DAILY_TASK_REWARDS.daily_login
+  };
+}
 
-  for (const skill of skillOrder) {
-    const candidate = candidates.find((item) => item.skill === skill && !usedIds.has(item.id));
+function getTaskReason(targetType) {
+  const reasons = {
+    listening_lesson: 'Luyện nghe một bài ngắn để làm nóng khả năng phản xạ.',
+    speaking_lesson: 'Nói vài câu mẫu để giữ nhịp phát âm mỗi ngày.',
+    reading_lesson: 'Đọc một bài ngắn và trả lời câu hỏi để tăng vốn hiểu ngữ cảnh.',
+    writing_lesson: 'Viết một vài câu để rèn cách diễn đạt tự nhiên hơn.',
+    game_level: 'Ôn nhanh bằng mini game để giữ động lực học.',
+    vocabulary_review: 'Ôn lại từ đã lưu để biến từ vựng thành trí nhớ dài hạn.',
+    grammar_topic: 'Ôn một điểm ngữ pháp nhỏ để dùng câu chắc hơn.'
+  };
+  return reasons[targetType] || 'Một hoạt động học ngắn để duy trì tiến độ hôm nay.';
+}
+
+function buildDefaultDailyTasks(candidates) {
+  const selected = [getStarterTask()];
+  const preferredTypes = ['listening_lesson', 'speaking_lesson', 'reading_lesson', 'writing_lesson', 'game_level', 'vocabulary_review', 'grammar_topic'];
+  const used = new Set(selected.map((task) => `${task.targetType}:${task.targetId}`));
+
+  for (const targetType of preferredTypes) {
+    const candidate = candidates.find((item) => item.targetType === targetType && !used.has(`${item.targetType}:${item.targetId}`));
     if (!candidate) continue;
     selected.push({
       ...candidate,
-      reason: weaknesses.find((item) => item.skill === skill)?.label
-        ? `Tập trung cải thiện: ${weaknesses.find((item) => item.skill === skill).label}.`
-        : candidate.reasonSeed,
-      aiRationale: 'fallback'
+      reason: getTaskReason(candidate.targetType),
+      aiRationale: 'daily_plan',
+      rewardExp: DAILY_TASK_REWARDS[candidate.targetType] || DAILY_TASK_REWARDS.default
     });
-    usedIds.add(candidate.id);
+    used.add(`${candidate.targetType}:${candidate.targetId}`);
     if (selected.length >= DAILY_TASK_COUNT) break;
-  }
-
-  for (const candidate of candidates) {
-    if (selected.length >= DAILY_TASK_COUNT) break;
-    if (usedIds.has(candidate.id)) continue;
-    selected.push({
-      ...candidate,
-      reason: candidate.reasonSeed,
-      aiRationale: 'fallback'
-    });
-    usedIds.add(candidate.id);
-  }
-
-  return selected.slice(0, DAILY_TASK_COUNT);
-}
-
-function extractJsonObject(text) {
-  const source = safeString(text);
-  const first = source.indexOf('{');
-  const last = source.lastIndexOf('}');
-  if (first === -1 || last === -1 || last <= first) return null;
-  try {
-    return JSON.parse(source.slice(first, last + 1));
-  } catch {
-    return null;
-  }
-}
-
-async function selectAiTasks(weaknesses, candidates) {
-  const apiKey = process.env.NVIDIA_API_KEY;
-  if (!apiKey) throw new Error('NVIDIA_API_KEY is not configured');
-
-  const candidateMap = new Map(candidates.map((item) => [item.id, item]));
-  const systemPrompt = [
-    'You are an English learning coach for Vietnamese learners.',
-    'Pick exactly 3 daily tasks from the provided candidate list.',
-    'Prioritize repeated weaknesses, recent mistakes, and skill diversity.',
-    'Do not invent IDs. Return valid JSON only: {"tasks":[{"candidateId":"...","reason":"Vietnamese reason under 18 words"}]}.'
-  ].join(' ');
-
-  const userPrompt = JSON.stringify({
-    weaknesses: weaknesses.slice(0, 10),
-    candidates: candidates.slice(0, 50).map(({ id, skill, targetType, title, description, reasonSeed }) => ({
-      id,
-      skill,
-      targetType,
-      title,
-      description,
-      reasonSeed
-    }))
-  });
-
-  const response = await axios.post(
-    `${NIM_BASE_URL}/chat/completions`,
-    {
-      model: DAILY_TASK_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.25,
-      top_p: 0.8,
-      max_tokens: 500,
-      response_format: { type: 'json_object' },
-      stream: false
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: DAILY_TASK_TIMEOUT_MS
-    }
-  );
-
-  const parsed = extractJsonObject(response.data?.choices?.[0]?.message?.content);
-  const tasks = Array.isArray(parsed?.tasks) ? parsed.tasks : [];
-  const selected = [];
-  const used = new Set();
-
-  for (const item of tasks) {
-    const candidate = candidateMap.get(item.candidateId);
-    if (!candidate || used.has(candidate.id)) continue;
-    selected.push({
-      ...candidate,
-      reason: safeString(item.reason, candidate.reasonSeed).slice(0, 500),
-      aiRationale: 'ai'
-    });
-    used.add(candidate.id);
-    if (selected.length >= DAILY_TASK_COUNT) break;
-  }
-
-  if (selected.length < DAILY_TASK_COUNT) {
-    const fallback = selectFallbackTasks(weaknesses, candidates)
-      .filter((item) => !used.has(item.id));
-    selected.push(...fallback.slice(0, DAILY_TASK_COUNT - selected.length));
   }
 
   return selected.slice(0, DAILY_TASK_COUNT);
@@ -529,9 +323,9 @@ async function insertDailyTasks(userId, taskDate, tasks) {
     const task = tasks[index];
     await pool.query(`
       INSERT INTO DailyTasks (
-        UserId, TaskDate, Skill, TargetType, TargetId, Title, Description, Reason, Status, OrderIndex, AiRationale
+        UserId, TaskDate, Skill, TargetType, TargetId, Title, Description, Reason, Status, OrderIndex, AiRationale, RewardExp
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11)
     `, [
       userId,
       taskDate,
@@ -542,7 +336,8 @@ async function insertDailyTasks(userId, taskDate, tasks) {
       task.description,
       task.reason,
       index,
-      task.aiRationale
+      task.aiRationale,
+      task.rewardExp || DAILY_TASK_REWARDS[task.targetType] || DAILY_TASK_REWARDS.default
     ]);
   }
 
@@ -556,29 +351,42 @@ async function insertDailyTasks(userId, taskDate, tasks) {
   return result.rows.map(shapeTask);
 }
 
-async function canUseAiDaily(user) {
-  if (!user?.id) return false;
-  return billingService.isPlusUser(user.id);
+async function completeTaskById(userId, taskId) {
+  const pool = getPool();
+  const result = await pool.query(`
+    UPDATE DailyTasks
+    SET Status = 'completed',
+        CompletedAt = COALESCE(CompletedAt, NOW())
+    WHERE Id = $1 AND UserId = $2 AND Status <> 'completed'
+    RETURNING *
+  `, [taskId, userId]);
+
+  if (!result.rows[0]) return null;
+  const task = shapeTask(result.rows[0]);
+  const expReward = await gamificationService.addExp(userId, task.rewardExp, `daily_task_${task.targetType}`);
+  return { task, expReward };
+}
+
+async function autoCompleteLoginTask(userId, tasks) {
+  const loginTask = tasks.find((task) => task.targetType === 'daily_login' && task.status !== 'completed');
+  if (!loginTask) return { tasks, expReward: null };
+
+  const completed = await completeTaskById(userId, loginTask.id);
+  if (!completed?.task) return { tasks, expReward: null };
+
+  return {
+    tasks: tasks.map((task) => (task.id === completed.task.id ? completed.task : task)),
+    expReward: completed.expReward
+  };
 }
 
 const dailyService = {
   ensureInsightsSchema,
   getSaigonDate,
-  safeRecordErrorEvent,
-  recordErrorEvent,
 
   async getToday(user) {
     await ensureInsightsSchema();
     const taskDate = getSaigonDate();
-
-    if (!await canUseAiDaily(user)) {
-      return {
-        locked: true,
-        taskDate,
-        tasks: [],
-        message: 'Nhiệm vụ AI hằng ngày dành cho tài khoản Plus.'
-      };
-    }
 
     const pool = getPool();
     const existing = await pool.query(`
@@ -588,47 +396,27 @@ const dailyService = {
       ORDER BY OrderIndex ASC
     `, [user.id, taskDate]);
 
-    if (existing.rows.length >= DAILY_TASK_COUNT) {
+    if (existing.rows.some((row) => (row.targettype || row.TargetType) === 'daily_login')) {
+      const shapedTasks = existing.rows.map(shapeTask);
+      const completed = await autoCompleteLoginTask(user.id, shapedTasks);
       return {
         locked: false,
         taskDate,
-        tasks: existing.rows.map(shapeTask)
+        tasks: completed.tasks,
+        expReward: completed.expReward
       };
     }
 
-    const [weaknesses, candidates] = await Promise.all([
-      getWeaknesses(user.id, 12),
-      collectCandidateTargets(user.id)
-    ]);
-
-    if (candidates.length === 0) {
-      return { locked: false, taskDate, tasks: [] };
-    }
-
-    let selected;
-    try {
-      selected = await selectAiTasks(weaknesses, candidates);
-    } catch (err) {
-      console.warn('[daily] AI task generation failed, using fallback:', err.message);
-      selected = selectFallbackTasks(weaknesses, candidates);
-    }
-
+    const candidates = await collectCandidateTargets(user.id);
+    const selected = buildDefaultDailyTasks(candidates);
     const tasks = await insertDailyTasks(user.id, taskDate, selected);
-    return { locked: false, taskDate, tasks };
+    const completed = await autoCompleteLoginTask(user.id, tasks);
+    return { locked: false, taskDate, tasks: completed.tasks, expReward: completed.expReward };
   },
 
   async completeTask(userId, taskId) {
     await ensureInsightsSchema();
-    const pool = getPool();
-    const result = await pool.query(`
-      UPDATE DailyTasks
-      SET Status = 'completed',
-          CompletedAt = COALESCE(CompletedAt, NOW())
-      WHERE Id = $1 AND UserId = $2
-      RETURNING *
-    `, [taskId, userId]);
-
-    return result.rows[0] ? shapeTask(result.rows[0]) : null;
+    return completeTaskById(userId, taskId);
   },
 
   async completeMatchingTasks(userId, targetType, targetId) {
@@ -648,11 +436,14 @@ const dailyService = {
       RETURNING *
     `, [userId, taskDate, targetType, String(targetId)]);
 
-    return result.rows.map(shapeTask);
-  },
+    const completed = [];
+    for (const row of result.rows) {
+      const task = shapeTask(row);
+      const expReward = await gamificationService.addExp(userId, task.rewardExp, `daily_task_${task.targetType}`);
+      completed.push({ task, expReward });
+    }
 
-  async getWeaknesses(userId, limit = 10) {
-    return getWeaknesses(userId, limit);
+    return completed;
   }
 };
 

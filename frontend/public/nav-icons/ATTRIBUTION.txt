@@ -1,0 +1,3 @@
+Navigation icons use OpenMoji assets.
+OpenMoji is licensed under CC BY-SA 4.0.
+Source: https://openmoji.org/ and https://github.com/hfg-gmuend/openmoji

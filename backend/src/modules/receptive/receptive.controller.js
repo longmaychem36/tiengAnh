@@ -25,34 +25,10 @@ function createReceptiveController(skill) {
 
     async saveProgress(req, res, next) {
       try {
-        const { lessonId, score = 0, completed = false, mistakes = [] } = req.body;
+        const { lessonId, score = 0, completed = false } = req.body;
         if (!lessonId) return badRequest(res, 'lessonId is required');
 
         await receptiveService.saveProgress(skill, req.user.id, lessonId, Number(score || 0), Boolean(completed));
-        if (Array.isArray(mistakes)) {
-          for (const mistake of mistakes) {
-            await dailyService.safeRecordErrorEvent(req.user.id, {
-              skill,
-              activityType: `${skill}_comprehension`,
-              referenceType: `${skill}_question`,
-              referenceId: mistake.questionId || lessonId,
-              errorType: mistake.questionType || 'comprehension',
-              errorKey: `${skill}_${mistake.questionType || 'comprehension'}`,
-              label: skill === 'listening' ? 'Nghe hiểu' : 'Đọc hiểu',
-              severity: Number(score || 0) < 50 ? 5 : 3,
-              prompt: mistake.prompt,
-              userAnswer: mistake.userAnswer,
-              expectedAnswer: mistake.expectedAnswer,
-              feedback: mistake.explanation,
-              metadata: {
-                lessonId,
-                score: Number(score || 0),
-                completed: Boolean(completed)
-              }
-            });
-          }
-        }
-
         if (completed) {
           dailyService.completeMatchingTasks(req.user.id, `${skill}_lesson`, lessonId).catch((err) => {
             console.error(`[daily] failed to complete ${skill} task:`, err.message);
@@ -68,3 +44,4 @@ function createReceptiveController(skill) {
 }
 
 module.exports = { createReceptiveController };
+

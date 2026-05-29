@@ -54,7 +54,9 @@ export const speakText = (text, options = {}) => {
     lang = 'en-US',
     rate = 1,
     pitch = 1,
+    volume = 1,
     voice,
+    onstart,
     onend,
     onerror
   } = options;
@@ -65,7 +67,9 @@ export const speakText = (text, options = {}) => {
   utterance.lang = lang;
   utterance.rate = rate;
   utterance.pitch = pitch;
+  utterance.volume = volume;
   if (voice) utterance.voice = voice;
+  if (onstart) utterance.onstart = onstart;
   if (onend) utterance.onend = onend;
   if (onerror) utterance.onerror = onerror;
 
@@ -87,7 +91,9 @@ export const speakTextQueue = (items, defaultOptions = {}) => {
       utterance.lang = options.lang || 'en-US';
       utterance.rate = options.rate || 1;
       utterance.pitch = options.pitch || 1;
+      utterance.volume = options.volume ?? 1;
       if (options.voice) utterance.voice = options.voice;
+      if (options.onstart) utterance.onstart = options.onstart;
       if (options.onend) utterance.onend = options.onend;
       if (options.onerror) utterance.onerror = options.onerror;
       return utterance;

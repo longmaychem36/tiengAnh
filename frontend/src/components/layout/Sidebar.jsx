@@ -2,29 +2,29 @@
 // Sidebar Component - Role-based Navigation
 // ============================================
 import { NavLink } from 'react-router-dom';
-import {
-  FiAward, FiBarChart2, FiBook, FiBookOpen, FiHome,
-  FiSearch, FiSettings, FiShield, FiUser
-} from 'react-icons/fi';
+import { FiSettings, FiShield } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 
 const navItems = [
-  { to: '/dashboard', icon: FiHome, label: 'Tổng quan' },
-  { to: '/courses', icon: FiBook, label: 'Khóa học' },
-  { to: '/grammar', icon: FiBookOpen, label: 'Ngữ pháp' },
-  { to: '/dictionary', icon: FiSearch, label: 'Từ điển' },
-  { to: '/collections', icon: FiBookOpen, label: 'Bộ sưu tập' },
-  { to: '/progress', icon: FiBarChart2, label: 'Tiến độ' },
-  { to: '/profile', icon: FiUser, label: 'Hồ sơ' }
+  { to: '/dashboard', image: '/nav-icons/learn.svg', label: 'Học' },
+  { to: '/daily-tasks', image: '/nav-icons/tasks.svg', label: 'Nhiệm vụ' },
+  { to: '/courses', image: '/nav-icons/courses.svg', label: 'Khóa học' },
+  { to: '/grammar', image: '/nav-icons/grammar.svg', label: 'Ngữ pháp' },
+  { to: '/dictionary', image: '/nav-icons/dictionary.svg', label: 'Từ điển' },
+  { to: '/collections', image: '/nav-icons/collections.svg', label: 'Bộ sưu tập' },
+  { to: '/progress', image: '/nav-icons/progress.svg', label: 'Tiến độ' },
+  { to: '/profile', image: '/nav-icons/profile.svg', label: 'Hồ sơ' }
 ];
 
-function NavItem({ to, icon: Icon, label, isAdminLink }) {
+function NavItem({ to, image, icon: Icon, label, isAdminLink }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) => `lingo-nav-item ${isActive ? 'is-active' : ''} ${isAdminLink ? 'is-admin' : ''}`}
     >
-      <Icon size={18} />
+      <span className="lingo-nav-icon">
+        {image ? <img src={image} alt="" aria-hidden="true" /> : <Icon size={21} />}
+      </span>
       <span>{label}</span>
     </NavLink>
   );
@@ -57,19 +57,11 @@ function Sidebar() {
         )}
       </nav>
 
-      <div className="lingo-sidebar-bottom">
-        {isAdmin && (
-          <div className={`lingo-role-card ${isSuperAdmin ? 'is-super' : ''}`}>
-            {isSuperAdmin ? 'Super Admin' : 'Admin'}
-          </div>
-        )}
-
-        <div className="lingo-streak-card">
-          <FiAward />
-          <strong>Tiếp tục học</strong>
-          <span>Hoàn thành bài học để nhận EXP.</span>
+      {isAdmin && (
+        <div className={`lingo-role-card ${isSuperAdmin ? 'is-super' : ''}`}>
+          {isSuperAdmin ? 'Super Admin' : 'Admin'}
         </div>
-      </div>
+      )}
     </aside>
   );
 }

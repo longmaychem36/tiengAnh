@@ -189,40 +189,6 @@ function normalizeAiWritingFeedback(raw, fallbackScore) {
   };
 }
 
-async function recordWritingWeakness(req, result) {
-  const score = Number(result?.score || 0);
-  const grammarNotes = Array.isArray(result?.grammarNotes) ? result.grammarNotes.filter(Boolean) : [];
-  const naturalnessNotes = Array.isArray(result?.naturalnessNotes) ? result.naturalnessNotes.filter(Boolean) : [];
-
-  if (score >= 80 && grammarNotes.length === 0 && naturalnessNotes.length === 0) return;
-
-  const { lessonId, exerciseId, prompt, userText, targetText } = req.body;
-  const primaryNote = grammarNotes[0] || naturalnessNotes[0] || 'Câu viết chưa đạt độ chính xác';
-  await dailyService.safeRecordErrorEvent(req.user.id, {
-    skill: 'writing',
-    activityType: 'writing_check',
-    referenceType: exerciseId ? 'writing_exercise' : 'writing_lesson',
-    referenceId: exerciseId || lessonId || null,
-    errorType: grammarNotes.length > 0 ? 'grammar' : 'writing_accuracy',
-    errorKey: primaryNote,
-    label: grammarNotes.length > 0 ? `Ngữ pháp: ${primaryNote}` : 'Độ chính xác bài viết',
-    severity: score < 50 ? 5 : score < 70 ? 4 : 3,
-    prompt,
-    userAnswer: userText,
-    expectedAnswer: targetText,
-    feedback: result.feedback,
-    metadata: {
-      lessonId,
-      exerciseId,
-      score,
-      correctedText: result.correctedText || '',
-      grammarNotes,
-      naturalnessNotes,
-      source: result.source || ''
-    }
-  });
-}
-
 async function checkWritingWithAi(userText, targetText) {
   const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) {
@@ -381,7 +347,6 @@ const writingController = {
       const cacheKey = getWritingCacheKey(userText, targetText);
       const cached = getCachedWritingCheck(cacheKey);
       if (cached) {
-        await recordWritingWeakness(req, cached);
         return success(res, { ...cached, source: `${cached.source}:cache` });
       }
 
@@ -393,20 +358,17 @@ const writingController = {
       ) {
         const fastResult = fallbackWritingCheck(userText, targetText, similarityScore);
         setCachedWritingCheck(cacheKey, fastResult);
-        await recordWritingWeakness(req, fastResult);
         return success(res, fastResult);
       }
 
       try {
         const aiResult = await checkWritingWithAi(userText, targetText);
         setCachedWritingCheck(cacheKey, aiResult);
-        await recordWritingWeakness(req, aiResult);
         return success(res, aiResult);
       } catch (aiErr) {
         console.warn('AI writing feedback failed, falling back to similarity:', aiErr.message);
         const fallbackResult = fallbackWritingCheck(userText, targetText, similarityScore);
         setCachedWritingCheck(cacheKey, fallbackResult);
-        await recordWritingWeakness(req, fallbackResult);
         return success(res, fallbackResult);
       }
     } catch (err) {
@@ -464,3 +426,4 @@ const writingController = {
 };
 
 module.exports = writingController;
+

@@ -5,6 +5,7 @@ import Layout from './components/layout/Layout';
 import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { stopAllPlayback } from './utils/audioControl';
+import { installSoundEffects } from './utils/soundEffects';
 
 // Pages
 import Home from './pages/Home';
@@ -21,6 +22,7 @@ import NotFound from './pages/NotFound';
 import Grammar from './pages/Grammar';
 import CoursesHub from './pages/CoursesHub';
 import SkillCourse from './pages/SkillCourse';
+import DailyTasks from './pages/DailyTasks';
 
 // New Speaking Module
 import SpeakingList from './components/speaking/SpeakingList';
@@ -52,6 +54,8 @@ function App() {
     stopAllPlayback();
   }, [pathname]);
 
+  useEffect(() => installSoundEffects(), []);
+
   useEffect(() => {
     const stopWhenHidden = () => {
       if (document.hidden) stopAllPlayback();
@@ -78,6 +82,7 @@ function App() {
       <Route element={<ProtectedRoute learnerOnly><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/courses" element={<CoursesHub />} />
+        <Route path="/daily-tasks" element={<DailyTasks />} />
         <Route path="/skill/:type" element={<SkillCourse />} />
         
         {/* Speaking & Writing Module */}

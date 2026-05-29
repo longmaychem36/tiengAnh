@@ -20,6 +20,7 @@ import ProgressBar from './ProgressBar';
 import Recorder from './Recorder';
 import Loading from '../common/Loading';
 import ExpReward from '../common/ExpReward';
+import QuestionNavigator from '../common/QuestionNavigator';
 import { hasSpeechSupport, speakText, stopAllPlayback } from '../../utils/audioControl';
 
 const getInitialThreshold = () => parseInt(localStorage.getItem('speaking_threshold'), 10) || 60;
@@ -29,6 +30,8 @@ const getRecordDuration = (text = '') => {
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
   return Math.min(24, Math.max(10, Math.ceil(wordCount * 1.25)));
 };
+
+const getAttemptKey = (item, index) => item?.id || index;
 
 const SpeakingLesson = () => {
   const { id, sessionId } = useParams();
@@ -128,6 +131,9 @@ const SpeakingLesson = () => {
   const selectedOption = currentOptions[selectedOptionIndex] || currentOptions[0] || null;
   const recordDuration = getRecordDuration(selectedOption?.text);
   const answeredCount = useMemo(() => Object.keys(attempts).length, [attempts]);
+  const passedCount = useMemo(() => (
+    sentences.filter((sentence, index) => Number(attempts[getAttemptKey(sentence, index)]?.score || 0) >= passThreshold).length
+  ), [attempts, passThreshold, sentences]);
 
   const playTTS = (text) => {
     if (!hasSpeechSupport()) {
@@ -215,19 +221,17 @@ const SpeakingLesson = () => {
 
   const handleRetry = () => setResult(null);
 
-  const handleNext = async () => {
-    if (!result || result.score < passThreshold) {
-      toast.error(`Bạn cần đạt tối thiểu ${passThreshold}% để qua câu này.`);
-      return;
-    }
+  const handleSelectQuestion = (index) => {
+    const sentence = sentences[index];
+    const previousAttempt = attempts[getAttemptKey(sentence, index)] || null;
+    const optionIndex = sentence?.options?.findIndex((option) => option.text === previousAttempt?.targetText) ?? -1;
 
-    if (currentIndex + 1 < sentences.length) {
-      setCurrentIndex((index) => index + 1);
-      setSelectedOptionIndex(0);
-      setResult(null);
-      return;
-    }
+    setCurrentIndex(index);
+    setSelectedOptionIndex(optionIndex >= 0 ? optionIndex : 0);
+    setResult(previousAttempt);
+  };
 
+  const finishLesson = async () => {
     setLoading(true);
     if (isPersonalized) {
       toast.success('Bạn đã hoàn thành bài luyện nói AI.');
@@ -247,6 +251,26 @@ const SpeakingLesson = () => {
         toast.error('Lỗi lưu tiến độ');
       })
       .finally(() => setLoading(false));
+  };
+
+  const handleNext = async () => {
+    if (!result || result.score < passThreshold) {
+      toast.error(`Bạn cần đạt tối thiểu ${passThreshold}% để qua câu này.`);
+      return;
+    }
+
+    const currentKey = getAttemptKey(currentSentence, currentIndex);
+    const mergedAttempts = { ...attempts, [currentKey]: result };
+    const nextIndex = sentences.findIndex((sentence, index) => (
+      index !== currentIndex && Number(mergedAttempts[getAttemptKey(sentence, index)]?.score || 0) < passThreshold
+    ));
+
+    if (nextIndex >= 0) {
+      handleSelectQuestion(nextIndex);
+      return;
+    }
+
+    finishLesson();
   };
 
   if (loading) return <Loading />;
@@ -310,6 +334,11 @@ const SpeakingLesson = () => {
   }
 
   const isPassed = result && result.score >= passThreshold;
+  const getQuestionStatus = (index) => {
+    const attempt = attempts[getAttemptKey(sentences[index], index)];
+    if (!attempt) return 'todo';
+    return Number(attempt.score || 0) >= passThreshold ? 'passed' : 'failed';
+  };
 
   return (
     <div className="receptive-page receptive-practice-page fade-in" style={{ '--receptive-accent': '#2563eb' }}>
@@ -332,11 +361,12 @@ const SpeakingLesson = () => {
         </div>
         <div className="practice-compact-meta">
           <span><FiMic /> {answeredCount}/{sentences.length} đã thử</span>
+          <span>{passedCount}/{sentences.length} đạt</span>
           <strong>Pass {passThreshold}%</strong>
         </div>
       </section>
 
-      <div className="productive-compact-layout">
+      <div className="productive-compact-layout speaking-compact-layout">
         <section className="receptive-panel speaking-question-panel">
           <div className="compact-panel-title">
             <h2>Câu hỏi</h2>
@@ -344,6 +374,15 @@ const SpeakingLesson = () => {
               <FiVolume2 /> Nghe
             </button>
           </div>
+
+          <QuestionNavigator
+            total={sentences.length}
+            current={currentIndex}
+            onSelect={handleSelectQuestion}
+            getStatus={getQuestionStatus}
+            title="Bảng câu hỏi"
+            summary={`${passedCount}/${sentences.length}`}
+          />
 
           <div className="speaking-question-box">
             <h3>{currentSentence.question}</h3>
@@ -434,6 +473,15 @@ const SpeakingLesson = () => {
             </motion.div>
           )}
         </section>
+
+        <QuestionNavigator
+          total={sentences.length}
+          current={currentIndex}
+          onSelect={handleSelectQuestion}
+          getStatus={getQuestionStatus}
+          title="Bảng câu hỏi"
+          summary={`${passedCount}/${sentences.length}`}
+        />
       </div>
 
       {showSettings && (

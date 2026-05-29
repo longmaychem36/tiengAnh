@@ -1,51 +1,32 @@
-// ============================================
-// Progress Page
-// ============================================
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FiAward,
-  FiBarChart2,
   FiBookOpen,
   FiClock,
   FiPlay,
   FiStar,
-  FiTarget,
   FiTrendingUp
 } from 'react-icons/fi';
 import { gamificationApi } from '../api/progressApi';
-import { dailyTaskApi } from '../api/dailyTaskApi';
 import Loading from '../components/common/Loading';
 
 function number(value) {
   return Number(value || 0);
 }
 
-const skillLabels = {
-  writing: 'Writing',
-  speaking: 'Speaking',
-  grammar: 'Grammar',
-  listening: 'Listening',
-  reading: 'Reading',
-  game: 'Mini Games',
-  vocabulary: 'Vocabulary'
-};
-
 function Progress() {
   const [gameStats, setGameStats] = useState(null);
   const [achievements, setAchievements] = useState([]);
-  const [weaknesses, setWeaknesses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       gamificationApi.getStats().catch(() => ({ data: null })),
-      gamificationApi.getMyAchievements().catch(() => ({ data: [] })),
-      dailyTaskApi.getWeaknesses(8).catch(() => ({ data: { weaknesses: [] } }))
-    ]).then(([statsRes, achieveRes, weaknessRes]) => {
+      gamificationApi.getMyAchievements().catch(() => ({ data: [] }))
+    ]).then(([statsRes, achieveRes]) => {
       setGameStats(statsRes.data);
       setAchievements(achieveRes.data || []);
-      setWeaknesses(weaknessRes.data?.weaknesses || []);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -56,8 +37,6 @@ function Progress() {
     const levelProgress = Math.max(0, Math.min(100, number(gameStats?.levelProgress)));
     const currentLevelExp = number(gameStats?.currentLevelExp);
     const requiredLevelExp = number(gameStats?.requiredLevelExp);
-    const totalMistakes = weaknesses.reduce((sum, item) => sum + number(item.mistakeCount), 0);
-    const topWeaknessWeight = weaknesses.reduce((max, item) => Math.max(max, number(item.weight)), 0);
 
     return {
       exp,
@@ -66,13 +45,9 @@ function Progress() {
       levelProgress,
       currentLevelExp,
       requiredLevelExp,
-      expToNextLevel: number(gameStats?.expToNextLevel),
-      totalMistakes,
-      topWeaknessWeight
+      expToNextLevel: number(gameStats?.expToNextLevel)
     };
-  }, [gameStats, weaknesses]);
-
-  const groupedWeaknesses = useMemo(() => summarizeWeaknesses(weaknesses).slice(0, 6), [weaknesses]);
+  }, [gameStats]);
 
   if (loading) return <Loading />;
 
@@ -85,7 +60,7 @@ function Progress() {
       progress: computed.levelProgress
     },
     {
-      icon: <HiStreakIcon />,
+      icon: <FiTrendingUp />,
       label: 'Chuỗi ngày học',
       value: computed.streak,
       helper: 'Số ngày duy trì luyện tập',
@@ -97,13 +72,6 @@ function Progress() {
       value: achievements.length,
       helper: 'Thành tích đã mở khóa',
       progress: null
-    },
-    {
-      icon: <FiTarget />,
-      label: 'Điểm yếu đang theo dõi',
-      value: groupedWeaknesses.length,
-      helper: `${computed.totalMistakes} lỗi sai đã ghi nhận`,
-      progress: Math.min(100, computed.topWeaknessWeight)
     }
   ];
 
@@ -113,7 +81,7 @@ function Progress() {
         <div>
           <span className="progress-eyebrow">Tiến độ học tập</span>
           <h1>Theo dõi hành trình học của bạn</h1>
-          <p>Xem EXP, cấp độ, chuỗi ngày học, điểm yếu và các huy hiệu đã mở khóa trong hệ thống hiện tại.</p>
+          <p>Xem EXP, cấp độ, chuỗi ngày học và các huy hiệu đã mở khóa trong hệ thống hiện tại.</p>
         </div>
 
         <div className="progress-level-card">
@@ -133,7 +101,7 @@ function Progress() {
 
       <section className="progress-focus-grid">
         <div className="progress-focus-card">
-          <HiStreakIcon />
+          <FiTrendingUp />
           <span>Chuỗi ngày</span>
           <strong>{computed.streak} ngày</strong>
         </div>
@@ -151,46 +119,8 @@ function Progress() {
 
       <section className="progress-section">
         <div className="progress-section-title">
-          <h2>Điểm yếu cần cải thiện</h2>
-          <p>Dựa trên lỗi sai từ bài viết, nói, ngữ pháp, nghe, đọc và mini game.</p>
-        </div>
-
-        {groupedWeaknesses.length > 0 ? (
-          <div className="weakness-grid">
-            {groupedWeaknesses.map((item, index) => (
-              <motion.div
-                key={item.key}
-                className="weakness-card"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.04 }}
-              >
-                <div className="weakness-card-top">
-                  <span>{skillLabels[item.skill] || item.skill}</span>
-                  <FiBarChart2 />
-                </div>
-                <h3>{item.title}</h3>
-                <p>{item.comment}</p>
-                <small>
-                  {item.mistakeCount} lần sai được ghi nhận ·{' '}
-                  Gần nhất: {item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleDateString('vi-VN') : 'chưa rõ'}
-                </small>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="progress-empty">
-            <FiTarget />
-            <strong>Chưa có dữ liệu lỗi sai</strong>
-            <p>Làm thêm bài viết, nói, nghe, đọc, grammar quiz hoặc mini game để hệ thống phân tích điểm yếu.</p>
-          </div>
-        )}
-      </section>
-
-      <section className="progress-section">
-        <div className="progress-section-title">
           <h2>Tổng quan luyện tập</h2>
-          <p>Các chỉ số này lấy từ EXP, thành tích và dữ liệu lỗi sai đang dùng trong hệ thống mới.</p>
+          <p>Các chỉ số này lấy từ EXP, cấp độ và thành tích của tài khoản.</p>
         </div>
 
         <div className="progress-summary-grid">
@@ -219,29 +149,12 @@ function Progress() {
       <section className="progress-section progress-layout">
         <div className="progress-panel">
           <div className="progress-section-title is-compact">
-            <h2>Phân bổ lỗi sai</h2>
-            <p>Các nhóm kỹ năng đang cần tập trung hơn.</p>
-          </div>
-
-          <div className="progress-breakdown">
-            {Object.entries(groupMistakesBySkill(weaknesses)).map(([skill, count]) => (
-              <ProgressLine key={skill} label={skillLabels[skill] || skill} value={count} detail={`${count} lỗi`} />
-            ))}
-            {weaknesses.length === 0 && (
-              <ProgressLine label="Chưa có lỗi sai" value={0} detail="0 lỗi" />
-            )}
-            <ProgressLine label="Cấp độ" value={computed.levelProgress} detail={`Lv.${computed.level}`} />
-          </div>
-        </div>
-
-        <div className="progress-panel">
-          <div className="progress-section-title is-compact">
             <h2>Gợi ý tiếp theo</h2>
             <p>Dựa trên hệ học hiện tại.</p>
           </div>
 
           <div className="progress-next-list">
-            <NextItem icon={<FiBookOpen />} title="Hoàn thành thêm bài kỹ năng" text="Mỗi bài nghe, nói, đọc, viết giúp hệ thống có thêm dữ liệu để giao nhiệm vụ chính xác hơn." />
+            <NextItem icon={<FiBookOpen />} title="Hoàn thành thêm bài kỹ năng" text="Mỗi bài nghe, nói, đọc, viết giúp bạn duy trì nhịp luyện tập đều hơn." />
             <NextItem icon={<FiPlay />} title="Chơi mini game ngắn" text="Dùng mini game để ôn lại nhanh khi không có nhiều thời gian." />
             <NextItem icon={<FiClock />} title="Giữ chuỗi ngày học" text="Đăng nhập và luyện tập đều để giữ nhịp học hằng ngày." />
           </div>
@@ -283,115 +196,6 @@ function Progress() {
   );
 }
 
-function groupMistakesBySkill(weaknesses) {
-  const totals = {};
-
-  weaknesses.forEach((item) => {
-    totals[item.skill] = (totals[item.skill] || 0) + number(item.mistakeCount);
-  });
-
-  return totals;
-}
-
-function summarizeWeaknesses(weaknesses) {
-  const groups = new Map();
-
-  weaknesses.forEach((item) => {
-    const skill = item.skill || 'general';
-    const errorType = item.errorType || 'accuracy';
-    const key = `${skill}-${errorType}`;
-    const current = groups.get(key) || {
-      key,
-      skill,
-      errorType,
-      mistakeCount: 0,
-      attemptCount: 0,
-      weight: 0,
-      lastSeenAt: null
-    };
-
-    current.mistakeCount += number(item.mistakeCount);
-    current.attemptCount += number(item.attemptCount);
-    current.weight += number(item.weight);
-    if (!current.lastSeenAt || (item.lastSeenAt && new Date(item.lastSeenAt) > new Date(current.lastSeenAt))) {
-      current.lastSeenAt = item.lastSeenAt;
-    }
-
-    groups.set(key, current);
-  });
-
-  return Array.from(groups.values())
-    .map((group) => ({
-      ...group,
-      title: getWeaknessTitle(group.skill, group.errorType),
-      comment: getWeaknessComment(group)
-    }))
-    .sort((a, b) => b.weight - a.weight || b.mistakeCount - a.mistakeCount);
-}
-
-function getWeaknessTitle(skill, errorType) {
-  if (skill === 'writing' && errorType === 'grammar') return 'Ngữ pháp trong bài viết';
-  if (skill === 'writing') return 'Độ chính xác khi viết';
-  if (skill === 'speaking') return 'Phát âm và độ khớp câu nói';
-  if (skill === 'grammar') return 'Chủ điểm ngữ pháp';
-  if (skill === 'listening') return `Nghe hiểu: ${getQuestionTypeLabel(errorType)}`;
-  if (skill === 'reading') return `Đọc hiểu: ${getQuestionTypeLabel(errorType)}`;
-  if (skill === 'game') return `Mini game: ${getQuestionTypeLabel(errorType)}`;
-  if (skill === 'vocabulary') return 'Ôn lại từ vựng';
-
-  return getQuestionTypeLabel(errorType);
-}
-
-function getQuestionTypeLabel(errorType) {
-  const labels = {
-    comprehension: 'hiểu nội dung',
-    multiple_choice: 'chọn đáp án',
-    true_false: 'đúng/sai',
-    fill_blank: 'điền từ',
-    matching: 'nối từ',
-    listening: 'nghe chọn',
-    listenbuild: 'nghe xếp câu',
-    game_answer: 'trả lời trong game',
-    grammar_topic: 'chủ điểm ngữ pháp',
-    grammar: 'ngữ pháp',
-    writing_accuracy: 'độ chính xác',
-    speaking_accuracy: 'phát âm'
-  };
-
-  return labels[errorType] || String(errorType || 'nội dung luyện tập').replace(/_/g, ' ');
-}
-
-function getWeaknessComment(group) {
-  const count = number(group.mistakeCount);
-  const skillName = skillLabels[group.skill] || group.skill || 'kỹ năng này';
-
-  if (count >= 8) {
-    return `${skillName} đang sai lặp lại nhiều, nên ưu tiên luyện phần này trong vài ngày tới.`;
-  }
-
-  if (count >= 4) {
-    return `${skillName} có nhiều lỗi hơn các phần khác, cần ôn lại và làm thêm bài cùng dạng.`;
-  }
-
-  return `${skillName} có dấu hiệu chưa chắc, nên luyện thêm để tránh lặp lại lỗi.`;
-}
-
-function ProgressLine({ label, value, detail }) {
-  const safeValue = Math.max(0, Math.min(100, number(value)));
-
-  return (
-    <div className="progress-line">
-      <div>
-        <strong>{label}</strong>
-        <span>{detail}</span>
-      </div>
-      <div className="progress-warm-bar">
-        <span style={{ width: `${safeValue}%` }} />
-      </div>
-    </div>
-  );
-}
-
 function NextItem({ icon, title, text }) {
   return (
     <div className="progress-next-item">
@@ -402,10 +206,6 @@ function NextItem({ icon, title, text }) {
       </div>
     </div>
   );
-}
-
-function HiStreakIcon() {
-  return <FiTrendingUp />;
 }
 
 export default Progress;

@@ -23,9 +23,12 @@ import {
 } from '../../data/receptiveLessons';
 import { receptiveApi } from '../../api/receptiveApi';
 import Loading from '../common/Loading';
+import VocabularyGate from '../common/VocabularyGate';
+import QuestionNavigator from '../common/QuestionNavigator';
 import { hasSpeechSupport, speakText, speakTextQueue, stopAllPlayback } from '../../utils/audioControl';
 
 const PASS_SCORE = 70;
+const getInitialListeningVoice = () => localStorage.getItem('listening_voice') || '';
 
 const normalizeAnswer = (value) => {
   return String(value ?? '')
@@ -154,6 +157,11 @@ const ReceptiveLesson = ({ skill }) => {
   const [showTranscript, setShowTranscript] = useState(false);
   const [speechRate, setSpeechRate] = useState(1);
   const [voices, setVoices] = useState([]);
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState(getInitialListeningVoice);
+  const [listeningStartIndex, setListeningStartIndex] = useState(0);
+  const [activeLineIndex, setActiveLineIndex] = useState(null);
+  const [vocabPassed, setVocabPassed] = useState(false);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,6 +172,9 @@ const ReceptiveLesson = ({ skill }) => {
     setAnswers({});
     setResult(null);
     setShowTranscript(false);
+    setListeningStartIndex(0);
+    setActiveLineIndex(null);
+    setActiveQuestionIndex(0);
 
     Promise.all([
       receptiveApi.getLessonDetails(skill, id),
@@ -201,7 +212,11 @@ const ReceptiveLesson = ({ skill }) => {
     if (!hasSpeechSupport()) return undefined;
 
     const loadVoices = () => {
-      setVoices(window.speechSynthesis.getVoices().filter((voice) => voice.lang?.startsWith('en')));
+      const availableVoices = window.speechSynthesis.getVoices().filter((voice) => voice.lang?.startsWith('en'));
+      setVoices(availableVoices);
+      if (availableVoices.length > 0 && !localStorage.getItem('listening_voice')) {
+        setSelectedVoiceURI(availableVoices[0].voiceURI);
+      }
     };
 
     loadVoices();
@@ -220,6 +235,28 @@ const ReceptiveLesson = ({ skill }) => {
     });
   }, [answers, lesson]);
 
+  const answeredCount = useMemo(() => {
+    if (!lesson) return 0;
+    return lesson.questions.filter((question) => {
+      const answer = answers[question.id];
+      return question.type === 'true_false' ? answer !== undefined : String(answer || '').trim();
+    }).length;
+  }, [answers, lesson]);
+
+  const vocabularyItems = useMemo(() => lesson?.vocabulary || [], [lesson]);
+  const vocabularyGateKey = lesson ? `vocab_gate:${skill}:${lesson.id || id}` : '';
+
+  useEffect(() => {
+    if (!lesson) return;
+
+    if (!vocabularyItems.length) {
+      setVocabPassed(true);
+      return;
+    }
+
+    setVocabPassed(localStorage.getItem(vocabularyGateKey) === 'passed');
+  }, [lesson, vocabularyGateKey, vocabularyItems.length]);
+
   if (loading) return <Loading />;
 
   if (!lesson) {
@@ -237,6 +274,19 @@ const ReceptiveLesson = ({ skill }) => {
     );
   }
 
+  if (!vocabPassed && vocabularyItems.length > 0) {
+    return (
+      <VocabularyGate
+        items={vocabularyItems}
+        title={lesson.title}
+        skillLabel={skill === 'listening' ? 'Listening' : 'Reading'}
+        gateKey={vocabularyGateKey}
+        onPassed={() => setVocabPassed(true)}
+        onExit={() => navigate(meta.listPath)}
+      />
+    );
+  }
+
   const handleAnswer = (questionId, value) => {
     if (result) return;
     setAnswers((current) => ({ ...current, [questionId]: value }));
@@ -250,25 +300,13 @@ const ReceptiveLesson = ({ skill }) => {
 
     const correctCount = lesson.questions.filter((question) => isQuestionCorrect(question, answers[question.id])).length;
     const score = Math.round((correctCount / lesson.questions.length) * 100);
-    const mistakes = lesson.questions
-      .filter((question) => !isQuestionCorrect(question, answers[question.id]))
-      .map((question) => ({
-        questionId: question.id,
-        questionType: question.type,
-        prompt: question.prompt,
-        userAnswer: answers[question.id],
-        expectedAnswer: question.type === 'true_false' ? String(question.answer) : question.answer,
-        explanation: question.explanation
-      }));
-
     setResult({ correctCount, score });
     saveLessonProgress(skill, lesson.id, score);
     if (source === 'api') {
       receptiveApi.saveProgress(skill, {
         lessonId: lesson.id,
         score,
-        completed: score >= PASS_SCORE,
-        mistakes
+        completed: score >= PASS_SCORE
       }).catch(() => {});
     }
 
@@ -281,26 +319,86 @@ const ReceptiveLesson = ({ skill }) => {
     setAnswers({});
     setResult(null);
     setShowTranscript(false);
+    setActiveQuestionIndex(0);
   };
 
   const speechText = buildSpeechText(lesson, skill);
+  const selectedVoice = selectedVoiceURI && voices.length > 0
+    ? voices.find((voice) => voice.voiceURI === selectedVoiceURI) || null
+    : null;
+
+  const handleVoiceChange = (value) => {
+    setSelectedVoiceURI(value);
+    localStorage.setItem('listening_voice', value);
+  };
+
+  const handleSeekChange = (value) => {
+    const nextIndex = Number(value);
+    stopSpeech();
+    setListeningStartIndex(nextIndex);
+    setActiveLineIndex(null);
+  };
+
   const speakListeningLesson = () => {
     if (!hasSpeechSupport()) {
       toast.error('Trình duyệt chưa hỗ trợ đọc audio.');
       return;
     }
 
-    const queue = lesson.transcript.map((line) => ({
-      text: line.text,
-      ...getSpeakerSpeechOptions(line.speakerProfile, voices),
-      rate: speechRate
-    }));
+    const startIndex = Math.min(listeningStartIndex, Math.max(lesson.transcript.length - 1, 0));
+    const queue = lesson.transcript.slice(startIndex).map((line, offset) => {
+      const lineIndex = startIndex + offset;
+      return {
+        text: line.text,
+        ...(selectedVoice ? { voice: selectedVoice } : getSpeakerSpeechOptions(line.speakerProfile, voices)),
+        rate: speechRate,
+        onstart: () => {
+          setActiveLineIndex(lineIndex);
+          setListeningStartIndex(lineIndex);
+        },
+        onend: () => {
+          if (lineIndex === lesson.transcript.length - 1) setActiveLineIndex(null);
+        }
+      };
+    });
 
     speakTextQueue(queue, { lang: 'en-US', rate: speechRate });
   };
 
   const speakTranscriptLine = (line) => {
-    speak(line.text, { ...getSpeakerSpeechOptions(line.speakerProfile, voices), rate: speechRate });
+    const lineIndex = lesson.transcript.indexOf(line);
+    if (lineIndex >= 0) setListeningStartIndex(lineIndex);
+    speak(line.text, {
+      ...(selectedVoice ? { voice: selectedVoice } : getSpeakerSpeechOptions(line.speakerProfile, voices)),
+      rate: speechRate,
+      onstart: () => {
+        if (lineIndex >= 0) setActiveLineIndex(lineIndex);
+      },
+      onend: () => setActiveLineIndex(null)
+    });
+  };
+
+  const handleStopListening = () => {
+    stopSpeech();
+    setActiveLineIndex(null);
+  };
+
+  const seekValue = activeLineIndex ?? listeningStartIndex;
+  const seekMax = Math.max((lesson.transcript?.length || 1) - 1, 0);
+  const activeQuestion = lesson.questions[activeQuestionIndex] || lesson.questions[0];
+  const activeAnswer = activeQuestion ? answers[activeQuestion.id] : undefined;
+  const checked = Boolean(result);
+  const activeCorrect = checked && activeQuestion ? isQuestionCorrect(activeQuestion, activeAnswer) : false;
+  const canGoPrevious = activeQuestionIndex > 0;
+  const canGoNext = activeQuestionIndex + 1 < lesson.questions.length;
+
+  const getQuestionStatus = (index) => {
+    const question = lesson.questions[index];
+    if (!question) return 'todo';
+    const answer = answers[question.id];
+    const answered = question.type === 'true_false' ? answer !== undefined : String(answer || '').trim();
+    if (result) return isQuestionCorrect(question, answer) ? 'correct' : 'wrong';
+    return answered ? 'answered' : 'todo';
   };
 
   return (
@@ -320,14 +418,8 @@ const ReceptiveLesson = ({ skill }) => {
         </div>
       </section>
 
-      <div className="practice-vocab-strip">
-        {lesson.vocabulary.map((item) => (
-          <span key={item.word}><strong>{item.word}</strong> {item.meaning}</span>
-        ))}
-      </div>
-
       <div className="receptive-practice-layout is-compact">
-        <main className="receptive-main-panel">
+        <main className="receptive-main-panel has-question-navigator">
           {skill === 'listening' ? (
             <section className="receptive-panel practice-source-panel">
               <div className="receptive-panel-header">
@@ -340,9 +432,21 @@ const ReceptiveLesson = ({ skill }) => {
                 <button type="button" className="btn btn-primary" onClick={speakListeningLesson}>
                   <FiVolume2 /> Nghe cả bài
                 </button>
-                <button type="button" className="btn btn-secondary" onClick={stopSpeech}>
+                <button type="button" className="btn btn-secondary" onClick={handleStopListening}>
                   <FiStopCircle /> Dừng
                 </button>
+                <label className="receptive-seek-control">
+                  <span>Đoạn {seekValue + 1}/{seekMax + 1}</span>
+                  <input
+                    aria-label="Tua đến đoạn muốn nghe"
+                    type="range"
+                    min="0"
+                    max={seekMax}
+                    step="1"
+                    value={seekValue}
+                    onChange={(event) => handleSeekChange(event.target.value)}
+                  />
+                </label>
                 <span className="receptive-rate-control">
                   Tốc độ
                   <select aria-label="Lựa chọn" value={speechRate} onChange={(event) => setSpeechRate(Number(event.target.value))}>
@@ -350,6 +454,15 @@ const ReceptiveLesson = ({ skill }) => {
                     <option value={1}>1x</option>
                     <option value={1.15}>1.15x</option>
                     <option value={1.3}>1.3x</option>
+                  </select>
+                </span>
+                <span className="receptive-rate-control receptive-voice-control">
+                  Giọng
+                  <select aria-label="Chọn giọng đọc" value={selectedVoiceURI} onChange={(event) => handleVoiceChange(event.target.value)}>
+                    {voices.length === 0 && <option value="">Đang tải giọng đọc...</option>}
+                    {voices.map((voice) => (
+                      <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name}</option>
+                    ))}
                   </select>
                 </span>
               </div>
@@ -366,7 +479,7 @@ const ReceptiveLesson = ({ skill }) => {
               {showTranscript && (
                 <div className="receptive-transcript">
                   {lesson.transcript.map((line, index) => (
-                    <div key={`${line.speaker}-${index}`} className="receptive-transcript-line">
+                    <div key={`${line.speaker}-${index}`} className={`receptive-transcript-line ${activeLineIndex === index ? 'is-active' : ''}`}>
                       <button type="button" onClick={() => speakTranscriptLine(line)} aria-label={`Nghe câu ${index + 1}`}>
                         <FiVolume2 />
                       </button>
@@ -401,86 +514,95 @@ const ReceptiveLesson = ({ skill }) => {
           <section className="receptive-panel practice-question-panel">
             <div className="receptive-panel-header">
               <div>
-                <h2>Câu hỏi</h2>
+                <h2>Câu {activeQuestionIndex + 1}</h2>
               </div>
+              <span className="question-count-pill">{answeredCount}/{lesson.questions.length} đã làm</span>
             </div>
 
-            <div className="receptive-question-list">
-              {lesson.questions.map((question, index) => {
-                const answer = answers[question.id];
-                const checked = Boolean(result);
-                const correct = checked ? isQuestionCorrect(question, answer) : false;
+            <QuestionNavigator
+              total={lesson.questions.length}
+              current={activeQuestionIndex}
+              onSelect={setActiveQuestionIndex}
+              getStatus={getQuestionStatus}
+              title="Bảng câu hỏi"
+              summary={`${answeredCount}/${lesson.questions.length}`}
+            />
 
-                return (
-                  <motion.div
-                    key={question.id}
-                    className={`receptive-question ${checked ? (correct ? 'is-correct' : 'is-wrong') : ''}`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.04 }}
-                  >
-                    <div className="receptive-question-top">
-                      <span>Câu {index + 1}</span>
-                      {checked && (correct ? <FiCheckCircle /> : <FiXCircle />)}
+            {activeQuestion && (
+              <div className="receptive-question-list is-single">
+                <motion.div
+                  key={activeQuestion.id}
+                  className={`receptive-question ${checked ? (activeCorrect ? 'is-correct' : 'is-wrong') : ''}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <div className="receptive-question-top">
+                    <span>Câu {activeQuestionIndex + 1}/{lesson.questions.length}</span>
+                    {checked && (activeCorrect ? <FiCheckCircle /> : <FiXCircle />)}
+                  </div>
+                  <h3>{activeQuestion.prompt}</h3>
+
+                  {activeQuestion.type === 'multiple_choice' && (
+                    <div className="receptive-options">
+                      {activeQuestion.options.map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          className={activeAnswer === option ? 'is-selected' : ''}
+                          onClick={() => handleAnswer(activeQuestion.id, option)}
+                        >
+                          {option}
+                        </button>
+                      ))}
                     </div>
-                    <h3>{question.prompt}</h3>
+                  )}
 
-                    {question.type === 'multiple_choice' && (
-                      <div className="receptive-options">
-                        {question.options.map((option) => (
-                          <button
-                            key={option}
-                            type="button"
-                            className={answer === option ? 'is-selected' : ''}
-                            onClick={() => handleAnswer(question.id, option)}
-                          >
-                            {option}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                  {activeQuestion.type === 'true_false' && (
+                    <div className="receptive-options is-boolean">
+                      <button
+                        type="button"
+                        className={activeAnswer === true ? 'is-selected' : ''}
+                        onClick={() => handleAnswer(activeQuestion.id, true)}
+                      >
+                        True
+                      </button>
+                      <button
+                        type="button"
+                        className={activeAnswer === false ? 'is-selected' : ''}
+                        onClick={() => handleAnswer(activeQuestion.id, false)}
+                      >
+                        False
+                      </button>
+                    </div>
+                  )}
 
-                    {question.type === 'true_false' && (
-                      <div className="receptive-options is-boolean">
-                        <button
-                          type="button"
-                          className={answer === true ? 'is-selected' : ''}
-                          onClick={() => handleAnswer(question.id, true)}
-                        >
-                          True
-                        </button>
-                        <button
-                          type="button"
-                          className={answer === false ? 'is-selected' : ''}
-                          onClick={() => handleAnswer(question.id, false)}
-                        >
-                          False
-                        </button>
-                      </div>
-                    )}
+                  {activeQuestion.type === 'fill_blank' && (
+                    <input aria-label="Trường nhập"
+                      className="receptive-fill-input"
+                      value={activeAnswer || ''}
+                      placeholder="Nhập đáp án..."
+                      disabled={checked}
+                      onChange={(event) => handleAnswer(activeQuestion.id, event.target.value)}
+                    />
+                  )}
 
-                    {question.type === 'fill_blank' && (
-                      <input aria-label="Trường nhập"
-                        className="receptive-fill-input"
-                        value={answer || ''}
-                        placeholder="Nhập đáp án..."
-                        disabled={checked}
-                        onChange={(event) => handleAnswer(question.id, event.target.value)}
-                      />
-                    )}
-
-                    {checked && (
-                      <div className="receptive-explanation">
-                        <strong>Đáp án: {question.type === 'true_false' ? String(question.answer) : question.answer}</strong>
-                        <p>{question.explanation}</p>
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </div>
+                  {checked && (
+                    <div className="receptive-explanation">
+                      <strong>Đáp án: {activeQuestion.type === 'true_false' ? String(activeQuestion.answer) : activeQuestion.answer}</strong>
+                      <p>{activeQuestion.explanation}</p>
+                    </div>
+                  )}
+                </motion.div>
+              </div>
+            )}
 
             <div className="receptive-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setActiveQuestionIndex((index) => index - 1)} disabled={!canGoPrevious}>
+                <FiArrowLeft /> Câu trước
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setActiveQuestionIndex((index) => index + 1)} disabled={!canGoNext}>
+                Câu tiếp <FiArrowRight />
+              </button>
               {!result ? (
                 <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={!allAnswered}>
                   Chấm điểm
@@ -503,6 +625,15 @@ const ReceptiveLesson = ({ skill }) => {
               )}
             </div>
           </section>
+
+          <QuestionNavigator
+            total={lesson.questions.length}
+            current={activeQuestionIndex}
+            onSelect={setActiveQuestionIndex}
+            getStatus={getQuestionStatus}
+            title="Bảng câu hỏi"
+            summary={`${answeredCount}/${lesson.questions.length}`}
+          />
         </main>
       </div>
     </div>

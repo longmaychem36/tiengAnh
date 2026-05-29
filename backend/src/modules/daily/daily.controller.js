@@ -13,18 +13,9 @@ const dailyController = {
 
   async completeTask(req, res, next) {
     try {
-      const task = await dailyService.completeTask(req.user.id, req.params.id);
-      if (!task) return notFound(res, 'Daily task not found');
-      return success(res, { task }, 'Daily task completed');
-    } catch (err) {
-      next(err);
-    }
-  },
-
-  async getWeaknesses(req, res, next) {
-    try {
-      const weaknesses = await dailyService.getWeaknesses(req.user.id, Number(req.query.limit || 10));
-      return success(res, { weaknesses });
+      const result = await dailyService.completeTask(req.user.id, req.params.id);
+      if (!result) return notFound(res, 'Daily task not found');
+      return success(res, result, 'Daily task completed');
     } catch (err) {
       next(err);
     }

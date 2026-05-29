@@ -1,10 +1,15 @@
-// ============================================
-// Courses Hub - 4 Skills + Mini Games
-// ============================================
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiBookOpen, FiEdit3, FiHeadphones, FiLock, FiMic, FiZap } from 'react-icons/fi';
+import {
+  FiArrowRight,
+  FiBookOpen,
+  FiEdit3,
+  FiHeadphones,
+  FiLock,
+  FiMic,
+  FiZap
+} from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const SKILL_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
@@ -15,11 +20,15 @@ function SkillImage({ skill }) {
   const imageSrc = `/skills/${skill.id}.${SKILL_IMAGE_EXTENSIONS[extensionIndex]}`;
 
   if (extensionIndex >= SKILL_IMAGE_EXTENSIONS.length) {
-    return <span className="lingo-skill-icon"><Icon /></span>;
+    return (
+      <span className="course-skill-fallback" aria-hidden="true">
+        <Icon />
+      </span>
+    );
   }
 
   return (
-    <span className="lingo-skill-image">
+    <span className="course-skill-image">
       <img
         src={imageSrc}
         alt={`${skill.subtitle} illustration`}
@@ -29,58 +38,146 @@ function SkillImage({ skill }) {
   );
 }
 
+const skills = [
+  {
+    id: 'listening',
+    name: 'Nghe',
+    subtitle: 'Listening',
+    group: 'Tiếp nhận',
+    icon: FiHeadphones,
+    desc: 'Nghe hội thoại, đọc transcript và trả lời câu hỏi kiểm tra mức hiểu.',
+    route: '/listening/lessons',
+    color: '#0e7490',
+    ready: true
+  },
+  {
+    id: 'reading',
+    name: 'Đọc',
+    subtitle: 'Reading',
+    group: 'Tiếp nhận',
+    icon: FiBookOpen,
+    desc: 'Đọc đoạn văn theo chủ đề, học từ vựng trọng tâm và luyện đọc hiểu.',
+    route: '/reading/lessons',
+    color: '#7c3aed',
+    ready: true
+  },
+  {
+    id: 'speaking',
+    name: 'Nói',
+    subtitle: 'Speaking',
+    group: 'Sản xuất',
+    icon: FiMic,
+    desc: 'Ghi âm câu trả lời, nhận điểm phát âm và luyện phản xạ nói.',
+    route: '/speaking/options',
+    color: '#c2410c',
+    ready: true
+  },
+  {
+    id: 'writing',
+    name: 'Viết',
+    subtitle: 'Writing',
+    group: 'Sản xuất',
+    icon: FiEdit3,
+    desc: 'Ghép câu, sửa lỗi ngữ pháp và luyện viết đoạn văn ngắn.',
+    route: '/writing/lessons',
+    color: '#15803d',
+    ready: true
+  },
+  {
+    id: 'games',
+    name: 'Mini Games',
+    subtitle: 'Arcade',
+    group: 'Ôn tập',
+    icon: FiZap,
+    desc: 'Ôn lại từ vựng và mẫu câu bằng bài chơi ngắn, nhịp nhanh.',
+    route: '/games',
+    color: '#b45309',
+    ready: true
+  }
+];
+
+const pathSteps = [
+  'Nghe để lấy ngữ cảnh',
+  'Đọc để củng cố từ vựng',
+  'Nói để bật phản xạ',
+  'Viết để kiểm soát cấu trúc'
+];
+
 function CoursesHub() {
   const navigate = useNavigate();
-
-  const skills = [
-    { id: 'listening', name: 'Nghe', subtitle: 'Listening', icon: FiHeadphones, desc: 'Luyện nghe hiểu qua hội thoại và bài test.', color: '#0e7490', ready: true },
-    { id: 'speaking', name: 'Nói', subtitle: 'Speaking', icon: FiMic, desc: 'Luyện phát âm, ghi âm và chấm điểm.', color: '#0f766e', ready: true },
-    { id: 'reading', name: 'Đọc', subtitle: 'Reading', icon: FiBookOpen, desc: 'Mở rộng vốn từ và đọc hiểu.', color: '#7c3aed', ready: true },
-    { id: 'writing', name: 'Viết', subtitle: 'Writing', icon: FiEdit3, desc: 'Ghép câu, ngữ pháp và viết đoạn văn.', color: '#0f766e', ready: true },
-    { id: 'games', name: 'Mini Games', subtitle: 'Arcade', icon: FiZap, desc: 'Ôn tập qua nối từ, nghe chọn và đúng/sai.', color: '#0e7490', ready: true }
-  ];
 
   const handleSelectSkill = (skill) => {
     if (!skill.ready) {
       toast('Khóa học này đang được phát triển!', { icon: '🔒' });
       return;
     }
-    if (skill.id === 'listening') navigate('/listening/lessons');
-    else if (skill.id === 'speaking') navigate('/speaking/options');
-    else if (skill.id === 'reading') navigate('/reading/lessons');
-    else if (skill.id === 'writing') navigate('/writing/lessons');
-    else if (skill.id === 'games') navigate('/games');
+
+    navigate(skill.route);
   };
 
   return (
-    <div className="lingo-courses-page">
-      <section className="lingo-section-title lingo-centered-title">
-        <span className="lingo-eyebrow">Learning paths</span>
-        <h1>Chọn kỹ năng muốn luyện</h1>
-        <p>Giao diện web lấy cảm hứng từ app học ngôn ngữ: rõ ràng, thân thiện và nhiều điểm nhấn trực quan.</p>
+    <div className="courses-redesign">
+      <section className="courses-hero">
+        <div>
+          <span className="course-kicker">Learning paths</span>
+          <h1>Lộ trình kỹ năng</h1>
+          <p>
+            Chọn phần luyện tập theo mục tiêu hiện tại: tiếp nhận ngôn ngữ trước,
+            sản xuất ngôn ngữ sau, rồi dùng trò chơi để ôn nhanh.
+          </p>
+        </div>
+        <div className="course-hero-media" aria-hidden="true">
+          <img src="/skills/listening.jpg" alt="" />
+          <img src="/skills/speaking.png" alt="" />
+          <img src="/skills/writing.png" alt="" />
+        </div>
       </section>
 
-      <div className="lingo-skill-grid">
-        {skills.map((skill, index) => (
-          <motion.button
-            key={skill.id}
-            type="button"
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.06 }}
-            className={`lingo-skill-card ${skill.ready ? '' : 'is-disabled'}`}
-            style={{ '--skill-color': skill.color }}
-            onClick={() => handleSelectSkill(skill)}
-          >
-            {!skill.ready && <span className="lingo-lock-badge"><FiLock /> Sắp ra mắt</span>}
-            <SkillImage skill={skill} />
-            <span className="lingo-skill-subtitle">{skill.subtitle}</span>
-            <strong>{skill.name}</strong>
-            <p>{skill.desc}</p>
-            {skill.ready && <span className="lingo-skill-cta">Bắt đầu →</span>}
-          </motion.button>
+      <section className="course-plan-strip" aria-label="Lộ trình đề xuất">
+        {pathSteps.map((step, index) => (
+          <div className="course-plan-step" key={step}>
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <strong>{step}</strong>
+          </div>
         ))}
-      </div>
+      </section>
+
+      <section className="course-skill-board" aria-label="Danh sách kỹ năng">
+        {skills.map((skill, index) => {
+          const Icon = skill.icon;
+
+          return (
+            <motion.button
+              key={skill.id}
+              type="button"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className={`course-skill-row ${skill.ready ? '' : 'is-disabled'}`}
+              style={{ '--skill-color': skill.color }}
+              onClick={() => handleSelectSkill(skill)}
+            >
+              {!skill.ready && (
+                <span className="course-lock-badge">
+                  <FiLock /> Sắp ra mắt
+                </span>
+              )}
+              <SkillImage skill={skill} />
+              <span className="course-skill-icon" aria-hidden="true">
+                <Icon />
+              </span>
+              <span className="course-skill-copy">
+                <span className="course-skill-meta">{skill.group} / {skill.subtitle}</span>
+                <strong>{skill.name}</strong>
+                <span>{skill.desc}</span>
+              </span>
+              <span className="course-skill-action">
+                Bắt đầu <FiArrowRight />
+              </span>
+            </motion.button>
+          );
+        })}
+      </section>
     </div>
   );
 }
