@@ -9,7 +9,9 @@
     "dev:all": "concurrently \"npm run dev\" \"python whisper_server.py\"",
     "db:import-data": "node scripts/import_dump_data.js",
     "db:import-data:check": "node scripts/import_dump_data.js --dry-run",
-    "db:counts": "node scripts/db_counts.js"
+    "db:counts": "node scripts/db_counts.js",
+    "db:migrate-collections": "node scripts/migrate_collections.js",
+    "db:seed-vocabulary": "node scripts/seed_vocabulary.js"
   },
   "keywords": [
     "english",
