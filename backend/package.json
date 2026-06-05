@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "dev:all": "concurrently \"npm run dev\" \"python whisper_server.py\""
+    "dev:all": "concurrently \"npm run dev\" \"python whisper_server.py\"",
+    "db:import-data": "node scripts/import_dump_data.js",
+    "db:import-data:check": "node scripts/import_dump_data.js --dry-run",
+    "db:counts": "node scripts/db_counts.js"
   },
   "keywords": [
     "english",

@@ -6,6 +6,48 @@ const { Pool } = require('pg');
 
 let pool = null;
 
+function buildPoolConfig() {
+  const connectionString = (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL || '').trim();
+  const explicitSsl = process.env.DB_SSL;
+  const urlRequiresSsl = connectionString && /(?:sslmode=require|ssl=true)/i.test(connectionString);
+  const ssl = explicitSsl === 'true' || (explicitSsl === undefined && urlRequiresSsl)
+    ? { rejectUnauthorized: false }
+    : false;
+
+  const common = {
+    ssl,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+  };
+
+  if (connectionString) {
+    try {
+      new URL(connectionString);
+    } catch (error) {
+      const hasPlaceholders = /PGUSER|POSTGRES_PASSWORD|RAILWAY_TCP_PROXY|PGDATABASE/i.test(connectionString);
+      const hint = hasPlaceholders
+        ? 'It still contains placeholder text. Replace it with the real Railway database URL.'
+        : 'Use the connection string copied directly from Railway, or remove DATABASE_URL and set DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD instead.';
+      throw new Error(`Invalid DATABASE_URL/DATABASE_PUBLIC_URL. ${hint}`);
+    }
+
+    return {
+      connectionString,
+      ...common,
+    };
+  }
+
+  return {
+    host: process.env.DB_HOST || process.env.DB_SERVER || 'localhost',
+    port: parseInt(process.env.DB_PORT, 10) || 5432,
+    database: process.env.DB_NAME || 'EnglishLearningSystem',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || '',
+    ...common,
+  };
+}
+
 // Dummy sql type constants for older request/input call sites
 const sql = {
   NVarChar: 'NVarChar',
@@ -93,17 +135,7 @@ class PgRequest {
  */
 async function connectDB() {
   try {
-    pool = new Pool({
-      host: process.env.DB_HOST || process.env.DB_SERVER || 'localhost',
-      port: parseInt(process.env.DB_PORT) || 5432,
-      database: process.env.DB_NAME || 'EnglishLearningSystem',
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || '',
-      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
-    });
+    pool = new Pool(buildPoolConfig());
 
     // Test connection
     const client = await pool.connect();

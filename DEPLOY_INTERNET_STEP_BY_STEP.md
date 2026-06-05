@@ -157,6 +157,24 @@ Kiểm tra danh sách bảng:
 psql "postgresql://PGUSER:POSTGRES_PASSWORD@RAILWAY_TCP_PROXY_DOMAIN:RAILWAY_TCP_PROXY_PORT/PGDATABASE" -c "\dt"
 ```
 
+Neu Railway da co bang nhung cac bang khong co du lieu, thu import phan data bang script Node:
+
+```powershell
+cd D:\tiengAnh\backend
+$env:DATABASE_URL="postgresql://PGUSER:POSTGRES_PASSWORD@RAILWAY_TCP_PROXY_DOMAIN:RAILWAY_TCP_PROXY_PORT/PGDATABASE"
+$env:DB_SSL="true"
+npm.cmd run db:import-data
+```
+
+Kiem tra file dump co bao nhieu dong data truoc khi import:
+
+```powershell
+cd D:\tiengAnh\backend
+npm.cmd run db:import-data:check
+```
+
+Luu y: `cosodulieu.sql` dung cu phap `COPY ... FROM stdin`. PostgreSQL CLI `psql` doc duoc cu phap nay, nhung SQL editor tren web hoac script Node chay thang `client.query(sqlContent)` thuong chi tao duoc bang roi khong nap duoc du lieu.
+
 ## 7. Deploy Whisper Service Trên Railway
 
 Whisper là Python Flask service. Nên deploy riêng, không chung với backend Node.
