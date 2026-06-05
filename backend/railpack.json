@@ -2,8 +2,7 @@
   "$schema": "https://schema.railpack.com",
   "provider": "node",
   "packages": {
-    "node": "22",
-    "python": "3.11.9"
+    "node": "22"
   },
   "deploy": {
     "startCommand": "npm start"
