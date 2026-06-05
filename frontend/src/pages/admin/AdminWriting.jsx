@@ -230,6 +230,29 @@ const AdminWriting = () => {
     }
   };
 
+  const renderExerciseForm = () => (
+    <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-4)', background: 'white' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-3)' }}>
+        <div>
+          <span className="form-label">Câu hỏi (Tiếng Việt)</span>
+          <textarea aria-label="Nội dung" className="form-input" value={exContent} onChange={e => setExContent(e.target.value)} />
+        </div>
+        <div>
+          <span className="form-label">Đáp án đúng (English)</span>
+          <input aria-label="Trường nhập" className="form-input" value={exAnswer} onChange={e => setExAnswer(e.target.value)} />
+        </div>
+        <div>
+          <span className="form-label">Thứ tự</span>
+          <input aria-label="Trường nhập" className="form-input form-input-sm" type="number" value={exOrder} onChange={e => setExOrder(e.target.value)} />
+        </div>
+      </div>
+      <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
+        <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveEx}><FiSave /> Lưu</button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={closeExForm}><FiX /> Hủy</button>
+      </div>
+    </div>
+  );
+
   if (loading) return <div className="p-8">Đang tải...</div>;
 
   return (
@@ -304,10 +327,10 @@ const AdminWriting = () => {
               <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.01)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
                   <h4 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Bài tập Writing</h4>
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowExForm(true)}><FiPlus /> Thêm bài tập</button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => { closeExForm(); setShowExForm(true); }}><FiPlus /> Thêm bài tập</button>
                 </div>
 
-                {showExForm && (
+                {showExForm && !editingEx && (
                   <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-4)', background: 'white' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-3)' }}>
                       <div>
@@ -332,7 +355,8 @@ const AdminWriting = () => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                   {exercises.map(ex => (
-                    <div key={ex.Id} className="card" style={{ background: 'white', padding: 'var(--space-3)' }}>
+                    <React.Fragment key={ex.Id}>
+                    <div className="card" style={{ background: 'white', padding: 'var(--space-3)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 500 }}>{ex.ContentVI}</div>
@@ -357,6 +381,8 @@ const AdminWriting = () => {
                         </div>
                       </div>
                     </div>
+                    {showExForm && editingEx?.Id === ex.Id && renderExerciseForm()}
+                    </React.Fragment>
                   ))}
                 </div>
               </div>

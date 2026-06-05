@@ -38,9 +38,19 @@ const dedupeVocabulary = (items = []) => {
     });
 };
 
-const VocabularyGate = ({ items, title, skillLabel, gateKey, onPassed, onExit }) => {
+const VocabularyGate = ({
+  items,
+  title,
+  skillLabel,
+  gateKey,
+  onPassed,
+  onExit,
+  allowStudy = true,
+  passMessage = 'Đã mở khóa bài học.',
+  continueLabel = 'Vào làm bài'
+}) => {
   const vocabulary = useMemo(() => dedupeVocabulary(items), [items]);
-  const [phase, setPhase] = useState('study');
+  const [phase, setPhase] = useState(allowStudy ? 'study' : 'test');
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -89,6 +99,7 @@ const VocabularyGate = ({ items, title, skillLabel, gateKey, onPassed, onExit })
   };
 
   const handleBackToStudy = () => {
+    if (!allowStudy) return;
     setPhase('study');
     setAnswers({});
     setSubmitted(false);
@@ -191,9 +202,11 @@ const VocabularyGate = ({ items, title, skillLabel, gateKey, onPassed, onExit })
           </div>
 
           <div className="vocab-gate-actions">
-            <button type="button" className="btn btn-secondary" onClick={handleBackToStudy}>
-              <FiArrowLeft /> Xem lại từ
-            </button>
+            {allowStudy && (
+              <button type="button" className="btn btn-secondary" onClick={handleBackToStudy}>
+                <FiArrowLeft /> Xem lại từ
+              </button>
+            )}
             {!submitted && (
               <button type="button" className="btn btn-primary" onClick={handleSubmit}>
                 Kiểm tra
@@ -212,10 +225,10 @@ const VocabularyGate = ({ items, title, skillLabel, gateKey, onPassed, onExit })
             {isPassed && (
               <>
                 <div className="vocab-gate-message is-pass">
-                  Đã mở khóa bài học.
+                  {passMessage}
                 </div>
                 <button type="button" className="btn btn-primary" onClick={handleContinue}>
-                  Vào làm bài <FiArrowRight />
+                  {continueLabel} <FiArrowRight />
                 </button>
               </>
             )}

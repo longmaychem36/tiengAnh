@@ -1,259 +1,451 @@
 // ============================================
-// Collections Page
+// Vocabulary Page - My Decks + Public Decks
 // ============================================
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiFolder, FiPlus, FiTrash2, FiBookOpen } from 'react-icons/fi';
+import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  FiArrowLeft,
+  FiBookOpen,
+  FiCheckCircle,
+  FiEdit2,
+  FiGlobe,
+  FiLock,
+  FiPlus,
+  FiTrash2,
+  FiVolume2,
+  FiX
+} from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { collectionApi } from '../api/collectionApi';
 import Loading from '../components/common/Loading';
+import VocabularyGate from '../components/common/VocabularyGate';
+import { speakText } from '../utils/audioControl';
+import { useAuth } from '../hooks/useAuth';
 
-const getErrorMessage = (err, fallback) => err?.response?.data?.message || err?.message || fallback;
+const emptyDeckForm = { name: '', description: '', isPublic: false };
+const emptyWordForm = { customWord: '', customMeaning: '', customExample: '' };
+const getData = (res, fallback) => res?.data ?? fallback;
+const getErrorMessage = (err, fallback) => err?.message || err?.response?.data?.message || fallback;
 
-function Collections() {
-  const [collections, setCollections] = useState([]);
-  const [selectedCol, setSelectedCol] = useState(null);
+function normalizeWord(item = {}) {
+  return {
+    id: item.Id || item.id,
+    word: item.CustomWord || item.customword || item.word || '',
+    meaning: item.CustomMeaning || item.custommeaning || item.meaning || '',
+    example: item.CustomExample || item.customexample || item.example || ''
+  };
+}
+
+function statusLabel(status) {
+  if (status === 'pending') return 'Chờ duyệt';
+  if (status === 'rejected') return 'Bị từ chối';
+  return 'Đã duyệt';
+}
+
+function Vocabulary() {
+  const { user } = useAuth();
+  const isPlus = Boolean(user?.isPlus || user?.plan === 'plus');
+  const [activeTab, setActiveTab] = useState('mine');
+  const [myDecks, setMyDecks] = useState([]);
+  const [publicDecks, setPublicDecks] = useState([]);
+  const [selectedDeck, setSelectedDeck] = useState(null);
   const [words, setWords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [practiceMode, setPracticeMode] = useState(false);
 
-  // Modals
-  const [showColModal, setShowColModal] = useState(false);
-  const [colForm, setColForm] = useState({ name: '', description: '' });
+  const [showDeckModal, setShowDeckModal] = useState(false);
+  const [editingDeck, setEditingDeck] = useState(null);
+  const [deckForm, setDeckForm] = useState(emptyDeckForm);
 
   const [showWordModal, setShowWordModal] = useState(false);
-  const [wordForm, setWordForm] = useState({ customWord: '', customMeaning: '', customExample: '' });
+  const [editingWord, setEditingWord] = useState(null);
+  const [wordForm, setWordForm] = useState(emptyWordForm);
+
+  const visibleDecks = activeTab === 'mine' ? myDecks : publicDecks;
+  const editable = activeTab === 'mine' && selectedDeck?.UserId === user?.id;
+  const vocabularyItems = useMemo(() => words.map(normalizeWord).filter((item) => item.word && item.meaning), [words]);
 
   useEffect(() => {
-    loadCollections();
+    loadAll();
   }, []);
 
-  const loadCollections = () => {
-    setLoading(true);
-    collectionApi.getMyCollections()
-      .then(res => setCollections(res.data || []))
-      .catch(err => toast.error(getErrorMessage(err, 'Failed to load collections')))
-      .finally(() => setLoading(false));
-  };
-
-  const loadWords = (colId) => {
-    collectionApi.getWords(colId)
-      .then(res => setWords(res.data || []))
-      .catch(err => toast.error(getErrorMessage(err, 'Failed to load words')));
-  };
-
-  const handleSelectCol = (col) => {
-    setSelectedCol(col);
+  useEffect(() => {
+    setSelectedDeck(null);
     setWords([]);
-    loadWords(col.Id);
-  };
+    setPracticeMode(false);
+  }, [activeTab]);
 
-  const handleCreateCol = async (e) => {
-    e.preventDefault();
+  const loadAll = async () => {
+    setLoading(true);
     try {
-      await collectionApi.createCollection(colForm);
-      toast.success('Collection created!');
-      setShowColModal(false);
-      setColForm({ name: '', description: '' });
-      loadCollections();
+      const [mineRes, publicRes] = await Promise.all([
+        collectionApi.getMyCollections(),
+        collectionApi.getPublicCollections()
+      ]);
+      setMyDecks(getData(mineRes, []));
+      setPublicDecks(getData(publicRes, []));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to create collection'));
+      toast.error(getErrorMessage(err, 'Không tải được Vocabulary.'));
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteCol = async (id, e) => {
-    e.stopPropagation();
-    if (!window.confirm('Delete this collection and all its words?')) return;
+  const loadWords = async (deck) => {
+    setSelectedDeck(deck);
+    setWords([]);
+    setPracticeMode(false);
     try {
-      await collectionApi.deleteCollection(id);
-      toast.success('Deleted');
-      if (selectedCol?.Id === id) setSelectedCol(null);
-      loadCollections();
+      const res = await collectionApi.getWords(deck.Id);
+      setWords(getData(res, []));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to delete'));
+      toast.error(getErrorMessage(err, 'Không tải được từ vựng.'));
     }
   };
 
-  const handleAddCustomWord = async (e) => {
-    e.preventDefault();
-    if (!selectedCol) return;
+  const openCreateDeck = () => {
+    setEditingDeck(null);
+    setDeckForm(emptyDeckForm);
+    setShowDeckModal(true);
+  };
+
+  const openEditDeck = (deck, event) => {
+    event.stopPropagation();
+    setEditingDeck(deck);
+    setDeckForm({
+      name: deck.Name || '',
+      description: deck.Description || '',
+      isPublic: Boolean(deck.IsPublic)
+    });
+    setShowDeckModal(true);
+  };
+
+  const saveDeck = async (event) => {
+    event.preventDefault();
+    if (!deckForm.name.trim()) return toast.error('Nhập tên học phần.');
+    if (deckForm.isPublic && !isPlus) return toast.error('Tạo học phần public là tính năng Plus.');
+
     try {
-      await collectionApi.addWord(selectedCol.Id, wordForm);
-      toast.success('Word added!');
+      if (editingDeck) {
+        await collectionApi.updateCollection(editingDeck.Id, deckForm);
+        toast.success(deckForm.isPublic ? 'Đã gửi lại để admin duyệt.' : 'Đã cập nhật học phần.');
+      } else {
+        await collectionApi.createCollection(deckForm);
+        toast.success(deckForm.isPublic ? 'Đã tạo học phần public, đang chờ duyệt.' : 'Đã tạo học phần.');
+      }
+      setShowDeckModal(false);
+      setDeckForm(emptyDeckForm);
+      setEditingDeck(null);
+      await loadAll();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Không lưu được học phần.'));
+    }
+  };
+
+  const deleteDeck = async (deck, event) => {
+    event.stopPropagation();
+    if (!window.confirm('Xóa học phần này và toàn bộ từ vựng?')) return;
+    try {
+      await collectionApi.deleteCollection(deck.Id);
+      toast.success('Đã xóa học phần.');
+      if (selectedDeck?.Id === deck.Id) {
+        setSelectedDeck(null);
+        setWords([]);
+      }
+      await loadAll();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Không xóa được học phần.'));
+    }
+  };
+
+  const openAddWord = () => {
+    setEditingWord(null);
+    setWordForm(emptyWordForm);
+    setShowWordModal(true);
+  };
+
+  const openEditWord = (word) => {
+    setEditingWord(word);
+    setWordForm({
+      customWord: word.CustomWord || '',
+      customMeaning: word.CustomMeaning || '',
+      customExample: word.CustomExample || ''
+    });
+    setShowWordModal(true);
+  };
+
+  const saveWord = async (event) => {
+    event.preventDefault();
+    if (!selectedDeck) return;
+    if (!wordForm.customWord.trim() || !wordForm.customMeaning.trim()) {
+      return toast.error('Nhập từ và nghĩa.');
+    }
+
+    try {
+      if (editingWord) {
+        await collectionApi.updateWord(selectedDeck.Id, editingWord.Id, wordForm);
+        toast.success(Boolean(selectedDeck.IsPublic) ? 'Đã sửa từ, học phần chờ duyệt lại.' : 'Đã sửa từ.');
+      } else {
+        await collectionApi.addWord(selectedDeck.Id, wordForm);
+        toast.success(Boolean(selectedDeck.IsPublic) ? 'Đã thêm từ, học phần chờ duyệt lại.' : 'Đã thêm từ.');
+      }
       setShowWordModal(false);
-      setWordForm({ customWord: '', customMeaning: '', customExample: '' });
-      loadWords(selectedCol.Id);
-      loadCollections(); // refresh counts
+      setEditingWord(null);
+      setWordForm(emptyWordForm);
+      if (selectedDeck.IsPublic) setSelectedDeck({ ...selectedDeck, ReviewStatus: 'pending' });
+      await loadWords(selectedDeck);
+      await loadAll();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to add word'));
+      toast.error(getErrorMessage(err, 'Không lưu được từ.'));
     }
   };
 
-  const handleRemoveWord = async (wordId) => {
-    if (!window.confirm('Remove this word?')) return;
+  const removeWord = async (wordId) => {
+    if (!selectedDeck || !window.confirm('Xóa từ này?')) return;
     try {
-      await collectionApi.removeWord(selectedCol.Id, wordId);
-      toast.success('Removed');
-      loadWords(selectedCol.Id);
-      loadCollections();
+      await collectionApi.removeWord(selectedDeck.Id, wordId);
+      toast.success(Boolean(selectedDeck.IsPublic) ? 'Đã xóa từ, học phần chờ duyệt lại.' : 'Đã xóa từ.');
+      if (selectedDeck.IsPublic) setSelectedDeck({ ...selectedDeck, ReviewStatus: 'pending' });
+      await loadWords(selectedDeck);
+      await loadAll();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to remove word'));
+      toast.error(getErrorMessage(err, 'Không xóa được từ.'));
     }
+  };
+
+  const speakWord = (word) => {
+    speakText(word, { lang: 'en-US', rate: 0.92 });
   };
 
   if (loading) return <Loading />;
+  if (practiceMode) {
+    return (
+      <VocabularyGate
+        items={vocabularyItems}
+        title={selectedDeck?.Name || 'Vocabulary'}
+        skillLabel="Vocabulary"
+        gateKey={`vocabulary-${selectedDeck?.Id}`}
+        allowStudy={false}
+        passMessage="Đã hoàn thành ôn từ vựng."
+        continueLabel="Tiếp tục học bài khác"
+        onPassed={() => {
+          setPracticeMode(false);
+          setSelectedDeck(null);
+          setWords([]);
+        }}
+        onExit={() => setPracticeMode(false)}
+      />
+    );
+  }
 
   return (
     <div>
-      <div className="page-header flex-between" style={{ alignItems: 'flex-start' }}>
+      <div className="page-header flex-between" style={{ alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
         <div>
-          <h1>📚 My Collections</h1>
-          <p>Organize and review your vocabulary</p>
+          <h1>Vocabulary</h1>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setShowColModal(true)}>
-          <FiPlus /> New Collection
+        {activeTab === 'mine' && (
+          <button type="button" className="btn btn-primary" onClick={openCreateDeck}>
+            <FiPlus /> Tạo học phần
+          </button>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: '-4px', marginBottom: 'var(--space-5)' }}>
+        <button type="button" className={`btn ${activeTab === 'mine' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('mine')}>
+          <FiBookOpen /> Học phần của tôi
+        </button>
+        <button type="button" className={`btn ${activeTab === 'public' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('public')}>
+          <FiGlobe /> Học phần public
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--space-6)' }}>
-        {/* Collections List */}
-        <div>
-          {collections.length === 0 ? (
+      {selectedDeck ? (
+        <section>
+          <div className="card">
+            <div className="flex-between" style={{ alignItems: 'flex-start', marginBottom: 'var(--space-5)' }}>
+              <div>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setSelectedDeck(null);
+                    setWords([]);
+                    setPracticeMode(false);
+                  }}
+                  style={{ marginBottom: 'var(--space-3)' }}
+                >
+                  <FiArrowLeft /> Học phần
+                </button>
+                <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>{selectedDeck.Name}</h2>
+                <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>{selectedDeck.Description}</p>
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {editable && (
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={openAddWord}>
+                    <FiPlus /> Thêm từ
+                  </button>
+                )}
+                <button type="button" className="btn btn-primary btn-sm" disabled={vocabularyItems.length === 0} onClick={() => setPracticeMode(true)}>
+                  <FiCheckCircle /> Ôn luyện
+                </button>
+              </div>
+            </div>
+
+            {selectedDeck.IsPublic && selectedDeck.ReviewStatus !== 'approved' && activeTab === 'mine' && (
+              <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)', background: '#fef3c7', color: '#92400e', marginBottom: 'var(--space-4)' }}>
+                Học phần public chỉ hiển thị cho người khác sau khi admin duyệt.
+              </div>
+            )}
+
+            {words.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-8)' }}>
+                Học phần này chưa có từ vựng.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-3)' }}>
+                {words.map((raw) => {
+                  const item = normalizeWord(raw);
+                  return (
+                    <article key={item.id} style={{ padding: 'var(--space-4)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', background: 'var(--color-bg-secondary)' }}>
+                      <div className="flex-between" style={{ gap: 8, alignItems: 'flex-start' }}>
+                        <button type="button" onClick={() => speakWord(item.word)} className="btn btn-icon btn-ghost" aria-label={`Nghe ${item.word}`}>
+                          <FiVolume2 />
+                        </button>
+                        {editable && (
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button type="button" className="btn btn-icon btn-ghost" onClick={() => openEditWord(raw)}><FiEdit2 /></button>
+                            <button type="button" className="btn btn-icon btn-ghost" onClick={() => removeWord(item.id)} style={{ color: 'var(--color-error)' }}><FiTrash2 /></button>
+                          </div>
+                        )}
+                      </div>
+                      <strong style={{ display: 'block', color: 'var(--color-primary)', fontSize: 'var(--font-size-lg)', marginTop: 8 }}>{item.word}</strong>
+                      <p style={{ color: 'var(--color-text-secondary)', marginTop: 6 }}>{item.meaning}</p>
+                      {item.example && <small style={{ display: 'block', color: 'var(--color-text-muted)', marginTop: 8, fontStyle: 'italic' }}>"{item.example}"</small>}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      ) : (
+        <section>
+          {visibleDecks.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-8)' }}>
-              No collections yet.
+              {activeTab === 'mine' ? 'Chưa có học phần từ vựng.' : ''}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              {collections.map(c => (
-                <div key={c.Id} onClick={() => handleSelectCol(c)} className="card" style={{
-                  cursor: 'pointer',
-                  border: selectedCol?.Id === c.Id ? '2px solid var(--color-primary)' : undefined,
-                  background: selectedCol?.Id === c.Id ? 'var(--color-primary-light)' : undefined,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                    <FiFolder size={20} style={{ color: selectedCol?.Id === c.Id ? 'var(--color-primary)' : 'var(--color-text-muted)' }} />
-                    <div>
-                      <h3 style={{ fontWeight: 600 }}>{c.Name}</h3>
-                      <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>{c.WordCount || 0} words</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-3)' }}>
+              {visibleDecks.map((deck, index) => (
+                <motion.article
+                  key={deck.Id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                  className="card"
+                  onClick={() => loadWords(deck)}
+                  style={{
+                    cursor: 'pointer',
+                    border: selectedDeck?.Id === deck.Id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                    padding: 'var(--space-4)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 'var(--space-3)'
+                  }}
+                >
+                  <div>
+                    <h3 style={{ fontWeight: 800, marginBottom: 6 }}>{deck.Name}</h3>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                      <span className="badge badge-primary">{Number(deck.WordCount || 0)} từ</span>
+                      {deck.IsPublic && <span className="badge badge-secondary"><FiGlobe /> Public</span>}
+                      {activeTab === 'mine' && deck.IsPublic && <span className="badge badge-secondary">{statusLabel(deck.ReviewStatus)}</span>}
                     </div>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>{deck.Description}</p>
+                    {deck.CreatorName && activeTab === 'public' && (
+                      <small style={{ color: 'var(--color-text-muted)' }}>Tác giả: {deck.CreatorName}</small>
+                    )}
                   </div>
-                  <button type="button" className="btn btn-icon btn-ghost" onClick={(e) => handleDeleteCol(c.Id, e)} style={{ color: 'var(--color-error)' }}>
-                    <FiTrash2 />
-                  </button>
-                </div>
+                  {activeTab === 'mine' && (
+                    <div style={{ display: 'flex', gap: 4 }} onClick={(event) => event.stopPropagation()}>
+                      <button type="button" className="btn btn-icon btn-ghost" onClick={(event) => openEditDeck(deck, event)}><FiEdit2 /></button>
+                      <button type="button" className="btn btn-icon btn-ghost" onClick={(event) => deleteDeck(deck, event)} style={{ color: 'var(--color-error)' }}><FiTrash2 /></button>
+                    </div>
+                  )}
+                </motion.article>
               ))}
             </div>
           )}
-        </div>
+        </section>
+      )}
 
-        {/* Selected Collection Panel */}
-        <div>
-          {selectedCol ? (
-            <div className="card">
-              <div className="flex-between" style={{ marginBottom: 'var(--space-6)' }}>
-                <div>
-                  <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>{selectedCol.Name}</h2>
-                  <p style={{ color: 'var(--color-text-secondary)' }}>{selectedCol.Description}</p>
-                </div>
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowWordModal(true)}>
-                  <FiPlus /> Add Word
-                </button>
-              </div>
-
-              {words.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-8)' }}>
-                  This collection is empty.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                  {words.map(w => {
-                    const isDict = !!w.DictWord;
-                    const wordText = isDict ? w.DictWord : w.CustomWord;
-                    const meaningText = isDict ? w.DictMeaningVI : w.CustomMeaning;
-                    const exampleText = isDict ? w.DictExample : w.CustomExample;
-                    const phonetic = isDict ? w.Phonetic : null;
-                    const pos = isDict ? w.PartOfSpeech : null;
-
-                    return (
-                      <div key={w.Id} style={{ padding: 'var(--space-4)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
-                        <div className="flex-between">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                            <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-primary)' }}>{wordText}</span>
-                            {phonetic && <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>/{phonetic}/</span>}
-                            {pos && <span className="badge badge-primary">{pos}</span>}
-                            {!isDict && <span className="badge badge-warning">Custom</span>}
-                          </div>
-                          <button type="button" className="btn btn-icon btn-ghost" onClick={() => handleRemoveWord(w.Id)} style={{ color: 'var(--color-error)' }}>
-                            <FiTrash2 size={16} />
-                          </button>
-                        </div>
-                        <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--space-2)' }}>{meaningText}</p>
-                        {exampleText && <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)', fontStyle: 'italic', marginTop: 4 }}>"{exampleText}"</p>}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+      {showDeckModal && (
+        <Modal title={editingDeck ? 'Sửa học phần' : 'Tạo học phần'} onClose={() => setShowDeckModal(false)}>
+          <form onSubmit={saveDeck}>
+            <label className="form-group">
+              <span className="form-label">Tên học phần</span>
+              <input className="form-input" value={deckForm.name} onChange={(e) => setDeckForm({ ...deckForm, name: e.target.value })} required />
+            </label>
+            <label className="form-group">
+              <span className="form-label">Mô tả</span>
+              <input className="form-input" value={deckForm.description} onChange={(e) => setDeckForm({ ...deckForm, description: e.target.value })} />
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 'var(--space-3)', color: !isPlus ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
+              <input
+                type="checkbox"
+                checked={deckForm.isPublic}
+                disabled={!isPlus}
+                onChange={(e) => setDeckForm({ ...deckForm, isPublic: e.target.checked })}
+              />
+              <span>Đăng public {isPlus ? '(cần admin duyệt)' : '(Plus)'}</span>
+              {!isPlus && <FiLock />}
+            </label>
+            <div className="flex gap-2" style={{ marginTop: 'var(--space-5)' }}>
+              <button type="button" className="btn btn-secondary w-full" onClick={() => setShowDeckModal(false)}>Hủy</button>
+              <button type="submit" className="btn btn-primary w-full">Lưu</button>
             </div>
-          ) : (
-            <div className="card flex-center flex-col" style={{ height: '300px', color: 'var(--color-text-muted)' }}>
-              <FiFolder size={48} style={{ marginBottom: 'var(--space-4)', opacity: 0.3 }} />
-              <p>Select a collection to view its vocabulary</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Modals */}
-      {showColModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="card" style={{ width: 400 }}>
-            <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>New Collection</h3>
-            <form onSubmit={handleCreateCol}>
-              <div className="form-group">
-                <span className="form-label">Name</span>
-                <input aria-label="Trường nhập" className="form-input" type="text" required value={colForm.name} onChange={e => setColForm({...colForm, name: e.target.value})} placeholder="e.g. IELTS Work" />
-              </div>
-              <div className="form-group">
-                <span className="form-label">Description</span>
-                <input aria-label="Trường nhập" className="form-input" type="text" value={colForm.description} onChange={e => setColForm({...colForm, description: e.target.value})} placeholder="Optional" />
-              </div>
-              <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
-                <button type="button" className="btn btn-secondary w-full" onClick={() => setShowColModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary w-full">Create</button>
-              </div>
-            </form>
-          </div>
-        </div>
+          </form>
+        </Modal>
       )}
 
       {showWordModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="card" style={{ width: 400 }}>
-            <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>Add Custom Word</h3>
-            <form onSubmit={handleAddCustomWord}>
-              <div className="form-group">
-                <span className="form-label">Word/Phrase</span>
-                <input aria-label="Trường nhập" className="form-input" type="text" required value={wordForm.customWord} onChange={e => setWordForm({...wordForm, customWord: e.target.value})} placeholder="e.g. piece of cake" />
-              </div>
-              <div className="form-group">
-                <span className="form-label">Meaning (Vietnamese)</span>
-                <input aria-label="Trường nhập" className="form-input" type="text" required value={wordForm.customMeaning} onChange={e => setWordForm({...wordForm, customMeaning: e.target.value})} placeholder="Dá»… như ăn bánh" />
-              </div>
-              <div className="form-group">
-                <span className="form-label">Example (Optional)</span>
-                <input aria-label="Trường nhập" className="form-input" type="text" value={wordForm.customExample} onChange={e => setWordForm({...wordForm, customExample: e.target.value})} placeholder="The test was a piece of cake." />
-              </div>
-              <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
-                <button type="button" className="btn btn-secondary w-full" onClick={() => setShowWordModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary w-full">Add Word</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <Modal title={editingWord ? 'Sửa từ vựng' : 'Thêm từ vựng'} onClose={() => setShowWordModal(false)}>
+          <form onSubmit={saveWord}>
+            <label className="form-group">
+              <span className="form-label">Từ / cụm từ</span>
+              <input className="form-input" value={wordForm.customWord} onChange={(e) => setWordForm({ ...wordForm, customWord: e.target.value })} required />
+            </label>
+            <label className="form-group">
+              <span className="form-label">Nghĩa tiếng Việt</span>
+              <input className="form-input" value={wordForm.customMeaning} onChange={(e) => setWordForm({ ...wordForm, customMeaning: e.target.value })} required />
+            </label>
+            <label className="form-group">
+              <span className="form-label">Ví dụ</span>
+              <input className="form-input" value={wordForm.customExample} onChange={(e) => setWordForm({ ...wordForm, customExample: e.target.value })} />
+            </label>
+            <div className="flex gap-2" style={{ marginTop: 'var(--space-5)' }}>
+              <button type="button" className="btn btn-secondary w-full" onClick={() => setShowWordModal(false)}>Hủy</button>
+              <button type="submit" className="btn btn-primary w-full">Lưu</button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );
 }
 
-export default Collections;
+function Modal({ title, onClose, children }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div className="card" style={{ width: 'min(480px, 100%)' }}>
+        <div className="flex-between" style={{ marginBottom: 'var(--space-4)' }}>
+          <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800 }}>{title}</h3>
+          <button type="button" className="btn btn-icon btn-ghost" onClick={onClose}><FiX /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export default Vocabulary;

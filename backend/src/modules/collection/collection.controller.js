@@ -11,10 +11,28 @@ const collectionController = {
     }
   },
 
+  async getPublicCollections(req, res, next) {
+    try {
+      const collections = await collectionService.getPublicCollections();
+      return success(res, collections);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async createCollection(req, res, next) {
     try {
       const result = await collectionService.create(req.user.id, req.body);
       return created(res, result, 'Collection created successfully');
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async updateCollection(req, res, next) {
+    try {
+      const result = await collectionService.update(req.user.id, req.params.id, req.body);
+      return success(res, result, 'Collection updated');
     } catch (err) {
       next(err);
     }
@@ -51,6 +69,15 @@ const collectionController = {
     try {
       await collectionService.removeWord(req.user.id, req.params.id, req.params.wordId);
       return success(res, null, 'Word removed from collection');
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async updateWord(req, res, next) {
+    try {
+      const result = await collectionService.updateWord(req.user.id, req.params.id, req.params.wordId, req.body);
+      return success(res, result, 'Word updated');
     } catch (err) {
       next(err);
     }

@@ -49,6 +49,7 @@ router.post('/transcribe-analyze', audioUpload.single('audio'), speakingControll
 // Temporary AI-generated personalized speaking lesson (stored in memory only)
 router.post('/personalized', speakingController.createPersonalizedLesson);
 router.get('/personalized/:sessionId', speakingController.getPersonalizedLesson);
+router.post('/personalized/:sessionId/complete', speakingController.completePersonalizedLesson);
 
 // Existing endpoints
 router.get('/lessons', speakingController.getLessons);

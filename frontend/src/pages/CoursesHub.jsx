@@ -43,7 +43,6 @@ const skills = [
     id: 'listening',
     name: 'Nghe',
     subtitle: 'Listening',
-    group: 'Tiếp nhận',
     icon: FiHeadphones,
     desc: 'Nghe hội thoại, đọc transcript và trả lời câu hỏi kiểm tra mức hiểu.',
     route: '/listening/lessons',
@@ -54,7 +53,6 @@ const skills = [
     id: 'reading',
     name: 'Đọc',
     subtitle: 'Reading',
-    group: 'Tiếp nhận',
     icon: FiBookOpen,
     desc: 'Đọc đoạn văn theo chủ đề, học từ vựng trọng tâm và luyện đọc hiểu.',
     route: '/reading/lessons',
@@ -65,7 +63,6 @@ const skills = [
     id: 'speaking',
     name: 'Nói',
     subtitle: 'Speaking',
-    group: 'Sản xuất',
     icon: FiMic,
     desc: 'Ghi âm câu trả lời, nhận điểm phát âm và luyện phản xạ nói.',
     route: '/speaking/options',
@@ -76,7 +73,6 @@ const skills = [
     id: 'writing',
     name: 'Viết',
     subtitle: 'Writing',
-    group: 'Sản xuất',
     icon: FiEdit3,
     desc: 'Ghép câu, sửa lỗi ngữ pháp và luyện viết đoạn văn ngắn.',
     route: '/writing/lessons',
@@ -87,20 +83,12 @@ const skills = [
     id: 'games',
     name: 'Mini Games',
     subtitle: 'Arcade',
-    group: 'Ôn tập',
     icon: FiZap,
     desc: 'Ôn lại từ vựng và mẫu câu bằng bài chơi ngắn, nhịp nhanh.',
     route: '/games',
     color: '#b45309',
     ready: true
   }
-];
-
-const pathSteps = [
-  'Nghe để lấy ngữ cảnh',
-  'Đọc để củng cố từ vựng',
-  'Nói để bật phản xạ',
-  'Viết để kiểm soát cấu trúc'
 ];
 
 function CoursesHub() {
@@ -122,8 +110,7 @@ function CoursesHub() {
           <span className="course-kicker">Learning paths</span>
           <h1>Lộ trình kỹ năng</h1>
           <p>
-            Chọn phần luyện tập theo mục tiêu hiện tại: tiếp nhận ngôn ngữ trước,
-            sản xuất ngôn ngữ sau, rồi dùng trò chơi để ôn nhanh.
+            Chọn phần luyện tập phù hợp với mục tiêu hiện tại và bắt đầu ngay.
           </p>
         </div>
         <div className="course-hero-media" aria-hidden="true">
@@ -131,15 +118,6 @@ function CoursesHub() {
           <img src="/skills/speaking.png" alt="" />
           <img src="/skills/writing.png" alt="" />
         </div>
-      </section>
-
-      <section className="course-plan-strip" aria-label="Lộ trình đề xuất">
-        {pathSteps.map((step, index) => (
-          <div className="course-plan-step" key={step}>
-            <span>{String(index + 1).padStart(2, '0')}</span>
-            <strong>{step}</strong>
-          </div>
-        ))}
       </section>
 
       <section className="course-skill-board" aria-label="Danh sách kỹ năng">
@@ -167,7 +145,7 @@ function CoursesHub() {
                 <Icon />
               </span>
               <span className="course-skill-copy">
-                <span className="course-skill-meta">{skill.group} / {skill.subtitle}</span>
+                <span className="course-skill-meta">{skill.subtitle}</span>
                 <strong>{skill.name}</strong>
                 <span>{skill.desc}</span>
               </span>

@@ -21,7 +21,6 @@ import { HiOutlineFire } from 'react-icons/hi';
 import { useAuth } from '../hooks/useAuth';
 import { gamificationApi } from '../api/progressApi';
 import Loading from '../components/common/Loading';
-import Mascot from '../components/common/Mascot';
 
 const learningTracks = [
   {
@@ -98,12 +97,11 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="lingo-progress-phone lingo-mascot-card">
+        <div className="lingo-progress-phone">
           <div className="lingo-phone-top">
             <span>Today's goal</span>
             <strong>{stats?.levelProgress || 0}%</strong>
           </div>
-          <Mascot mood="happy" size={180} />
           <div className="lingo-phone-row">
             <span><HiOutlineFire /> {stats?.StreakDays || 0} ngày</span>
             <span><FiTarget /> {stats?.Exp || 0} EXP</span>

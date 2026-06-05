@@ -161,6 +161,34 @@ const AdminGrammar = () => {
     setShowQuizForm(false); setEditingQuiz(null); setQuizQ(''); setQA(''); setQB(''); setQC(''); setQD(''); setQAns('A'); setQExp('');
   };
 
+  const renderQuizForm = () => (
+    <div className="card p-4 mb-4 bg-white border-primary/20 shadow-md">
+      <h3 className="text-sm font-bold mb-4">{editingQuiz ? 'Sửa bài tập' : 'Thêm bài tập mới'}</h3>
+      <div className="flex flex-col gap-3">
+        <div><span className="form-label text-xs">Câu hỏi</span><input aria-label="Trường nhập" className="form-input form-input-sm" value={quizQ} onChange={e => setQuizQ(e.target.value)} /></div>
+        <div className="grid grid-2 gap-2">
+          <div><span className="form-label text-xs">Option A</span><input aria-label="Trường nhập" className="form-input form-input-sm" value={qA} onChange={e => setQA(e.target.value)} /></div>
+          <div><span className="form-label text-xs">Option B</span><input aria-label="Trường nhập" className="form-input form-input-sm" value={qB} onChange={e => setQB(e.target.value)} /></div>
+          <div><span className="form-label text-xs">Option C</span><input aria-label="Trường nhập" className="form-input form-input-sm" value={qC} onChange={e => setQC(e.target.value)} /></div>
+          <div><span className="form-label text-xs">Option D</span><input aria-label="Trường nhập" className="form-input form-input-sm" value={qD} onChange={e => setQD(e.target.value)} /></div>
+        </div>
+        <div className="grid grid-2 gap-2">
+          <div>
+            <span className="form-label text-xs">Đáp án đúng</span>
+            <select aria-label="Lựa chọn" className="form-input form-input-sm" value={qAns} onChange={e => setQAns(e.target.value)}>
+              <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
+            </select>
+          </div>
+          <div><span className="form-label text-xs">Giải thích</span><input aria-label="Trường nhập" className="form-input form-input-sm" value={qExp} onChange={e => setQExp(e.target.value)} /></div>
+        </div>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveQuiz}><FiSave /> Lưu</button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={closeQuizForm}><FiX /> Hủy</button>
+      </div>
+    </div>
+  );
+
   const quillModules = {
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
@@ -315,10 +343,10 @@ const AdminGrammar = () => {
                         <div className="p-4 border-t bg-gray-50/50">
                           <div className="flex justify-between items-center mb-4">
                             <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Bài tập (Quizzes)</h5>
-                            <button type="button" className="btn btn-primary btn-xs" onClick={() => setShowQuizForm(true)}><FiPlus /> Thêm bài tập</button>
+                            <button type="button" className="btn btn-primary btn-xs" onClick={() => { closeQuizForm(); setShowQuizForm(true); }}><FiPlus /> Thêm bài tập</button>
                           </div>
 
-                          {showQuizForm && (
+                          {showQuizForm && !editingQuiz && (
                             <div className="card p-4 mb-4 bg-white border-primary/20 shadow-md">
                               <h3 className="text-sm font-bold mb-4">{editingQuiz ? 'Sửa bài tập' : 'Thêm bài tập mới'}</h3>
                               <div className="flex flex-col gap-3">
@@ -348,7 +376,8 @@ const AdminGrammar = () => {
 
                           <div className="flex flex-col gap-2">
                             {quizzes.map((q, idx) => (
-                              <div key={q.Id} className="p-3 bg-white border rounded shadow-sm flex items-center justify-between">
+                              <React.Fragment key={q.Id}>
+                              <div className="p-3 bg-white border rounded shadow-sm flex items-center justify-between">
                                 <div className="flex-1">
                                   <div className="text-sm font-medium">{idx + 1}. {q.Question}</div>
                                   <div className="text-xs text-primary font-bold">Đáp án: {q.CorrectAnswer}</div>
@@ -369,6 +398,12 @@ const AdminGrammar = () => {
                                   }}><FiTrash2 size={12} /></button>
                                 </div>
                               </div>
+                              {showQuizForm && editingQuiz?.Id === q.Id && (
+                                <div style={{ marginTop: 'var(--space-2)' }}>
+                                  {renderQuizForm()}
+                                </div>
+                              )}
+                              </React.Fragment>
                             ))}
                           </div>
                         </div>

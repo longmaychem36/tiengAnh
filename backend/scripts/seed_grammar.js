@@ -3,12 +3,30 @@
 // ============================================
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const { connectDB, getPool, sql } = require('../src/config/database');
+const { enhanceGrammarContent, insertExtraGrammarQuizzes } = require('./grammar_enhancement_data');
+
+async function ensureGrammarProgressTable(pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS GrammarProgress (
+      UserId uuid NOT NULL,
+      TopicId uuid NOT NULL REFERENCES GrammarTopics(Id) ON DELETE CASCADE,
+      BestScore integer DEFAULT 0,
+      LastScore integer DEFAULT 0,
+      Attempts integer DEFAULT 0,
+      Status varchar(20) DEFAULT 'in_progress',
+      UpdatedAt timestamp DEFAULT NOW(),
+      PRIMARY KEY (UserId, TopicId)
+    )
+  `);
+}
 
 async function clearAndReseed() {
   await connectDB();
   const pool = getPool();
 
   console.log('🗑️  Clearing old grammar data...');
+  await ensureGrammarProgressTable(pool);
+  await pool.request().query('DELETE FROM GrammarProgress');
   await pool.request().query('DELETE FROM GrammarQuiz');
   await pool.request().query('DELETE FROM GrammarTopics');
   await pool.request().query('DELETE FROM GrammarCategories');
@@ -23,9 +41,10 @@ async function clearAndReseed() {
     return r.recordset[0].Id;
   }
   async function insertTopic(catId, title, titleVI, content, order) {
+    const topicContent = enhanceGrammarContent(title, content);
     const r = await pool.request()
       .input('c', sql.Int, catId).input('t', sql.NVarChar, title).input('tv', sql.NVarChar, titleVI)
-      .input('ct', sql.NVarChar, content).input('o', sql.Int, order)
+      .input('ct', sql.NVarChar, topicContent).input('o', sql.Int, order)
       .query('INSERT INTO GrammarTopics (CategoryId,Title,TitleVI,Content,OrderIndex) VALUES (@c,@t,@tv,@ct,@o) RETURNING Id');
     return r.recordset[0].Id;
   }
@@ -811,6 +830,9 @@ Câu <b>phủ định</b> → đuôi <b>khẳng định</b>
   await insertQuiz(sva, 'The number of students in this class ___ 35.', 'is', 'are', 'were', 'have', 'A', '"The number of..." → một con số cụ thể → số ít → is.');
 
   console.log('  ✅ Subject-Verb Agreement seeded');
+
+  await insertExtraGrammarQuizzes(pool, insertQuiz);
+  console.log('  ✅ Grammar quiz coverage expanded to at least 15 questions per topic');
 
   console.log('\n🎉 All grammar data reseeded with DETAILED content!');
   process.exit(0);

@@ -14,14 +14,14 @@ const grammarController = {
 
   async getTopicsByCategory(req, res, next) {
     try {
-      const topics = await grammarService.getTopicsByCategory(req.params.categoryId);
+      const topics = await grammarService.getTopicsByCategory(req.params.categoryId, req.user?.id || null);
       return success(res, topics);
     } catch (err) { next(err); }
   },
 
   async getTopicDetail(req, res, next) {
     try {
-      const topic = await grammarService.getTopicDetail(req.params.topicId);
+      const topic = await grammarService.getTopicDetail(req.params.topicId, req.user?.id || null);
       if (!topic) return notFound(res, 'Grammar topic not found');
       return success(res, topic);
     } catch (err) { next(err); }

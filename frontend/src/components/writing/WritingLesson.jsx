@@ -4,20 +4,27 @@ import { motion } from 'framer-motion';
 import {
   FiArrowLeft,
   FiArrowRight,
-  FiBookOpen,
   FiCheckCircle,
   FiEdit3,
   FiRefreshCw,
+  FiSave,
+  FiSend,
   FiXCircle
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 import { writingApi } from '../../api/writingApi';
-import ProgressBar from '../speaking/ProgressBar';
 import Loading from '../common/Loading';
 import ExpReward from '../common/ExpReward';
 import VocabularyGate from '../common/VocabularyGate';
 import QuestionNavigator from '../common/QuestionNavigator';
+import {
+  LearningLayout,
+  LessonCard,
+  LessonHeader,
+  PrimaryButton,
+  SecondaryButton
+} from '../common/learning';
 
 const WRITING_PASS_SCORE = 80;
 
@@ -31,14 +38,21 @@ const normalizeText = (value) => {
 
 const canPassWriting = (result) => Number(result?.score || 0) >= WRITING_PASS_SCORE;
 const getExerciseKey = (item, index) => item?.id || index;
+const joinExerciseField = (exercises, field) => exercises.reduce((parts, exercise) => {
+  const value = exercise[field];
+  if (value) parts.push(value);
+  return parts;
+}, []).join(' ');
 
 const getPassageParts = (text, highlights) => {
   const source = text || '';
   const lowerSource = source.toLowerCase();
   const cleanHighlights = highlights
-    .filter(Boolean)
-    .map((item) => item.trim())
-    .filter(Boolean)
+    .reduce((items, item) => {
+      const value = item?.trim();
+      if (value) items.push(value);
+      return items;
+    }, [])
     .sort((a, b) => b.length - a.length);
 
   const parts = [];
@@ -55,35 +69,47 @@ const getPassageParts = (text, highlights) => {
     });
 
     if (!next) {
-      parts.push({ text: source.slice(cursor), highlighted: false });
+      parts.push({ text: source.slice(cursor), highlighted: false, start: cursor });
       break;
     }
 
     if (next.index > cursor) {
-      parts.push({ text: source.slice(cursor, next.index), highlighted: false });
+      parts.push({ text: source.slice(cursor, next.index), highlighted: false, start: cursor });
     }
 
-    parts.push({ text: next.text, highlighted: true });
+    parts.push({ text: next.text, highlighted: true, start: next.index });
     cursor = next.index + next.text.length;
   }
 
   return parts;
 };
 
-const renderTargetDiff = (userText, targetText) => {
+const TargetDiff = ({ userText, targetText }) => {
   const userWords = new Set(normalizeText(userText).split(' ').filter(Boolean));
 
-  return targetText.split(/(\s+)/).map((part, index) => {
-    if (!part.trim()) return <Fragment key={index}>{part}</Fragment>;
+  let cursor = 0;
+  return targetText.split(/(\s+)/).map((part) => {
+    const key = `${cursor}:${part}`;
+    cursor += part.length;
+    if (!part.trim()) return <Fragment key={key}>{part}</Fragment>;
     const cleanPart = normalizeText(part);
     const matched = userWords.has(cleanPart);
 
     return (
-      <mark key={index} className={matched ? 'writing-diff-hit' : 'writing-diff-miss'}>
+      <mark key={key} className={matched ? 'writing-diff-hit' : 'writing-diff-miss'}>
         {part}
       </mark>
     );
   });
+};
+
+const formatFeedbackText = (value, fallback) => {
+  if (Array.isArray(value)) return value.filter(Boolean).join(' ') || fallback;
+  if (typeof value === 'string') return value || fallback;
+  if (value && typeof value === 'object') {
+    return Object.values(value).flat().filter(Boolean).join(' ') || fallback;
+  }
+  return value == null ? fallback : String(value);
 };
 
 const WritingLesson = () => {
@@ -150,18 +176,25 @@ const WritingLesson = () => {
   const passedCount = useMemo(() => (
     exercises.filter((exercise, index) => canPassWriting(attempts[getExerciseKey(exercise, index)])).length
   ), [attempts, exercises]);
+  const answeredCount = useMemo(() => (
+    exercises.filter((exercise, index) => {
+      const key = getExerciseKey(exercise, index);
+      return attempts[key] || String(drafts[key] || '').trim();
+    }).length
+  ), [attempts, drafts, exercises]);
   const vocabularyItems = useMemo(() => {
     const seen = new Set();
 
-    return exercises
-      .flatMap((exercise) => exercise.vocab || [])
-      .filter((item) => item?.word && item?.meaning)
-      .filter((item) => {
+    return exercises.reduce((items, exercise) => {
+      (exercise.vocab || []).forEach((item) => {
+        if (!item?.word || !item?.meaning) return;
         const key = `${String(item.word).trim().toLowerCase()}:${String(item.meaning).trim().toLowerCase()}`;
-        if (seen.has(key)) return false;
+        if (seen.has(key)) return;
         seen.add(key);
-        return true;
+        items.push(item);
       });
+      return items;
+    }, []);
   }, [exercises]);
   const vocabularyGateKey = `vocab_gate:writing:${lessonData?.id || id}`;
 
@@ -217,6 +250,11 @@ const WritingLesson = () => {
     setDrafts((current) => ({ ...current, [currentExerciseKey]: value }));
   };
 
+  const handleSaveDraft = () => {
+    setDrafts((current) => ({ ...current, [currentExerciseKey]: userText }));
+    toast.success('Đã lưu bản nháp');
+  };
+
   const handleSelectQuestion = (index) => {
     const exercise = exercises[index];
     const key = getExerciseKey(exercise, index);
@@ -260,12 +298,12 @@ const WritingLesson = () => {
   if (loading) return <Loading />;
 
   if (showCompletion) {
-    const passageEN = lessonData?.passageEN || exercises.map((exercise) => exercise.correctAnswerEN).filter(Boolean).join(' ');
-    const passageVI = lessonData?.passageVI || exercises.map((exercise) => exercise.contentVI).filter(Boolean).join(' ');
+    const passageEN = lessonData?.passageEN || joinExerciseField(exercises, 'correctAnswerEN');
+    const passageVI = lessonData?.passageVI || joinExerciseField(exercises, 'contentVI');
     const passageParts = getPassageParts(passageEN, exercises.map((exercise) => exercise.correctAnswerEN));
 
     return (
-      <div className="receptive-page fade-in" style={{ '--receptive-accent': '#059669' }}>
+      <div className="receptive-page fade-in" style={{ '--receptive-accent': '#2563eb' }}>
         <section className="receptive-panel writing-completion-panel">
           <div className="speaking-completion-head">
             <FiCheckCircle />
@@ -280,10 +318,10 @@ const WritingLesson = () => {
           <div className="writing-final-passage">
             <span>Bài viết hoàn chỉnh</span>
             <p>
-              {passageParts.map((part, index) => part.highlighted ? (
-                <mark key={index}>{part.text}</mark>
+              {passageParts.map((part) => part.highlighted ? (
+                <mark key={`${part.start}:${part.text}`}>{part.text}</mark>
               ) : (
-                <Fragment key={index}>{part.text}</Fragment>
+                <Fragment key={`${part.start}:${part.text}`}>{part.text}</Fragment>
               ))}
             </p>
           </div>
@@ -299,7 +337,7 @@ const WritingLesson = () => {
             {exercises.map((exercise, index) => {
               const attempt = attempts[getExerciseKey(exercise, index)];
               return (
-                <div key={exercise.id} className="speaking-summary-item">
+                <div key={exercise.id || index} className="speaking-summary-item">
                   <span>Câu {index + 1}</span>
                   <strong>{attempt ? `${attempt.score}%` : 'Chưa có điểm'}</strong>
                   <p>{exercise.correctAnswerEN}</p>
@@ -317,7 +355,8 @@ const WritingLesson = () => {
                 Bài tiếp theo <FiArrowRight />
               </button>
             )}
-            <button type="button"
+            <button
+              type="button"
               className="btn btn-secondary"
               onClick={() => {
                 setShowCompletion(false);
@@ -343,7 +382,7 @@ const WritingLesson = () => {
     return (
       <VocabularyGate
         items={vocabularyItems}
-        title={lessonData?.title || 'Luyen viet'}
+        title={lessonData?.title || 'Luyện viết'}
         skillLabel="Writing"
         gateKey={vocabularyGateKey}
         onPassed={() => setVocabPassed(true)}
@@ -352,59 +391,73 @@ const WritingLesson = () => {
     );
   }
 
+  const totalQuestions = exercises.length;
   const isWritingPassed = canPassWriting(result);
+  const progressPercent = totalQuestions > 0 ? (passedCount / totalQuestions) * 100 : 0;
+  const passRate = totalQuestions > 0 ? `${Math.round((passedCount / totalQuestions) * 100)}%` : '--';
+  const wordCount = userText.trim().split(/\s+/).filter(Boolean).length;
+  const characterCount = userText.length;
+  const autosaveLabel = drafts[currentExerciseKey] !== undefined ? 'Đã lưu' : '';
+
   const getQuestionStatus = (index) => {
     const attempt = attempts[getExerciseKey(exercises[index], index)];
     if (attempt) return canPassWriting(attempt) ? 'passed' : 'failed';
     return drafts[getExerciseKey(exercises[index], index)] ? 'answered' : 'todo';
   };
 
+  const navigator = (
+    <QuestionNavigator
+      total={totalQuestions}
+      current={currentIndex}
+      onSelect={handleSelectQuestion}
+      getStatus={getQuestionStatus}
+      title="Question Navigator"
+      summary={`${passedCount}/${totalQuestions}`}
+    />
+  );
+
   return (
-    <div className="receptive-page receptive-practice-page fade-in" style={{ '--receptive-accent': '#059669' }}>
-      <button type="button" className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate('/writing/lessons')}>
-        <FiArrowLeft /> Thoát
-      </button>
-
-      <ProgressBar current={currentIndex + 1} total={exercises.length} compact />
-
-      <section className="practice-compact-header">
-        <div>
-          <span className="receptive-eyebrow">Writing practice</span>
-          <h1>{lessonData?.title || 'Luyện viết'}</h1>
-          <p>{lessonData?.description || 'Viết câu tiếng Anh tương đương và xem phản hồi ngay bên cạnh.'}</p>
-        </div>
-        <div className="practice-compact-meta">
-          <span><FiEdit3 /> {currentIndex + 1}/{exercises.length} câu</span>
-          <span>{passedCount}/{exercises.length} đạt</span>
-          <strong>Pass {WRITING_PASS_SCORE}%</strong>
-        </div>
-      </section>
-
-      <div className="productive-compact-layout writing-compact-layout">
-        <section className="receptive-panel writing-prompt-panel">
-          <div className="compact-panel-title">
-            <h2>Đề bài</h2>
-          </div>
-
+    <LearningLayout
+      accent="#2563EB"
+      className="learning-session-writing fade-in"
+      header={(
+        <LessonHeader
+          title={lessonData?.title || 'Luyện viết'}
+          level={lessonData?.level || 'Writing'}
+          topic={lessonData?.topic || 'Writing'}
+          progress={progressPercent}
+          answered={answeredCount}
+          total={totalQuestions}
+          score={passRate}
+          duration={lessonData?.duration || 'Tự luyện'}
+          backLabel="Về khóa viết"
+          onBack={() => navigate('/writing/lessons')}
+        />
+      )}
+      leftPanel={(
+        <LessonCard
+          className="writing-prompt-card"
+          title="Đề bài"
+        >
           <div className="writing-prompt-box">
-            <span>Dịch sang tiếng Anh</span>
             <h3>{currentExercise.contentVI}</h3>
           </div>
-        </section>
-
-        <section className="receptive-panel writing-answer-panel">
-          <div className="compact-panel-title">
-            <h2>Bài làm</h2>
-            {!result && <span>Enter để kiểm tra</span>}
-          </div>
-
-          <textarea aria-label="Nội dung"
+        </LessonCard>
+      )}
+      centerPanel={(
+        <LessonCard
+          className="writing-editor-card"
+          title="Bài làm"
+          action={autosaveLabel && <span className="learning-status-pill">{autosaveLabel}</span>}
+        >
+          <textarea
+            aria-label="Nội dung bài viết"
             className="productive-textarea"
-            rows={4}
+            rows={10}
             value={userText}
             onChange={(event) => handleUserTextChange(event.target.value)}
             disabled={result != null || isChecking}
-            placeholder="Nhập câu tiếng Anh của bạn..."
+            placeholder="Nhập câu tiếng Anh của bạn…"
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
@@ -415,74 +468,88 @@ const WritingLesson = () => {
             }}
           />
 
-          {!result ? (
-            <div className="receptive-actions">
-              <button type="button" className="btn btn-primary" onClick={handleCheck} disabled={isChecking || !userText.trim()}>
-                {isChecking ? 'Đang chấm...' : 'Kiểm tra'}
-              </button>
+          <div className="writing-editor-meta">
+            <div className="writing-stat-row">
+              <div className="writing-stat-card">
+                <span>Từ</span>
+                <strong>{wordCount}</strong>
+              </div>
+              <div className="writing-stat-card">
+                <span>Ký tự</span>
+                <strong>{characterCount}</strong>
+              </div>
             </div>
-          ) : (
-            <motion.div className="writing-feedback is-compact" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="writing-result-toolbar">
-                <div className={`speaking-score ${isWritingPassed ? 'is-pass' : 'is-fail'}`}>
+            {isChecking && <span className="lesson-topic-tag">Đang chấm</span>}
+          </div>
+
+          {result && (
+            <motion.div className="writing-feedback" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <div className={`speaking-score ${isWritingPassed ? 'is-pass' : 'is-fail'}`}>
                 {isWritingPassed ? <FiCheckCircle /> : <FiXCircle />}
                 <strong>{result.score}%</strong>
                 <span>{isWritingPassed ? 'Đạt yêu cầu' : 'Cần sửa thêm'}</span>
-                </div>
-
-                {!isWritingPassed ? (
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={handleRetry}>
-                    <FiRefreshCw /> Sá»­a láº¡i
-                  </button>
-                ) : (
-                  <button type="button" className="btn btn-primary btn-sm" onClick={handleNext}>
-                    Tiáº¿p tá»¥c <FiArrowRight />
-                  </button>
-                )}
               </div>
 
-              {result.feedback && <p className="speaking-feedback-note">{result.feedback}</p>}
+              <div className="writing-feedback-grid">
+                <div>
+                  <span>Ngữ pháp</span>
+                  <p>{formatFeedbackText(result.grammar || result.feedback, 'So sánh với đáp án mẫu để chỉnh cấu trúc câu.')}</p>
+                </div>
+                <div>
+                  <span>Chính tả</span>
+                  <p>{formatFeedbackText(result.spelling, 'Kiểm tra lại các từ bị đánh dấu ở phần đối chiếu.')}</p>
+                </div>
+                <div>
+                  <span>Gợi ý</span>
+                  <p>{formatFeedbackText(result.suggestions, currentExercise.correctAnswerEN)}</p>
+                </div>
+              </div>
 
               <div className="writing-review-grid">
                 <div>
-                  <span>Bài của bạn</span>
+                  <span>Bạn</span>
                   <p>{currentAttempt?.userText || userText}</p>
                 </div>
                 <div>
-                  <span>Đáp án mẫu</span>
+                  <span>Mẫu</span>
                   <p>{currentExercise.correctAnswerEN}</p>
                 </div>
               </div>
 
               <div className="writing-diff-box">
-                <span>Từ trong đáp án mẫu</span>
-                <p>{renderTargetDiff(currentAttempt?.userText || userText, currentExercise.correctAnswerEN)}</p>
-              </div>
-
-              <div className="receptive-actions">
-                {!isWritingPassed ? (
-                  <button type="button" className="btn btn-secondary" onClick={handleRetry}>
-                    <FiRefreshCw /> Sửa lại
-                  </button>
-                ) : (
-                  <button type="button" className="btn btn-primary" onClick={handleNext}>
-                    Tiếp tục <FiArrowRight />
-                  </button>
-                )}
+                <span>Đối chiếu</span>
+                <p>
+                  <TargetDiff
+                    userText={currentAttempt?.userText || userText}
+                    targetText={currentExercise.correctAnswerEN}
+                  />
+                </p>
               </div>
             </motion.div>
           )}
-        </section>
-        <QuestionNavigator
-          total={exercises.length}
-          current={currentIndex}
-          onSelect={handleSelectQuestion}
-          getStatus={getQuestionStatus}
-          title="Bảng câu hỏi"
-          summary={`${passedCount}/${exercises.length}`}
-        />
-      </div>
-    </div>
+
+          <div className="writing-editor-footer">
+            <SecondaryButton onClick={handleSaveDraft}>
+              <FiSave /> Lưu
+            </SecondaryButton>
+            <div>
+              {result && !isWritingPassed && (
+                <SecondaryButton onClick={handleRetry}>
+                  <FiRefreshCw /> Sửa lại
+                </SecondaryButton>
+              )}
+              <PrimaryButton onClick={handleCheck} disabled={isChecking || !userText.trim() || result != null}>
+                <FiCheckCircle /> {isChecking ? 'Chấm…' : 'Chấm'}
+              </PrimaryButton>
+              <PrimaryButton onClick={handleNext} disabled={!isWritingPassed}>
+                <FiSend /> Nộp
+              </PrimaryButton>
+            </div>
+          </div>
+        </LessonCard>
+      )}
+      navigator={navigator}
+    />
   );
 };
 

@@ -62,20 +62,21 @@ log.setLevel(logging.WARNING)
 ALLOWED_EXTENSIONS = {'.wav', '.webm', '.ogg', '.mp3', '.m4a', '.flac', '.mp4'}
 
 
-def do_transcribe(tmp_path):
+def do_transcribe(tmp_path, initial_prompt=None):
     """Core transcription logic — returns text string"""
     segments, info = model.transcribe(
         tmp_path,
         language="en",
-        beam_size=1,              # Fastest: greedy search
-        best_of=1,                # No sampling alternatives
+        beam_size=3,
+        best_of=3,
         temperature=0.0,
+        initial_prompt=initial_prompt or None,
         vad_filter=True,
         vad_parameters=dict(
-            min_silence_duration_ms=200,   # Reduced from 300 for faster VAD
+            min_silence_duration_ms=250,
         ),
         condition_on_previous_text=False,
-        no_speech_threshold=0.6,
+        no_speech_threshold=0.45,
         word_timestamps=False,     # Skip word-level timestamps for speed
     )
 
@@ -108,7 +109,7 @@ def transcribe():
         t_start = time.time()
         audio_file.save(tmp_path)
 
-        full_text, info = do_transcribe(tmp_path)
+        full_text, info = do_transcribe(tmp_path, request.form.get("initialPrompt"))
         elapsed = time.time() - t_start
         print(f"[Whisper] Transcribed in {elapsed:.2f}s: '{full_text[:60]}'")
 
@@ -141,6 +142,7 @@ def transcribe_and_analyze():
 
     audio_file = request.files["file"]
     target_texts = request.form.get("targetTexts", "")
+    initial_prompt = request.form.get("initialPrompt", "")
 
     if not audio_file.filename:
         return jsonify({"error": "Empty filename"}), 400
@@ -154,7 +156,10 @@ def transcribe_and_analyze():
         t_start = time.time()
         audio_file.save(tmp_path)
 
-        full_text, info = do_transcribe(tmp_path)
+        if not initial_prompt and target_texts:
+            initial_prompt = f"Expected English learner answers: {target_texts[:800]}"
+
+        full_text, info = do_transcribe(tmp_path, initial_prompt)
         elapsed = time.time() - t_start
         print(f"[Whisper] Transcribed in {elapsed:.2f}s: '{full_text[:60]}'")
 
@@ -352,7 +357,7 @@ def analyze_transcript(transcript, target_texts):
         ratio = 1 - (levenshtein(a, b) / max_len)
         if max_len <= 3:
             return ratio if ratio >= 0.67 else 0.0
-        return ratio if ratio >= 0.72 else 0.0
+        return ratio if ratio >= 0.68 else 0.0
 
     def word_weight(word):
         return 0.45 if word in light_words else 1.0
@@ -406,7 +411,7 @@ def analyze_transcript(transcript, target_texts):
         precision = matched_weight / user_weight
         f1 = 0 if precision + recall == 0 else (2 * precision * recall) / (precision + recall)
         length_ratio = min(len(user_words), target_len) / max(len(user_words), target_len, 1)
-        score = round(max(0, min(1, (0.72 * recall) + (0.20 * f1) + (0.08 * length_ratio))) * 100)
+        score = round(max(0, min(1, (0.76 * recall) + (0.18 * f1) + (0.06 * length_ratio))) * 100)
 
         missing = [w for idx, w in enumerate(target_words) if idx not in matched_target and word_weight(w) >= 1]
         extra = [w for idx, w in enumerate(user_words) if idx not in matched_user and word_weight(w) >= 1]

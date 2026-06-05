@@ -19,7 +19,6 @@ import {
 import { dailyTaskApi } from '../api/dailyTaskApi';
 import Loading from '../components/common/Loading';
 import ExpReward from '../components/common/ExpReward';
-import Mascot from '../components/common/Mascot';
 
 const taskMeta = {
   daily_login: { icon: FiLogIn, label: 'Khởi động', color: '#1cb0f6' },
@@ -69,8 +68,8 @@ function DailyTasks() {
           <h1>Hoàn thành vài việc nhỏ, giữ nhịp học lớn.</h1>
           <p>Mỗi ngày có một danh sách ngắn: đăng nhập tự cộng EXP, học một bài chính, rồi ôn nhanh bằng hoạt động nhẹ.</p>
         </div>
-        <div className="daily-hero-mascot">
-          <Mascot mood={progress >= 100 ? 'success' : 'idle'} size={150} />
+        <div className="daily-hero-progress">
+          <FiStar />
           <strong>{progress}%</strong>
           <span>{completedCount}/{tasks.length || 3} xong</span>
         </div>

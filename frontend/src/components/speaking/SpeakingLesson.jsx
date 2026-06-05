@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -16,11 +16,18 @@ import {
 import toast from 'react-hot-toast';
 
 import { speakingApi } from '../../api/speakingApi';
-import ProgressBar from './ProgressBar';
 import Recorder from './Recorder';
 import Loading from '../common/Loading';
 import ExpReward from '../common/ExpReward';
 import QuestionNavigator from '../common/QuestionNavigator';
+import {
+  LearningLayout,
+  LessonCard,
+  LessonHeader,
+  PrimaryButton,
+  QuestionCard,
+  SecondaryButton
+} from '../common/learning';
 import { hasSpeechSupport, speakText, stopAllPlayback } from '../../utils/audioControl';
 
 const getInitialThreshold = () => parseInt(localStorage.getItem('speaking_threshold'), 10) || 60;
@@ -28,7 +35,7 @@ const getInitialVoice = () => localStorage.getItem('speaking_voice') || '';
 
 const getRecordDuration = (text = '') => {
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-  return Math.min(24, Math.max(10, Math.ceil(wordCount * 1.25)));
+  return Math.min(34, Math.max(12, Math.ceil(wordCount * 1.45)));
 };
 
 const getAttemptKey = (item, index) => item?.id || index;
@@ -65,7 +72,7 @@ const SpeakingLesson = () => {
 
       const availableVoices = window.speechSynthesis
         .getVoices()
-        .filter((voice) => voice.lang.startsWith('en'));
+        .filter((voice) => voice.lang?.startsWith('en'));
       setVoices(availableVoices);
       if (availableVoices.length > 0 && !localStorage.getItem('speaking_voice')) {
         setSelectedVoiceURI(availableVoices[0].voiceURI);
@@ -135,7 +142,7 @@ const SpeakingLesson = () => {
     sentences.filter((sentence, index) => Number(attempts[getAttemptKey(sentence, index)]?.score || 0) >= passThreshold).length
   ), [attempts, passThreshold, sentences]);
 
-  const playTTS = (text) => {
+  const playTTS = useCallback((text) => {
     if (!hasSpeechSupport()) {
       toast.error('Trình duyệt không hỗ trợ đọc tự động.');
       return;
@@ -147,14 +154,14 @@ const SpeakingLesson = () => {
     }
 
     speakText(text, { lang: 'en-US', voice });
-  };
+  }, [selectedVoiceURI, voices]);
 
   useEffect(() => {
     if (currentSentence && !loading && !showSettings) {
       const timer = setTimeout(() => playTTS(currentSentence.question), 450);
       return () => clearTimeout(timer);
     }
-  }, [currentIndex, currentSentence, loading, showSettings]);
+  }, [currentSentence, loading, playTTS, showSettings]);
 
   const handleSaveSettings = () => {
     localStorage.setItem('speaking_threshold', passThreshold);
@@ -195,7 +202,8 @@ const SpeakingLesson = () => {
         extraWords: data.extraWords || [],
         targetText: selectedOption.text,
         targetTranslation: selectedOption.translation || '',
-        question: currentSentence.question
+        question: currentSentence.question,
+        questionTranslation: currentSentence.translation || ''
       };
 
       setResult(newResult);
@@ -212,6 +220,7 @@ const SpeakingLesson = () => {
         transcript: '',
         feedback: 'Không thể phân tích, vui lòng thử lại.',
         targetText: selectedOption.text,
+        targetTranslation: selectedOption.translation || '',
         question: currentSentence.question
       });
     } finally {
@@ -231,12 +240,34 @@ const SpeakingLesson = () => {
     setResult(previousAttempt);
   };
 
-  const finishLesson = async () => {
+  const getAverageScore = (attemptMap) => {
+    if (!sentences.length) return 0;
+    const totalScore = sentences.reduce((sum, sentence, index) => (
+      sum + Number(attemptMap[getAttemptKey(sentence, index)]?.score || 0)
+    ), 0);
+    return Math.round(totalScore / sentences.length);
+  };
+
+  const finishLesson = async (finalAttempts = attempts) => {
     setLoading(true);
     if (isPersonalized) {
-      toast.success('Bạn đã hoàn thành bài luyện nói AI.');
-      setShowCompletion(true);
-      setLoading(false);
+      speakingApi.completePersonalizedLesson(sessionId, {
+        questionCount: sentences.length,
+        averageScore: getAverageScore(finalAttempts)
+      })
+        .then((res) => {
+          setExpReward(res.data?.expReward || null);
+          toast.success(res.data?.expReward?.amount
+            ? `Bạn đã hoàn thành bài luyện nói AI và nhận ${res.data.expReward.amount} EXP.`
+            : 'Bạn đã hoàn thành bài luyện nói AI.');
+          setShowCompletion(true);
+        })
+        .catch((err) => {
+          console.error(err);
+          toast.error('Lỗi lưu thưởng bài nói AI');
+          setShowCompletion(true);
+        })
+        .finally(() => setLoading(false));
       return;
     }
 
@@ -270,7 +301,7 @@ const SpeakingLesson = () => {
       return;
     }
 
-    finishLesson();
+    finishLesson(mergedAttempts);
   };
 
   if (loading) return <Loading />;
@@ -289,7 +320,7 @@ const SpeakingLesson = () => {
             </div>
           </div>
 
-          {!isPersonalized && <ExpReward reward={expReward} />}
+          <ExpReward reward={expReward} />
 
           <div className="speaking-summary-grid">
             {sentences.map((sentence, index) => {
@@ -299,6 +330,7 @@ const SpeakingLesson = () => {
                   <span>Câu {index + 1}</span>
                   <strong>{attempt ? `${attempt.score}%` : 'Chưa có điểm'}</strong>
                   <p>{sentence.question}</p>
+                  {sentence.translation && <p className="speaking-question-translation">{sentence.translation}</p>}
                 </div>
               );
             })}
@@ -340,163 +372,165 @@ const SpeakingLesson = () => {
     return Number(attempt.score || 0) >= passThreshold ? 'passed' : 'failed';
   };
 
+  const totalQuestions = sentences.length;
+  const progressPercent = totalQuestions > 0 ? (passedCount / totalQuestions) * 100 : 0;
+  const passRate = totalQuestions > 0 ? `${Math.round((passedCount / totalQuestions) * 100)}%` : '--';
+  const recordingStatus = result ? 'Xong' : isAnalyzing ? 'Chấm' : 'Sẵn sàng';
+  const recordingStatusClass = result ? 'is-completed' : isAnalyzing ? 'is-processing' : '';
+  const navigator = (
+    <QuestionNavigator
+      total={totalQuestions}
+      current={currentIndex}
+      onSelect={handleSelectQuestion}
+      getStatus={getQuestionStatus}
+      title="Câu"
+      summary={`${passedCount}/${totalQuestions}`}
+    />
+  );
+
   return (
-    <div className="receptive-page receptive-practice-page fade-in" style={{ '--receptive-accent': '#2563eb' }}>
-      <div className="productive-topbar">
-        <button type="button" className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate(isPersonalized ? '/speaking/options' : '/speaking/lessons')}>
-          <FiArrowLeft /> Thoát
-        </button>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowSettings(true)}>
-          <FiSettings /> Cài đặt
-        </button>
-      </div>
-
-      <ProgressBar current={currentIndex + 1} total={sentences.length} compact />
-
-      <section className="practice-compact-header">
-        <div>
-          <span className="receptive-eyebrow">{isPersonalized ? 'AI speaking' : 'Speaking practice'}</span>
-          <h1>{lessonData?.title || 'Luyện nói'}</h1>
-          <p>Chọn câu mẫu, ghi âm và xem phản hồi ngay trong cùng một màn hình.</p>
-        </div>
-        <div className="practice-compact-meta">
-          <span><FiMic /> {answeredCount}/{sentences.length} đã thử</span>
-          <span>{passedCount}/{sentences.length} đạt</span>
-          <strong>Pass {passThreshold}%</strong>
-        </div>
-      </section>
-
-      <div className="productive-compact-layout speaking-compact-layout">
-        <section className="receptive-panel speaking-question-panel">
-          <div className="compact-panel-title">
-            <h2>Câu hỏi</h2>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => playTTS(currentSentence.question)}>
-              <FiVolume2 /> Nghe
-            </button>
-          </div>
-
-          <QuestionNavigator
-            total={sentences.length}
-            current={currentIndex}
-            onSelect={handleSelectQuestion}
-            getStatus={getQuestionStatus}
-            title="Bảng câu hỏi"
-            summary={`${passedCount}/${sentences.length}`}
+    <>
+      <LearningLayout
+        accent="#2563EB"
+        className="learning-session-speaking fade-in"
+        header={(
+          <LessonHeader
+            title={lessonData?.title || 'Luyện nói'}
+            level={isPersonalized ? 'AI' : 'Speaking'}
+            topic={lessonData?.topic}
+            progress={progressPercent}
+            answered={answeredCount}
+            total={totalQuestions}
+            score={passRate}
+            duration={`${recordDuration}s/câu`}
+            backLabel="Thoát"
+            onBack={() => navigate(isPersonalized ? '/speaking/options' : '/speaking/lessons')}
+            actions={(
+              <SecondaryButton onClick={() => setShowSettings(true)}>
+                <FiSettings /> Cài đặt
+              </SecondaryButton>
+            )}
           />
+        )}
+        leftPanel={(
+          <QuestionCard
+            className="speaking-question-card"
+            badge={`${currentIndex + 1}/${totalQuestions}`}
+            prompt={currentSentence.question}
+            footer={(
+              <SecondaryButton onClick={() => playTTS(currentSentence.question)}>
+                <FiVolume2 /> Nghe
+              </SecondaryButton>
+            )}
+          >
+            {currentSentence.translation && (
+              <p className="speaking-question-translation">{currentSentence.translation}</p>
+            )}
 
-          <div className="speaking-question-box">
-            <h3>{currentSentence.question}</h3>
-            {currentSentence.translation && <p>{currentSentence.translation}</p>}
-          </div>
-
-          <div className="speaking-option-list is-compact">
-            {currentOptions.map((option, index) => {
-              const selected = selectedOptionIndex === index;
-              return (
-                <button
-                  key={`${option.text}-${index}`}
-                  type="button"
-                  className={`speaking-answer-option ${selected ? 'is-selected' : ''}`}
-                  onClick={() => {
-                    if (!result) setSelectedOptionIndex(index);
-                  }}
-                >
-                  <span>{index + 1}</span>
-                  <div>
-                    <strong>{option.text}</strong>
-                    {option.translation && <p>{option.translation}</p>}
-                  </div>
-                  <FiVolume2
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      playTTS(option.text);
+            <div className="speaking-option-list">
+              {currentOptions.map((option, index) => {
+                const selected = selectedOptionIndex === index;
+                return (
+                  <button
+                    key={`${option.text}-${index}`}
+                    type="button"
+                    className={`speaking-answer-option ${selected ? 'is-selected' : ''}`}
+                    onClick={() => {
+                      if (!result) setSelectedOptionIndex(index);
                     }}
-                  />
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="receptive-panel speaking-practice-card">
-          <div className="compact-panel-title">
-            <h2>Ghi âm</h2>
-            <span>{recordDuration}s tối đa</span>
-          </div>
-
-          {!result ? (
-            <Recorder
-              onRecordingComplete={handleRecordingComplete}
-              isAnalyzing={isAnalyzing}
-              maxDuration={recordDuration}
-            />
-          ) : (
-            <motion.div className="speaking-feedback" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <div className={`speaking-score ${isPassed ? 'is-pass' : 'is-fail'}`}>
-                {isPassed ? <FiCheckCircle /> : <FiXCircle />}
-                <strong>{result.score}%</strong>
-                <span>{isPassed ? 'Đạt yêu cầu' : 'Cần luyện lại'}</span>
-              </div>
-
-              <div className="speaking-feedback-grid">
-                <div>
-                  <span>Hệ thống nghe được</span>
-                  <p>{result.transcript || '...'}</p>
-                </div>
-                <div>
-                  <span>Câu mục tiêu</span>
-                  <p>{result.targetText}</p>
-                </div>
-              </div>
-
-              {result.feedback && <p className="speaking-feedback-note">{result.feedback}</p>}
-
-              {(result.missingWords?.length > 0 || result.extraWords?.length > 0) && (
-                <div className="speaking-word-feedback">
-                  {result.missingWords?.map((word) => <span key={`missing-${word}`}>Thiếu: {word}</span>)}
-                  {result.extraWords?.map((word) => <span key={`extra-${word}`}>Thừa: {word}</span>)}
-                </div>
-              )}
-
-              <div className="receptive-actions">
-                {!isPassed && (
-                  <button type="button" className="btn btn-secondary" onClick={handleRetry}>
-                    <FiRefreshCw /> Thử lại
+                  >
+                    <span>{index + 1}</span>
+                    <div>
+                      <strong>{option.text}</strong>
+                      {option.translation && <p>{option.translation}</p>}
+                    </div>
+                    <FiVolume2
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        playTTS(option.text);
+                      }}
+                    />
                   </button>
-                )}
-                {isPassed && (
-                  <button type="button" className="btn btn-primary" onClick={handleNext}>
-                    Tiếp tục <FiArrowRight />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </section>
+                );
+              })}
+            </div>
+          </QuestionCard>
+        )}
+        centerPanel={(
+          <LessonCard
+            className="speaking-recording-card"
+            title="Ghi âm"
+            action={<span className={`learning-status-pill ${recordingStatusClass}`}>{recordingStatus}</span>}
+          >
+            <div className="recording-status-row">
+              <span className="lesson-topic-tag">{recordDuration}s tối đa</span>
+              <span className="lesson-topic-tag">{passThreshold}%</span>
+            </div>
 
-        <QuestionNavigator
-          total={sentences.length}
-          current={currentIndex}
-          onSelect={handleSelectQuestion}
-          getStatus={getQuestionStatus}
-          title="Bảng câu hỏi"
-          summary={`${passedCount}/${sentences.length}`}
-        />
-      </div>
+            {!result ? (
+              <Recorder
+                onRecordingComplete={handleRecordingComplete}
+                isAnalyzing={isAnalyzing}
+                maxDuration={recordDuration}
+              />
+            ) : (
+              <motion.div className="speaking-feedback" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className={`speaking-score speaking-accuracy-score ${isPassed ? 'is-pass' : 'is-fail'}`}>
+                  {isPassed ? <FiCheckCircle /> : <FiXCircle />}
+                  <strong>{result.score}%</strong>
+                  <span>Độ chính xác</span>
+                </div>
+
+                <div className="speaking-feedback-grid">
+                  <div>
+                    <span>Bạn nói</span>
+                    <p>{result.transcript || '…'}</p>
+                  </div>
+                  <div>
+                    <span>Mẫu</span>
+                    <p>{result.targetText}</p>
+                  </div>
+                </div>
+
+                {result.feedback && <p className="speaking-feedback-note">{result.feedback}</p>}
+
+                <div className="learning-footer-actions">
+                  <div>
+                    {!isPassed && (
+                      <SecondaryButton onClick={handleRetry}>
+                        <FiRefreshCw /> Thử lại
+                      </SecondaryButton>
+                    )}
+                  </div>
+                  <div>
+                    {isPassed && (
+                      <PrimaryButton onClick={handleNext}>
+                        Tiếp tục <FiArrowRight />
+                      </PrimaryButton>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </LessonCard>
+        )}
+        navigator={navigator}
+      />
 
       {showSettings && (
         <div className="productive-modal-backdrop">
           <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="productive-modal">
             <div className="productive-modal-head">
               <h3>Cài đặt phần nói</h3>
-              <button type="button" className="btn btn-ghost btn-icon" onClick={() => setShowSettings(false)}>
+              <button type="button" className="learning-btn learning-btn-ghost btn-icon" onClick={() => setShowSettings(false)}>
                 <FiX />
               </button>
             </div>
 
             <div className="productive-setting">
               <span>Yêu cầu độ chính xác ({passThreshold}%)</span>
-              <input aria-label="Trường nhập"
+              <input
+                aria-label="Yêu cầu độ chính xác"
                 type="range"
                 min="50"
                 max="100"
@@ -509,21 +543,21 @@ const SpeakingLesson = () => {
 
             <div className="productive-setting">
               <span>Giọng đọc mẫu</span>
-              <select aria-label="Lựa chọn" value={selectedVoiceURI} onChange={(event) => setSelectedVoiceURI(event.target.value)}>
-                {voices.length === 0 && <option value="">Đang tải giọng đọc...</option>}
+              <select aria-label="Chọn giọng đọc" value={selectedVoiceURI} onChange={(event) => setSelectedVoiceURI(event.target.value)}>
+                {voices.length === 0 && <option value="">Đang tải giọng đọc…</option>}
                 {voices.map((voice) => (
                   <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name}</option>
                 ))}
               </select>
             </div>
 
-            <button type="button" className="btn btn-primary w-full" onClick={handleSaveSettings}>
+            <PrimaryButton className="w-full" onClick={handleSaveSettings}>
               Lưu cài đặt
-            </button>
+            </PrimaryButton>
           </motion.div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

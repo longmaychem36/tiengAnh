@@ -29,6 +29,26 @@ async function runMigration() {
       )
     `);
 
+    await pool.query(`
+      ALTER TABLE UserCollections
+      ADD COLUMN IF NOT EXISTS IsPublic boolean NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS ReviewStatus varchar(20) NOT NULL DEFAULT 'approved',
+      ADD COLUMN IF NOT EXISTS SubmittedAt timestamptz NULL,
+      ADD COLUMN IF NOT EXISTS ReviewedAt timestamptz NULL,
+      ADD COLUMN IF NOT EXISTS ReviewedBy uuid NULL REFERENCES Users(Id) ON DELETE SET NULL,
+      ADD COLUMN IF NOT EXISTS UpdatedAt timestamptz NOT NULL DEFAULT now()
+    `);
+
+    await pool.query(`
+      ALTER TABLE UserCollectionWords
+      ADD COLUMN IF NOT EXISTS UpdatedAt timestamptz NOT NULL DEFAULT now()
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_user_collections_public_review
+      ON UserCollections (IsPublic, ReviewStatus, UpdatedAt DESC)
+    `);
+
     console.log('Migration successful.');
   } catch (err) {
     console.error('Migration failed:', err);

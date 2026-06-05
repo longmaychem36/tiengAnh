@@ -42,7 +42,6 @@ const ReceptiveLessonList = ({ skill }) => {
   const [loading, setLoading] = useState(true);
   const progress = useMemo(() => getStoredProgress(skill), [skill]);
   const SkillIcon = skill === 'listening' ? FiHeadphones : FiBookOpen;
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);

@@ -10,7 +10,7 @@ export const speakingApi = {
     formData.append('audio', audioBlob, 'recording.webm');
     return axiosClient.post('/speaking/transcribe', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 30000
+      timeout: 45000
     });
   },
 
@@ -25,7 +25,7 @@ export const speakingApi = {
     });
     return axiosClient.post('/speaking/transcribe-analyze', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 30000
+      timeout: 45000
     });
   },
   
@@ -37,5 +37,7 @@ export const speakingApi = {
     timeout: 60000
   }),
 
-  getPersonalizedLesson: (sessionId) => axiosClient.get(`/speaking/personalized/${sessionId}`)
+  getPersonalizedLesson: (sessionId) => axiosClient.get(`/speaking/personalized/${sessionId}`),
+
+  completePersonalizedLesson: (sessionId, data) => axiosClient.post(`/speaking/personalized/${sessionId}/complete`, data)
 };

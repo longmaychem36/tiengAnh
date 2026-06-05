@@ -3,17 +3,22 @@
 // ============================================
 import { createElement, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiChevronRight, FiCheck, FiX, FiArrowLeft, FiBookOpen, FiAward } from 'react-icons/fi';
+import { motion } from 'framer-motion';
+import { FiChevronRight, FiCheck, FiX, FiArrowLeft, FiBookOpen, FiAward, FiLock } from 'react-icons/fi';
 import DOMPurify from 'dompurify';
 import { grammarApi } from '../api/grammarApi';
 import Loading from '../components/common/Loading';
 
 const GRAMMAR_HTML_TAGS = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'h2', 'h3', 'h4', 'blockquote'];
+const asArray = (value) => (Array.isArray(value) ? value : []);
+const asText = (value, fallback = '') => (value == null ? fallback : String(value));
+const getData = (res, fallback) => res?.data ?? fallback;
+const getErrorMessage = (err, fallback) => asText(err?.message || err?.error || err?.data?.message, fallback);
 
 function renderGrammarNode(node, key) {
-  if (node.nodeType === Node.TEXT_NODE) return node.textContent;
-  if (node.nodeType !== Node.ELEMENT_NODE) return null;
+  if (!node) return null;
+  if (node.nodeType === 3) return node.textContent;
+  if (node.nodeType !== 1) return null;
 
   const tag = node.tagName.toLowerCase();
   const children = Array.from(node.childNodes).map((child, index) => renderGrammarNode(child, `${key}-${index}`));
@@ -24,9 +29,13 @@ function renderGrammarNode(node, key) {
 
 function renderGrammarContent(html) {
   if (!html || typeof DOMParser === 'undefined') return null;
-  const safeHtml = DOMPurify.sanitize(html, { ALLOWED_TAGS: GRAMMAR_HTML_TAGS });
-  const doc = new DOMParser().parseFromString(safeHtml, 'text/html');
-  return Array.from(doc.body.childNodes).map((node, index) => renderGrammarNode(node, `grammar-${index}`));
+  try {
+    const safeHtml = DOMPurify.sanitize(asText(html), { ALLOWED_TAGS: GRAMMAR_HTML_TAGS });
+    const doc = new DOMParser().parseFromString(safeHtml, 'text/html');
+    return Array.from(doc.body.childNodes).map((node, index) => renderGrammarNode(node, `grammar-${index}`));
+  } catch {
+    return <p>Không thể hiển thị nội dung ngữ pháp.</p>;
+  }
 }
 
 function Grammar() {
@@ -36,6 +45,7 @@ function Grammar() {
   const [activeTopic, setActiveTopic] = useState(null);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Quiz state
   const [quizStarted, setQuizStarted] = useState(false);
@@ -48,8 +58,8 @@ function Grammar() {
   useEffect(() => {
     const topicId = searchParams.get('topicId');
     grammarApi.getCategories()
-      .then(res => setCategories(res.data || []))
-      .catch(() => {})
+      .then(res => setCategories(asArray(getData(res, []))))
+      .catch(() => setErrorMessage('Không tải được danh sách ngữ pháp.'))
       .finally(() => setLoading(false));
     if (topicId) loadTopic(topicId);
   }, []);
@@ -58,10 +68,14 @@ function Grammar() {
     setActiveCategoryId(categoryId);
     setActiveTopic(null);
     setQuizStarted(false);
+    setErrorMessage('');
     try {
       const res = await grammarApi.getTopicsByCategory(categoryId);
-      setTopics(res.data || []);
-    } catch { setTopics([]); }
+      setTopics(asArray(getData(res, [])));
+    } catch (err) {
+      setTopics([]);
+      setErrorMessage(getErrorMessage(err, 'Không tải được chủ đề ngữ pháp.'));
+    }
   };
 
   const loadTopic = async (topicId) => {
@@ -71,10 +85,14 @@ function Grammar() {
     setQuizScore(0);
     setSelectedAnswer(null);
     setQuizAnswers([]);
+    setErrorMessage('');
     try {
       const res = await grammarApi.getTopicDetail(topicId);
-      setActiveTopic(res.data);
-    } catch { setActiveTopic(null); }
+      setActiveTopic(getData(res, null));
+    } catch (err) {
+      setActiveTopic(null);
+      setErrorMessage(getErrorMessage(err, 'Không tải được nội dung chủ đề.'));
+    }
   };
 
   const startQuiz = () => {
@@ -89,26 +107,37 @@ function Grammar() {
   const handleQuizAnswer = (answer) => {
     if (selectedAnswer !== null) return;
     setSelectedAnswer(answer);
-    const quiz = activeTopic.quizzes[currentQ];
-    setQuizAnswers((current) => [
-      ...current.filter((item) => item.quizId !== quiz.Id),
+    const quiz = activeTopic?.quizzes?.[currentQ];
+    if (!quiz) return;
+    const nextAnswers = [
+      ...quizAnswers.filter((item) => item.quizId !== quiz.Id),
       { quizId: quiz.Id, answer }
-    ]);
+    ];
+    setQuizAnswers(nextAnswers);
     if (answer === quiz.CorrectAnswer) {
       setQuizScore(prev => prev + 1);
     }
   };
 
-  const submitQuizAttempt = (answers) => {
+  const submitQuizAttempt = async (answers) => {
     if (!activeTopic?.Id || answers.length === 0) return;
-    grammarApi.submitAttempt({
-      topicId: activeTopic.Id,
-      answers
-    }).catch(() => {});
+    try {
+      await grammarApi.submitAttempt({
+        topicId: activeTopic.Id,
+        answers
+      });
+      if (activeCategoryId) {
+        const res = await grammarApi.getTopicsByCategory(activeCategoryId);
+        setTopics(asArray(getData(res, [])));
+      }
+    } catch {
+      setErrorMessage('Đã lưu kết quả trên màn hình, nhưng chưa đồng bộ được tiến độ.');
+    }
   };
 
   const nextQuizQuestion = () => {
-    if (currentQ + 1 >= activeTopic.quizzes.length) {
+    const quizList = asArray(activeTopic?.quizzes);
+    if (currentQ + 1 >= quizList.length) {
       submitQuizAttempt(quizAnswers);
       setQuizFinished(true);
     } else {
@@ -131,10 +160,19 @@ function Grammar() {
 
   if (loading) return <Loading />;
 
+  if (errorMessage && !activeTopic && !activeCategoryId) {
+    return (
+      <div className="card" style={{ maxWidth: 680, margin: '0 auto' }}>
+        <h2 style={{ marginBottom: 'var(--space-2)' }}>Không mở được Grammar</h2>
+        <p style={{ color: 'var(--color-text-secondary)' }}>{errorMessage}</p>
+      </div>
+    );
+  }
+
   // ========== QUIZ MODE ==========
   if (quizStarted && activeTopic?.quizzes?.length > 0) {
     if (quizFinished) {
-      const total = activeTopic.quizzes.length;
+      const total = asArray(activeTopic.quizzes).length;
       const pct = Math.round((quizScore / total) * 100);
       return (
         <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
@@ -147,7 +185,7 @@ function Grammar() {
               {quizScore}/{total} ({pct}%)
             </div>
             <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-6)' }}>
-              {activeTopic.TitleVI}
+              {asText(activeTopic.TitleVI)}
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center' }}>
               <button type="button" className="btn btn-secondary" onClick={() => { setQuizStarted(false); setQuizFinished(false); }}>
@@ -160,7 +198,7 @@ function Grammar() {
       );
     }
 
-    const quiz = activeTopic.quizzes[currentQ];
+    const quiz = activeTopic.quizzes[currentQ] || {};
     const options = [
       { key: 'A', text: quiz.OptionA },
       { key: 'B', text: quiz.OptionB },
@@ -174,18 +212,18 @@ function Grammar() {
           <FiArrowLeft /> Quay lại
         </button>
         <div className="flex-between" style={{ marginBottom: 'var(--space-2)' }}>
-          <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>📝 {activeTopic.TitleVI} — Quiz</span>
+          <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{asText(activeTopic.TitleVI)} — Quiz</span>
           <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>
-            Câu {currentQ + 1}/{activeTopic.quizzes.length}
+            Câu {currentQ + 1}/{asArray(activeTopic.quizzes).length}
           </span>
         </div>
         <div className="progress-bar" style={{ marginBottom: 'var(--space-6)' }}>
-          <div className="progress-bar-fill" style={{ width: `${((currentQ + 1) / activeTopic.quizzes.length) * 100}%` }} />
+          <div className="progress-bar-fill" style={{ width: `${((currentQ + 1) / asArray(activeTopic.quizzes).length) * 100}%` }} />
         </div>
 
         <motion.div key={currentQ} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="card">
           <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, marginBottom: 'var(--space-6)', lineHeight: 1.5 }}>
-            {quiz.Question}
+            {asText(quiz.Question)}
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -212,7 +250,7 @@ function Grammar() {
                   <span style={{ width: 30, height: 30, borderRadius: '50%', background: bg === 'var(--color-bg)' ? 'var(--color-bg-secondary)' : bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--font-size-sm)', fontWeight: 700, flexShrink: 0 }}>
                     {opt.key}
                   </span>
-                  {opt.text}
+                  {asText(opt.text)}
                 </button>
               );
             })}
@@ -226,11 +264,11 @@ function Grammar() {
                   : <><FiX style={{ color: 'var(--color-error)' }} /> <b style={{ color: 'var(--color-error)' }}>Sai rồi!</b></>}
               </div>
               <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', lineHeight: 1.5 }}>
-                💡 {quiz.Explanation}
+                {asText(quiz.Explanation)}
               </p>
               <div style={{ textAlign: 'right', marginTop: 'var(--space-3)' }}>
                 <button type="button" className="btn btn-primary btn-sm" onClick={nextQuizQuestion}>
-                  {currentQ + 1 >= activeTopic.quizzes.length ? 'Xem kết quả' : 'Câu tiếp'} <FiChevronRight />
+                  {currentQ + 1 >= asArray(activeTopic.quizzes).length ? 'Xem kết quả' : 'Câu tiếp'} <FiChevronRight />
                 </button>
               </div>
             </motion.div>
@@ -255,13 +293,13 @@ function Grammar() {
                 {activeTopic.CategoryNameVI}
               </span>
               <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)', margin: '4px 0' }}>
-                {activeTopic.Title}
+                {asText(activeTopic.Title)}
               </h1>
-              <p style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{activeTopic.TitleVI}</p>
+              <p style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{asText(activeTopic.TitleVI)}</p>
             </div>
-            {activeTopic.quizzes?.length > 0 && (
+            {asArray(activeTopic.quizzes).length > 0 && (
               <button type="button" className="btn btn-primary" onClick={startQuiz} style={{ whiteSpace: 'nowrap' }}>
-                <FiAward /> Làm bài test ({activeTopic.quizzes.length} câu)
+                <FiAward /> Làm bài test ({asArray(activeTopic.quizzes).length} câu)
               </button>
             )}
           </div>
@@ -283,25 +321,65 @@ function Grammar() {
           <FiArrowLeft /> Quay lại
         </button>
         <div className="page-header">
-          <h1>{cat?.Icon} {cat?.NameVI || cat?.Name}</h1>
+          <h1>{asText(cat?.Icon)} {asText(cat?.NameVI || cat?.Name, 'Ngữ pháp')}</h1>
           <p>{topics.length} chủ đề ngữ pháp</p>
         </div>
+        {errorMessage && (
+          <div className="card" style={{ marginBottom: 'var(--space-4)', color: 'var(--color-text-secondary)', borderColor: 'var(--color-warning)' }}>
+            {errorMessage}
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          {topics.map((topic, i) => (
-            <motion.div key={topic.Id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <div className="card" onClick={() => loadTopic(topic.Id)} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {topics.map((topic, i) => {
+            const locked = Boolean(topic.IsLocked || topic.isLocked);
+            const bestScore = Number(topic.BestScore || topic.bestScore || 0);
+            return (
+            <motion.div key={topic.Id || i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              <div
+                className="card"
+                onClick={() => topic.Id && !locked && loadTopic(topic.Id)}
+                style={{
+                  cursor: topic.Id && !locked ? 'pointer' : 'default',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  opacity: locked ? 0.68 : 1
+                }}
+              >
                 <div>
-                  <h3 style={{ fontWeight: 700, marginBottom: 4 }}>{topic.Title}</h3>
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>{topic.TitleVI}</p>
+                  <h3 style={{ fontWeight: 700, marginBottom: 4 }}>{asText(topic.Title, 'Chủ đề')}</h3>
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>{asText(topic.TitleVI)}</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                  {topic.QuizCount > 0 && <span className="badge badge-primary">{topic.QuizCount} câu hỏi</span>}
-                  <FiChevronRight style={{ color: 'var(--color-text-muted)' }} />
+                  {bestScore > 0 && <span className="badge badge-secondary">{bestScore}%</span>}
+                  {locked && <span className="badge badge-secondary"><FiLock /> Cần 80%</span>}
+                  {Number(topic.QuizCount || 0) > 0 && <span className="badge badge-primary">{Number(topic.QuizCount || 0)} câu hỏi</span>}
+                  {locked ? <FiLock style={{ color: 'var(--color-text-muted)' }} /> : <FiChevronRight style={{ color: 'var(--color-text-muted)' }} />}
                 </div>
               </div>
             </motion.div>
-          ))}
+          );})}
         </div>
+      </div>
+    );
+  }
+
+  if (activeCategoryId) {
+    const cat = categories.find(c => c.Id === activeCategoryId);
+    return (
+      <div>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={goBack} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
+          <FiArrowLeft /> Quay lại
+        </button>
+        <div className="page-header">
+          <h1>{asText(cat?.Icon)} {asText(cat?.NameVI || cat?.Name, 'Ngữ pháp')}</h1>
+          <p>Chưa có chủ đề ngữ pháp.</p>
+        </div>
+        {errorMessage && (
+          <div className="card" style={{ color: 'var(--color-text-secondary)' }}>
+            {errorMessage}
+          </div>
+        )}
       </div>
     );
   }
@@ -316,16 +394,21 @@ function Grammar() {
 
       <div className="grid grid-3">
         {categories.map((cat, i) => (
-          <motion.div key={cat.Id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <div className="card" onClick={() => loadTopics(cat.Id)} style={{ cursor: 'pointer', textAlign: 'center', transition: 'transform 0.2s, box-shadow 0.2s' }}>
-              <div style={{ fontSize: 40, marginBottom: 'var(--space-3)' }}>{cat.Icon}</div>
-              <h3 style={{ fontWeight: 700, fontSize: 'var(--font-size-lg)', marginBottom: 4 }}>{cat.Name}</h3>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-3)' }}>{cat.NameVI}</p>
-              <span className="badge badge-secondary">{cat.TopicCount} chủ đề</span>
+          <motion.div key={cat.Id || i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <div className="card" onClick={() => cat.Id && loadTopics(cat.Id)} style={{ cursor: cat.Id ? 'pointer' : 'default', textAlign: 'center', transition: 'transform 0.2s, box-shadow 0.2s' }}>
+              <div style={{ fontSize: 40, marginBottom: 'var(--space-3)' }}>{asText(cat.Icon, '📘')}</div>
+              <h3 style={{ fontWeight: 700, fontSize: 'var(--font-size-lg)', marginBottom: 4 }}>{asText(cat.Name, 'Grammar')}</h3>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-3)' }}>{asText(cat.NameVI)}</p>
+              <span className="badge badge-secondary">{Number(cat.TopicCount || 0)} chủ đề</span>
             </div>
           </motion.div>
         ))}
       </div>
+      {categories.length === 0 && (
+        <div className="card" style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+          Chưa có dữ liệu ngữ pháp.
+        </div>
+      )}
     </div>
   );
 }

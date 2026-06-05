@@ -380,6 +380,72 @@ router.delete('/grammar/quizzes/:id', requireRole('admin'), async (req, res, nex
   } catch (err) { next(err); }
 });
 
+// ========== VOCABULARY MANAGEMENT (admin + superadmin) ==========
+router.get('/vocabulary/collections', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.getVocabularyCollections(req.query.status || 'all');
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/vocabulary/collections', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.createVocabularyCollection(req.user.id, req.body);
+    return success(res, data, 'Vocabulary collection created');
+  } catch (err) { next(err); }
+});
+
+router.put('/vocabulary/collections/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.updateVocabularyCollection(req.params.id, req.body);
+    return success(res, null, 'Vocabulary collection updated');
+  } catch (err) { next(err); }
+});
+
+router.put('/vocabulary/collections/:id/review', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!status) return badRequest(res, 'status is required');
+    await adminContentService.reviewVocabularyCollection(req.params.id, status, req.user.id);
+    return success(res, null, 'Vocabulary collection reviewed');
+  } catch (err) { next(err); }
+});
+
+router.delete('/vocabulary/collections/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.deleteVocabularyCollection(req.params.id);
+    return success(res, null, 'Vocabulary collection deleted');
+  } catch (err) { next(err); }
+});
+
+router.get('/vocabulary/collections/:id/words', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.getVocabularyWords(req.params.id);
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/vocabulary/collections/:id/words', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminContentService.addVocabularyWord(req.params.id, req.body);
+    return success(res, data, 'Vocabulary word created');
+  } catch (err) { next(err); }
+});
+
+router.put('/vocabulary/words/:wordId', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.updateVocabularyWord(req.params.wordId, req.body);
+    return success(res, null, 'Vocabulary word updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/vocabulary/words/:wordId', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminContentService.deleteVocabularyWord(req.params.wordId);
+    return success(res, null, 'Vocabulary word deleted');
+  } catch (err) { next(err); }
+});
+
 // ========== GAME MANAGEMENT (admin + superadmin) ==========
 
 // Sets CRUD

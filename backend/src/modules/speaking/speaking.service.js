@@ -11,9 +11,12 @@ const SESSION_TTL_MS = 60 * 60 * 1000;
 const MAX_SESSIONS_PER_USER = 5;
 const LESSON_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_LESSON_CACHE_ITEMS = 80;
+const AI_SPEAKING_DAILY_EXP_CAP = 30;
+const AI_SPEAKING_LESSON_EXP_CAP = 16;
 
 const personalizedSessions = new Map();
 const generatedLessonCache = new Map();
+const aiSpeakingExpUsage = new Map();
 
 function cleanupExpiredSessions() {
   const current = Date.now();
@@ -21,6 +24,17 @@ function cleanupExpiredSessions() {
     if (session.expiresAt <= current) {
       personalizedSessions.delete(sessionId);
     }
+  }
+}
+
+function getDailyExpKey(userId, date = new Date()) {
+  return `${userId}:${date.toISOString().slice(0, 10)}`;
+}
+
+function cleanupDailyExpUsage() {
+  const today = new Date().toISOString().slice(0, 10);
+  for (const key of aiSpeakingExpUsage.keys()) {
+    if (!key.endsWith(`:${today}`)) aiSpeakingExpUsage.delete(key);
   }
 }
 
@@ -152,6 +166,19 @@ function normalizeLevel(value) {
   return 'beginner';
 }
 
+function getAiSpeakingExp({ level, questionCount, averageScore }) {
+  const baseByLevel = {
+    beginner: 2,
+    intermediate: 3,
+    advanced: 4
+  };
+  const base = baseByLevel[normalizeLevel(level)] || baseByLevel.beginner;
+  const safeQuestionCount = Math.min(Math.max(Number.parseInt(questionCount, 10) || 0, 0), 8);
+  const score = Math.max(0, Math.min(100, Number(averageScore) || 0));
+  const scoreBonus = score >= 90 ? 3 : score >= 80 ? 2 : score >= 70 ? 1 : 0;
+  return Math.min(AI_SPEAKING_LESSON_EXP_CAP, Math.max(0, (safeQuestionCount * base) + scoreBonus));
+}
+
 function normalizeGeneratedLesson(raw, fallbackTopic, fallbackCount) {
   const sentences = Array.isArray(raw?.sentences) ? raw.sentences : [];
   const normalizedSentences = sentences
@@ -159,15 +186,15 @@ function normalizeGeneratedLesson(raw, fallbackTopic, fallbackCount) {
       const options = Array.isArray(item?.options) ? item.options : [];
       const normalizedOptions = options
         .map((option) => ({
-          text: toSafeString(option?.text).slice(0, 180),
-          translation: toSafeString(option?.translation).slice(0, 220)
+          text: toSafeString(option?.text).slice(0, 260),
+          translation: toSafeString(option?.translation).slice(0, 320)
         }))
         .filter((option) => option.text);
 
       return {
         id: `ai-q-${index + 1}`,
-        question: toSafeString(item?.question).slice(0, 180),
-        translation: toSafeString(item?.translation).slice(0, 220),
+        question: toSafeString(item?.question).slice(0, 240),
+        translation: toSafeString(item?.translation).slice(0, 320),
         options: normalizedOptions.slice(0, 3)
       };
     })
@@ -198,12 +225,13 @@ async function requestGeneratedLesson({ topic, level, questionCount, goal, stric
   }
 
   const systemPrompt = [
-    'Create short English speaking drills for Vietnamese learners.',
+    'Create natural English speaking role-play drills for Vietnamese learners.',
     'Return JSON only, no markdown.',
     'Shape: {"title":"","description":"","sentences":[{"question":"","translation":"","options":[{"text":"","translation":""}]}]}',
     'question and options.text: English only.',
     'translation fields: Vietnamese only.',
-    'Exactly 3 concise answer options per question.',
+    'Exactly 3 answer options per question.',
+    'Use clear everyday vocabulary, common phrases, and short natural clauses.',
     'Use practical role-play situations and avoid unsafe content.'
   ].join(' ');
 
@@ -212,12 +240,15 @@ async function requestGeneratedLesson({ topic, level, questionCount, goal, stric
     `Level: ${level}`,
     `Number of questions: ${questionCount}`,
     goal ? `Learner goal/context: ${goal}` : '',
-    'Generate a practical role-play speaking lesson.',
-    'Keep each English question and answer under 12 words.',
+    'Generate a practical role-play speaking lesson with useful but learner-friendly dialogue turns.',
+    'Each English question should be 6-12 words.',
+    'Each English answer option should be 7-14 words and include only one common phrase when useful.',
+    'Keep the language level appropriate and avoid advanced vocabulary or complex grammar.',
+    'Provide a natural Vietnamese translation for every question and every answer option.',
     strictEnglish ? 'Important correction: do not put Vietnamese text in question or options.text. Those fields must be English.' : ''
   ].filter(Boolean).join('\n');
 
-  const maxTokens = Math.min(1200, Math.max(650, 240 + (questionCount * 130)));
+  const maxTokens = Math.min(2200, Math.max(1000, 360 + (questionCount * 220)));
 
   let response;
   try {
@@ -353,6 +384,51 @@ const speakingService = {
       lesson: session.lesson,
       sentences: session.sentences,
       expiresAt: new Date(session.expiresAt).toISOString()
+    };
+  },
+
+  completePersonalizedLesson(userId, sessionId, payload = {}) {
+    cleanupExpiredSessions();
+    cleanupDailyExpUsage();
+
+    const session = personalizedSessions.get(sessionId);
+    if (!session || session.userId !== userId) {
+      const err = new Error('Personalized lesson not found or expired');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (session.expAwarded) {
+      return {
+        lesson: session.lesson,
+        alreadyRewarded: true,
+        expAmount: 0,
+        dailyRemaining: Math.max(0, AI_SPEAKING_DAILY_EXP_CAP - (aiSpeakingExpUsage.get(getDailyExpKey(userId)) || 0))
+      };
+    }
+
+    const averageScore = Number(payload.averageScore || 0);
+    const questionCount = Number(payload.questionCount || session.sentences.length || 0);
+    const requestedExp = getAiSpeakingExp({
+      level: session.lesson.level,
+      questionCount,
+      averageScore
+    });
+    const dailyKey = getDailyExpKey(userId);
+    const usedToday = aiSpeakingExpUsage.get(dailyKey) || 0;
+    const availableToday = Math.max(0, AI_SPEAKING_DAILY_EXP_CAP - usedToday);
+    const expAmount = Math.min(requestedExp, availableToday);
+
+    session.expAwarded = true;
+    session.expAwardedAt = Date.now();
+    session.expAmount = expAmount;
+    aiSpeakingExpUsage.set(dailyKey, usedToday + expAmount);
+
+    return {
+      lesson: session.lesson,
+      alreadyRewarded: false,
+      expAmount,
+      dailyRemaining: Math.max(0, availableToday - expAmount)
     };
   }
 };

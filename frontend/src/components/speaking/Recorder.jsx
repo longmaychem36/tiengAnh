@@ -9,6 +9,11 @@ const formatTime = (seconds) => {
   return `${mins}:${secs}`;
 };
 
+const WAVEFORM_BARS = Array.from({ length: 18 }, (_, index) => ({
+  id: `wave-${index}`,
+  delay: `${(index % 6) * 80}ms`
+}));
+
 const Recorder = ({ onRecordingComplete, isAnalyzing, maxDuration = 14 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
@@ -213,7 +218,7 @@ const Recorder = ({ onRecordingComplete, isAnalyzing, maxDuration = 14 }) => {
 
       <div className="speaking-recorder-status">
         {isAnalyzing ? (
-          <span>Đang nhận diện giọng nói...</span>
+          <span>Đang nhận diện giọng nói…</span>
         ) : isRecording ? (
           <>
             <strong>{formatTime(recordingSeconds)}</strong>
@@ -222,6 +227,12 @@ const Recorder = ({ onRecordingComplete, isAnalyzing, maxDuration = 14 }) => {
         ) : (
           <span>Bấm micro để ghi âm</span>
         )}
+      </div>
+
+      <div className={`speaking-waveform ${isRecording || isAnalyzing ? 'is-active' : ''}`} aria-hidden="true">
+        {WAVEFORM_BARS.map((bar) => (
+          <span key={bar.id} style={{ animationDelay: bar.delay }} />
+        ))}
       </div>
     </div>
   );

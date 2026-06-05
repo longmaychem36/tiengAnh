@@ -44,6 +44,7 @@ import AdminSpeaking from './pages/admin/AdminSpeaking';
 import AdminWriting from './pages/admin/AdminWriting';
 import AdminGrammar from './pages/admin/AdminGrammar';
 import AdminReceptive from './pages/admin/AdminReceptive';
+import AdminVocabulary from './pages/admin/AdminVocabulary';
 
 function App() {
   const { user } = useAuth();
@@ -99,7 +100,8 @@ function App() {
         <Route path="/reading/lessons/:id" element={<ReadingLesson />} />
         
         <Route path="/dictionary" element={<Dictionary />} />
-        <Route path="/collections" element={<Collections />} />
+        <Route path="/vocabulary" element={<Collections />} />
+        <Route path="/collections" element={<Navigate to="/vocabulary" replace />} />
         <Route path="/games" element={<Games />} />
         <Route path="/games/play/:levelId" element={<GamePlay />} />
         <Route path="/profile" element={<Profile />} />
@@ -115,6 +117,7 @@ function App() {
         <Route path="/admin/listening" element={<AdminReceptive skill="listening" />} />
         <Route path="/admin/reading" element={<AdminReceptive skill="reading" />} />
         <Route path="/admin/grammar" element={<AdminGrammar />} />
+        <Route path="/admin/vocabulary" element={<AdminVocabulary />} />
         <Route path="/admin/games" element={<AdminGames />} />
         <Route path="/admin/users" element={<AdminUsers />} />
       </Route>

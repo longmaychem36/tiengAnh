@@ -15,6 +15,7 @@ const adminItems = [
   { to: '/admin/speaking', icon: FiMic, label: 'Speaking' },
   { to: '/admin/writing', icon: FiEdit3, label: 'Writing' },
   { to: '/admin/grammar', icon: FiBookOpen, label: 'Grammar' },
+  { to: '/admin/vocabulary', icon: FiBookOpen, label: 'Vocabulary' },
   { to: '/admin/games', icon: FiPlay, label: 'Mini Games' },
 ];
 

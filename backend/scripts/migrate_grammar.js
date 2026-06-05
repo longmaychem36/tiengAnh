@@ -41,6 +41,19 @@ async function migrate() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS GrammarProgress (
+        UserId uuid NOT NULL,
+        TopicId uuid NOT NULL REFERENCES GrammarTopics(Id) ON DELETE CASCADE,
+        BestScore integer DEFAULT 0,
+        LastScore integer DEFAULT 0,
+        Attempts integer DEFAULT 0,
+        Status varchar(20) DEFAULT 'in_progress',
+        UpdatedAt timestamp DEFAULT NOW(),
+        PRIMARY KEY (UserId, TopicId)
+      )
+    `);
+
     console.log('Grammar migration completed.');
   } catch (err) {
     console.error('Migration failed:', err);

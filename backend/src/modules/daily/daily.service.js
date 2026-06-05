@@ -36,7 +36,7 @@ function shapeTask(row) {
     reading_lesson: `/reading/lessons/${targetId}`,
     grammar_topic: `/grammar?topicId=${targetId}`,
     game_level: `/games/play/${targetId}`,
-    vocabulary_review: '/collections'
+    vocabulary_review: '/vocabulary'
   };
 
   return {

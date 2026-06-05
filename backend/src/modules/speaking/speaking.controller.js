@@ -13,6 +13,7 @@ const dailyService = require('../daily/daily.service');
 const { EXP_REWARDS } = require('../../utils/constants');
 
 const WHISPER_SERVER_URL = process.env.WHISPER_SERVER_URL || 'http://127.0.0.1:5001';
+const WHISPER_TIMEOUT_MS = Number.parseInt(process.env.WHISPER_TIMEOUT_MS, 10) || 45000;
 
 const contractions = {
   "i'm": 'i am',
@@ -221,7 +222,7 @@ function wordSimilarity(target, user) {
   const maxLen = Math.max(target.length, user.length, 1);
   const ratio = 1 - (levenshtein(target, user) / maxLen);
   if (maxLen <= 3) return ratio >= 0.67 ? ratio : 0;
-  return ratio >= 0.72 ? ratio : 0;
+  return ratio >= 0.68 ? ratio : 0;
 }
 
 function wordWeight(word) {
@@ -291,7 +292,7 @@ function scoreSpeakingTarget(targetText, transcript) {
   const precision = matchedWeight / userWeight;
   const f1 = precision + recall === 0 ? 0 : (2 * precision * recall) / (precision + recall);
   const lengthRatio = Math.min(userLen, targetLen) / Math.max(userLen, targetLen, 1);
-  const score = Math.round(Math.max(0, Math.min(1, (0.72 * recall) + (0.20 * f1) + (0.08 * lengthRatio))) * 100);
+  const score = Math.round(Math.max(0, Math.min(1, (0.76 * recall) + (0.18 * f1) + (0.06 * lengthRatio))) * 100);
 
   return {
     score,
@@ -323,6 +324,20 @@ function analyzeTranscript(transcript, targetTexts) {
   return { ...best, feedback };
 }
 
+function buildWhisperInitialPrompt(targetTexts = [], prompt = '') {
+  const samples = targetTexts
+    .filter(Boolean)
+    .map((text) => String(text).trim())
+    .filter(Boolean)
+    .slice(0, 4);
+  const question = String(prompt || '').trim();
+  const promptParts = [
+    question ? `Question: ${question}` : '',
+    samples.length ? `Expected English learner answers: ${samples.join(' | ')}` : ''
+  ].filter(Boolean);
+  return promptParts.join('\n').slice(0, 900);
+}
+
 const speakingController = {
   /**
    * Transcribe audio file using Whisper server.
@@ -346,7 +361,7 @@ const speakingController = {
           headers: {
             ...formData.getHeaders()
           },
-          timeout: 30000, // 30 second timeout
+          timeout: WHISPER_TIMEOUT_MS,
           maxContentLength: 50 * 1024 * 1024
         });
 
@@ -405,10 +420,12 @@ const speakingController = {
         // Send target texts as pipe-separated string
         const textsArray = typeof targetTexts === 'string' ? JSON.parse(targetTexts) : targetTexts;
         formData.append('targetTexts', JSON.stringify(textsArray));
+        const initialPrompt = buildWhisperInitialPrompt(textsArray, req.body.prompt);
+        if (initialPrompt) formData.append('initialPrompt', initialPrompt);
 
         const response = await axios.post(`${WHISPER_SERVER_URL}/transcribe-and-analyze`, formData, {
           headers: { ...formData.getHeaders() },
-          timeout: 30000,
+          timeout: WHISPER_TIMEOUT_MS,
           maxContentLength: 50 * 1024 * 1024
         });
 
@@ -481,6 +498,38 @@ const speakingController = {
     try {
       const data = speakingService.getPersonalizedLesson(req.user.id, req.params.sessionId);
       return success(res, data);
+    } catch (err) {
+      if (err.statusCode) {
+        return res.status(err.statusCode).json({
+          success: false,
+          message: err.message
+        });
+      }
+      next(err);
+    }
+  },
+
+  /**
+   * Complete an AI speaking lesson and award a small anti-spam capped EXP reward.
+   */
+  async completePersonalizedLesson(req, res, next) {
+    try {
+      const completion = speakingService.completePersonalizedLesson(req.user.id, req.params.sessionId, req.body);
+      const expReward = completion.expAmount > 0
+        ? await gamificationService.addExp(
+          req.user.id,
+          completion.expAmount,
+          'ai_speaking_lesson_complete'
+        )
+        : null;
+
+      return success(res, {
+        message: completion.alreadyRewarded ? 'AI speaking lesson already rewarded' : 'AI speaking lesson completed',
+        alreadyRewarded: completion.alreadyRewarded,
+        expAmount: completion.expAmount,
+        dailyRemaining: completion.dailyRemaining,
+        expReward
+      });
     } catch (err) {
       if (err.statusCode) {
         return res.status(err.statusCode).json({

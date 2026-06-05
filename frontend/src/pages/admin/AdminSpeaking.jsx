@@ -205,6 +205,53 @@ const AdminSpeaking = () => {
     setQOrder(0);
   };
 
+  const renderQuestionForm = () => (
+    <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-4)', background: 'white' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-3)' }}>
+        <div style={{ gridColumn: 'span 2' }}>
+          <span className="form-label">Câu hỏi (English)</span>
+          <input aria-label="Trường nhập" className="form-input" value={questionText} onChange={e => setQuestionText(e.target.value)} />
+        </div>
+        <div style={{ gridColumn: 'span 2' }}>
+          <span className="form-label">Dịch (Tiếng Việt)</span>
+          <input aria-label="Trường nhập" className="form-input" value={questionTrans} onChange={e => setQuestionTrans(e.target.value)} />
+        </div>
+        <div>
+          <span className="form-label">Option 1 (EN)</span>
+          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt1} onChange={e => setOpt1(e.target.value)} />
+        </div>
+        <div>
+          <span className="form-label">Dịch Option 1 (VI)</span>
+          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt1vi} onChange={e => setOpt1vi(e.target.value)} />
+        </div>
+        <div>
+          <span className="form-label">Option 2 (EN)</span>
+          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt2} onChange={e => setOpt2(e.target.value)} />
+        </div>
+        <div>
+          <span className="form-label">Dịch Option 2 (VI)</span>
+          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt2vi} onChange={e => setOpt2vi(e.target.value)} />
+        </div>
+        <div>
+          <span className="form-label">Option 3 (EN)</span>
+          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt3} onChange={e => setOpt3(e.target.value)} />
+        </div>
+        <div>
+          <span className="form-label">Dịch Option 3 (VI)</span>
+          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt3vi} onChange={e => setOpt3vi(e.target.value)} />
+        </div>
+        <div>
+          <span className="form-label">Thứ tự</span>
+          <input aria-label="Trường nhập" className="form-input form-input-sm" type="number" value={qOrder} onChange={e => setQOrder(e.target.value)} />
+        </div>
+      </div>
+      <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
+        <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveQuestion}><FiSave /> Lưu</button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={closeQuestionForm}><FiX /> Hủy</button>
+      </div>
+    </div>
+  );
+
   if (loading) return <div className="p-8">Đang tải...</div>;
 
   return (
@@ -275,10 +322,10 @@ const AdminSpeaking = () => {
               <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.01)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
                   <h4 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Danh sách câu hỏi</h4>
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowQuestionForm(true)}><FiPlus /> Thêm câu hỏi</button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => { closeQuestionForm(); setShowQuestionForm(true); }}><FiPlus /> Thêm câu hỏi</button>
                 </div>
 
-                {showQuestionForm && (
+                {showQuestionForm && !editingQuestion && (
                   <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-4)', background: 'white' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-3)' }}>
                       <div style={{ gridColumn: 'span 2' }}>
@@ -329,7 +376,8 @@ const AdminSpeaking = () => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                   {questions.map(q => (
-                    <div key={q.Id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', background: 'white', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <React.Fragment key={q.Id}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', background: 'white', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                       <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', minWidth: 20 }}>{q.OrderIndex}.</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 500 }}>{q.Question}</div>
@@ -349,6 +397,8 @@ const AdminSpeaking = () => {
                         <button type="button" className="btn btn-ghost btn-xs" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteQuestion(q.Id)}><FiTrash2 size={12} /></button>
                       </div>
                     </div>
+                    {showQuestionForm && editingQuestion?.Id === q.Id && renderQuestionForm()}
+                    </React.Fragment>
                   ))}
                   {questions.length === 0 && !showQuestionForm && <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>Chưa có câu hỏi nào.</div>}
                 </div>

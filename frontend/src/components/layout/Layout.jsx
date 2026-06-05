@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import ErrorBoundary from '../common/ErrorBoundary';
 
 function Layout() {
   const { pathname } = useLocation();
@@ -22,7 +23,9 @@ function Layout() {
       <div className="app-main">
         {!isFocusRoute && <Navbar />}
         <div className="app-content">
-          <Outlet />
+          <ErrorBoundary key={pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </div>
     </div>

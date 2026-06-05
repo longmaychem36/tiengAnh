@@ -704,8 +704,8 @@ function AdminReceptive({ skill }) {
                   </div>
                 </AdminPanel>
 
-                <AdminPanel title="Câu hỏi" actionLabel="Thêm câu hỏi" onAdd={() => setShowQuestionForm(true)}>
-                  {showQuestionForm && (
+                <AdminPanel title="Câu hỏi" actionLabel="Thêm câu hỏi" onAdd={() => { closeQuestionForm(); setShowQuestionForm(true); }}>
+                  {showQuestionForm && !editingQuestion && (
                     <QuestionForm
                       form={questionForm}
                       editing={editingQuestion}
@@ -716,10 +716,21 @@ function AdminReceptive({ skill }) {
                   )}
                   <div className="admin-item-list">
                     {questions.map((item) => (
-                      <AdminItem key={item.Id} onEdit={() => startEditQuestion(item)} onDelete={() => handleDeleteQuestion(item.Id)}>
-                        <strong>{item.Prompt}</strong>
-                        <p>{item.QuestionType} · Đáp án: {item.QuestionType === 'true_false' ? String(item.CorrectBoolean) : item.CorrectAnswer}</p>
-                      </AdminItem>
+                      <div key={item.Id}>
+                        <AdminItem onEdit={() => startEditQuestion(item)} onDelete={() => handleDeleteQuestion(item.Id)}>
+                          <strong>{item.Prompt}</strong>
+                          <p>{item.QuestionType} · Đáp án: {item.QuestionType === 'true_false' ? String(item.CorrectBoolean) : item.CorrectAnswer}</p>
+                        </AdminItem>
+                        {showQuestionForm && editingQuestion?.Id === item.Id && (
+                          <QuestionForm
+                            form={questionForm}
+                            editing={editingQuestion}
+                            onChange={updateQuestionField}
+                            onSave={handleSaveQuestion}
+                            onCancel={closeQuestionForm}
+                          />
+                        )}
+                      </div>
                     ))}
                     {questions.length === 0 && !showQuestionForm && <EmptyState text="Chưa có câu hỏi." />}
                   </div>

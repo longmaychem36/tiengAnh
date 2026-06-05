@@ -41,6 +41,53 @@ function mapLesson(row) {
   };
 }
 
+function createAdminError(message, statusCode = 400) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function isAdminCreator(role) {
+  return ['admin', 'superadmin'].includes(String(role || '').toLowerCase());
+}
+
+async function assertAdminOwnedVocabularyCollection(pool, collectionId) {
+  const result = await pool.query(`
+    SELECT c.Id, u.Role as CreatorRole
+    FROM UserCollections c
+    LEFT JOIN Users u ON u.Id = c.UserId
+    WHERE c.Id = $1 AND c.IsPublic = true
+    LIMIT 1
+  `, [collectionId]);
+
+  const collection = result.rows[0];
+  if (!collection) {
+    throw createAdminError('Vocabulary collection not found', 404);
+  }
+  if (!isAdminCreator(collection.creatorrole)) {
+    throw createAdminError('Admin can only manage words in admin-created vocabulary collections.', 403);
+  }
+}
+
+async function assertAdminOwnedVocabularyWord(pool, wordId) {
+  const result = await pool.query(`
+    SELECT w.Id, c.Id as CollectionId, u.Role as CreatorRole
+    FROM UserCollectionWords w
+    INNER JOIN UserCollections c ON c.Id = w.CollectionId
+    LEFT JOIN Users u ON u.Id = c.UserId
+    WHERE w.Id = $1 AND c.IsPublic = true
+    LIMIT 1
+  `, [wordId]);
+
+  const word = result.rows[0];
+  if (!word) {
+    throw createAdminError('Vocabulary word not found', 404);
+  }
+  if (!isAdminCreator(word.creatorrole)) {
+    throw createAdminError('Admin can only manage words in admin-created vocabulary collections.', 403);
+  }
+}
+
 function mapContent(skill, row) {
   if (skill === 'listening') {
     return {
@@ -793,6 +840,137 @@ const adminContentService = {
   async deleteGrammarQuiz(id) {
     const pool = getPool();
     await pool.request().input('id', sql.UniqueIdentifier, id).query(`DELETE FROM GrammarQuiz WHERE Id = @id`);
+  },
+
+  async getVocabularyCollections(status = 'all') {
+    const pool = getPool();
+    const normalizedStatus = ['pending', 'approved', 'rejected'].includes(status) ? status : null;
+    const result = await pool.query(`
+      SELECT c.*,
+             u.Username as CreatorName,
+             u.Role as CreatorRole,
+             reviewer.Username as ReviewerName,
+             COUNT(w.Id)::int as WordCount
+      FROM UserCollections c
+      LEFT JOIN Users u ON u.Id = c.UserId
+      LEFT JOIN Users reviewer ON reviewer.Id = c.ReviewedBy
+      LEFT JOIN UserCollectionWords w ON w.CollectionId = c.Id
+      WHERE c.IsPublic = true
+        AND ($1::varchar IS NULL OR c.ReviewStatus = $1)
+      GROUP BY c.Id, u.Username, u.Role, reviewer.Username
+      ORDER BY
+        CASE WHEN c.ReviewStatus = 'pending' THEN 0 ELSE 1 END,
+        c.UpdatedAt DESC,
+        c.CreatedAt DESC
+    `, [normalizedStatus]);
+    return result.rows.map((row) => ({
+      Id: row.id,
+      UserId: row.userid,
+      Name: row.name,
+      Description: row.description,
+      IsPublic: row.ispublic,
+      ReviewStatus: row.reviewstatus,
+      SubmittedAt: row.submittedat,
+      ReviewedAt: row.reviewedat,
+      ReviewedBy: row.reviewedby,
+      UpdatedAt: row.updatedat,
+      CreatedAt: row.createdat,
+      CreatorName: row.creatorname,
+      CreatorRole: row.creatorrole,
+      ReviewerName: row.reviewername,
+      WordCount: row.wordcount
+    }));
+  },
+
+  async createVocabularyCollection(adminUserId, data) {
+    const pool = getPool();
+    const result = await pool.query(`
+      INSERT INTO UserCollections (UserId, Name, Description, IsPublic, ReviewStatus, SubmittedAt, ReviewedAt, ReviewedBy, UpdatedAt)
+      VALUES ($1, $2, $3, true, 'approved', NOW(), NOW(), $1, NOW())
+      RETURNING *
+    `, [adminUserId, data.Name || data.name, data.Description || data.description || null]);
+    return result.rows[0];
+  },
+
+  async updateVocabularyCollection(id, data) {
+    const pool = getPool();
+    await pool.query(`
+      UPDATE UserCollections
+      SET Name = $1,
+          Description = $2,
+          UpdatedAt = NOW()
+      WHERE Id = $3 AND IsPublic = true
+    `, [data.Name || data.name, data.Description || data.description || null, id]);
+  },
+
+  async reviewVocabularyCollection(id, status, reviewerId) {
+    if (!['approved', 'rejected', 'pending'].includes(status)) {
+      throw new Error('Invalid vocabulary review status');
+    }
+    const pool = getPool();
+    await pool.query(`
+      UPDATE UserCollections
+      SET ReviewStatus = $1,
+          ReviewedBy = $2,
+          ReviewedAt = NOW(),
+          UpdatedAt = NOW()
+      WHERE Id = $3 AND IsPublic = true
+    `, [status, reviewerId, id]);
+  },
+
+  async deleteVocabularyCollection(id) {
+    const pool = getPool();
+    await pool.query('DELETE FROM UserCollections WHERE Id = $1 AND IsPublic = true', [id]);
+  },
+
+  async getVocabularyWords(collectionId) {
+    const pool = getPool();
+    const result = await pool.query(`
+      SELECT *
+      FROM UserCollectionWords
+      WHERE CollectionId = $1
+      ORDER BY AddedAt ASC
+    `, [collectionId]);
+    return result.rows.map((row) => ({
+      Id: row.id,
+      CollectionId: row.collectionid,
+      CustomWord: row.customword,
+      CustomMeaning: row.custommeaning,
+      CustomExample: row.customexample,
+      AddedAt: row.addedat,
+      UpdatedAt: row.updatedat
+    }));
+  },
+
+  async addVocabularyWord(collectionId, data) {
+    const pool = getPool();
+    await assertAdminOwnedVocabularyCollection(pool, collectionId);
+    const result = await pool.query(`
+      INSERT INTO UserCollectionWords (CollectionId, DictionaryEntryId, CustomWord, CustomMeaning, CustomExample, UpdatedAt)
+      VALUES ($1, NULL, $2, $3, $4, NOW())
+      RETURNING *
+    `, [collectionId, data.CustomWord || data.customWord, data.CustomMeaning || data.customMeaning || '', data.CustomExample || data.customExample || null]);
+    await pool.query('UPDATE UserCollections SET UpdatedAt = NOW() WHERE Id = $1', [collectionId]);
+    return result.rows[0];
+  },
+
+  async updateVocabularyWord(wordId, data) {
+    const pool = getPool();
+    await assertAdminOwnedVocabularyWord(pool, wordId);
+    await pool.query(`
+      UPDATE UserCollectionWords
+      SET CustomWord = $1,
+          CustomMeaning = $2,
+          CustomExample = $3,
+          UpdatedAt = NOW()
+      WHERE Id = $4
+    `, [data.CustomWord || data.customWord, data.CustomMeaning || data.customMeaning || '', data.CustomExample || data.customExample || null, wordId]);
+  },
+
+  async deleteVocabularyWord(wordId) {
+    const pool = getPool();
+    await assertAdminOwnedVocabularyWord(pool, wordId);
+    await pool.query('DELETE FROM UserCollectionWords WHERE Id = $1', [wordId]);
   }
 };
 

@@ -11,7 +11,7 @@ const navItems = [
   { to: '/courses', image: '/nav-icons/courses.svg', label: 'Khóa học' },
   { to: '/grammar', image: '/nav-icons/grammar.svg', label: 'Ngữ pháp' },
   { to: '/dictionary', image: '/nav-icons/dictionary.svg', label: 'Từ điển' },
-  { to: '/collections', image: '/nav-icons/collections.svg', label: 'Bộ sưu tập' },
+  { to: '/vocabulary', image: '/nav-icons/collections.svg', label: 'Vocabulary' },
   { to: '/progress', image: '/nav-icons/progress.svg', label: 'Tiến độ' },
   { to: '/profile', image: '/nav-icons/profile.svg', label: 'Hồ sơ' }
 ];
