@@ -41,7 +41,7 @@ export const LessonHeader = ({
   total = 0,
   score = '--',
   duration = '--',
-  backLabel = 'Back to course',
+  backLabel = 'Về khóa học',
   onBack,
   actions
 }) => {

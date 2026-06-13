@@ -396,7 +396,7 @@ const SpeakingLesson = () => {
         header={(
           <LessonHeader
             title={lessonData?.title || 'Luyện nói'}
-            level={isPersonalized ? 'AI' : 'Speaking'}
+            level={isPersonalized ? 'AI' : 'Nói'}
             topic={lessonData?.topic}
             progress={progressPercent}
             answered={answeredCount}

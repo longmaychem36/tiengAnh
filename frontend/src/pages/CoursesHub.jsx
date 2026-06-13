@@ -31,7 +31,7 @@ function SkillImage({ skill }) {
     <span className="course-skill-image">
       <img
         src={imageSrc}
-        alt={`${skill.subtitle} illustration`}
+        alt={`${skill.name} minh họa`}
         onError={() => setExtensionIndex((index) => index + 1)}
       />
     </span>
@@ -42,8 +42,9 @@ const skills = [
   {
     id: 'listening',
     name: 'Nghe',
-    subtitle: 'Listening',
+    subtitle: 'Kỹ năng nghe',
     icon: FiHeadphones,
+    iconImage: '/nav-icons/admin-listening.svg',
     desc: 'Nghe hội thoại, đọc transcript và trả lời câu hỏi kiểm tra mức hiểu.',
     route: '/listening/lessons',
     color: '#0e7490',
@@ -52,8 +53,9 @@ const skills = [
   {
     id: 'reading',
     name: 'Đọc',
-    subtitle: 'Reading',
+    subtitle: 'Kỹ năng đọc',
     icon: FiBookOpen,
+    iconImage: '/nav-icons/admin-reading.svg',
     desc: 'Đọc đoạn văn theo chủ đề, học từ vựng trọng tâm và luyện đọc hiểu.',
     route: '/reading/lessons',
     color: '#7c3aed',
@@ -62,8 +64,9 @@ const skills = [
   {
     id: 'speaking',
     name: 'Nói',
-    subtitle: 'Speaking',
+    subtitle: 'Kỹ năng nói',
     icon: FiMic,
+    iconImage: '/nav-icons/admin-speaking.svg',
     desc: 'Ghi âm câu trả lời, nhận điểm phát âm và luyện phản xạ nói.',
     route: '/speaking/options',
     color: '#c2410c',
@@ -72,8 +75,9 @@ const skills = [
   {
     id: 'writing',
     name: 'Viết',
-    subtitle: 'Writing',
+    subtitle: 'Kỹ năng viết',
     icon: FiEdit3,
+    iconImage: '/nav-icons/admin-writing.svg',
     desc: 'Ghép câu, sửa lỗi ngữ pháp và luyện viết đoạn văn ngắn.',
     route: '/writing/lessons',
     color: '#15803d',
@@ -81,9 +85,10 @@ const skills = [
   },
   {
     id: 'games',
-    name: 'Mini Games',
-    subtitle: 'Arcade',
+    name: 'Mini game',
+    subtitle: 'Ôn tập nhanh',
     icon: FiZap,
+    iconImage: '/nav-icons/admin-games.svg',
     desc: 'Ôn lại từ vựng và mẫu câu bằng bài chơi ngắn, nhịp nhanh.',
     route: '/games',
     color: '#b45309',
@@ -107,7 +112,7 @@ function CoursesHub() {
     <div className="courses-redesign">
       <section className="courses-hero">
         <div>
-          <span className="course-kicker">Learning paths</span>
+          <span className="course-kicker">Lộ trình học</span>
           <h1>Lộ trình kỹ năng</h1>
           <p>
             Chọn phần luyện tập phù hợp với mục tiêu hiện tại và bắt đầu ngay.
@@ -122,8 +127,6 @@ function CoursesHub() {
 
       <section className="course-skill-board" aria-label="Danh sách kỹ năng">
         {skills.map((skill, index) => {
-          const Icon = skill.icon;
-
           return (
             <motion.button
               key={skill.id}
@@ -142,7 +145,7 @@ function CoursesHub() {
               )}
               <SkillImage skill={skill} />
               <span className="course-skill-icon" aria-hidden="true">
-                <Icon />
+                <img src={skill.iconImage} alt="" />
               </span>
               <span className="course-skill-copy">
                 <span className="course-skill-meta">{skill.subtitle}</span>

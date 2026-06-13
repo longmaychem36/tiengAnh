@@ -15,7 +15,7 @@ function createReceptiveController(skill) {
 
     async getLessonDetails(req, res, next) {
       try {
-        const lesson = await receptiveService.getLessonDetails(skill, req.params.id);
+        const lesson = await receptiveService.getLessonDetails(skill, req.params.id, req.user.id);
         if (!lesson) return notFound(res, 'Lesson not found');
         return success(res, { lesson });
       } catch (err) {

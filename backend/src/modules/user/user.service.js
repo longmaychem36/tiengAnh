@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const FormData = require('form-data');
 const { sql, getPool } = require('../../config/database');
 const { parsePagination } = require('../../utils/pagination');
+const { ensureOnboardingSchema } = require('../onboarding/onboarding.schema');
 
 let profileSchemaReady = false;
 
@@ -41,6 +42,7 @@ function signCloudinaryParams(params, apiSecret) {
 const userService = {
   async getAll(page, limit) {
     await ensureProfileSchema();
+    await ensureOnboardingSchema();
     const pool = getPool();
     const { offset } = parsePagination({ page, limit });
 
@@ -52,7 +54,8 @@ const userService = {
       .input('offset', sql.Int, offset)
       .input('limit', sql.Int, parseInt(limit))
       .query(`
-        SELECT u.Id, u.Username, u.Email, u.Role, u.AvatarUrl, u.CreatedAt,
+        SELECT u.Id, u.Username, u.Email, u.Role, u.AvatarUrl, u.OnboardingCompleted,
+               u.PlacementLevel, u.PlacementSource, u.PlacementCompletedAt, u.CreatedAt,
                ll.Code as LevelCode, ll.Name as LevelName
         FROM Users u
         LEFT JOIN LearningLevels ll ON u.LevelId = ll.Id
@@ -65,11 +68,13 @@ const userService = {
 
   async getById(userId) {
     await ensureProfileSchema();
+    await ensureOnboardingSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
       .query(`
-        SELECT u.Id, u.Username, u.Email, u.Role, u.LevelId, u.AvatarUrl, u.CreatedAt,
+        SELECT u.Id, u.Username, u.Email, u.Role, u.LevelId, u.AvatarUrl, u.OnboardingCompleted,
+               u.PlacementLevel, u.PlacementSource, u.PlacementCompletedAt, u.CreatedAt,
                ll.Code as LevelCode, ll.Name as LevelName
         FROM Users u
         LEFT JOIN LearningLevels ll ON u.LevelId = ll.Id
@@ -80,6 +85,7 @@ const userService = {
 
   async update(userId, data) {
     await ensureProfileSchema();
+    await ensureOnboardingSchema();
     const pool = getPool();
     const { username, levelId } = data;
 
@@ -103,7 +109,7 @@ const userService = {
         SET Username = COALESCE(@username, Username),
             LevelId = COALESCE(@levelId, LevelId)
         WHERE Id = @userId
-        RETURNING Id, Username, Email, Role, LevelId, AvatarUrl
+        RETURNING Id, Username, Email, Role, LevelId, AvatarUrl, OnboardingCompleted, PlacementLevel, PlacementSource, PlacementCompletedAt
       `);
 
     return result.recordset[0] || null;
@@ -111,6 +117,7 @@ const userService = {
 
   async updateAvatar(userId, file) {
     await ensureProfileSchema();
+    await ensureOnboardingSchema();
 
     if (!file) {
       const err = new Error('Avatar image is required');
@@ -169,7 +176,7 @@ const userService = {
         UPDATE Users
         SET AvatarUrl = @avatarUrl
         WHERE Id = @userId
-        RETURNING Id, Username, Email, Role, LevelId, AvatarUrl
+        RETURNING Id, Username, Email, Role, LevelId, AvatarUrl, OnboardingCompleted, PlacementLevel, PlacementSource, PlacementCompletedAt
       `);
 
     return result.recordset[0] || null;
@@ -193,8 +200,7 @@ const userService = {
                  INNER JOIN UserCollections uc ON uc.Id = ucw.CollectionId
                  WHERE uc.UserId = @userId
                ) as MasteredWords,
-               (SELECT COALESCE(SUM(Attempts), 0)::int FROM UserGameProgress WHERE UserId = @userId) as GamesPlayed,
-               (SELECT COUNT(*)::int FROM UserAchievements WHERE UserId = @userId) as AchievementsUnlocked
+               (SELECT COALESCE(SUM(Attempts), 0)::int FROM UserGameProgress WHERE UserId = @userId) as GamesPlayed
         FROM UserStats us
         WHERE us.UserId = @userId
       `);

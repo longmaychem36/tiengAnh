@@ -647,3 +647,27 @@ Sau đó:
 3. Redeploy frontend Vercel.
 4. Test lại trang Dictionary.
 5. Tra một từ bất kỳ rồi lưu vào collection.
+
+
+
+cd D:\tiengAnh\backend
+
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+Remove-Item Env:DATABASE_PUBLIC_URL -ErrorAction SilentlyContinue
+
+$env:DB_HOST="postgres.railway.internal"
+$env:DB_PORT="5432"
+$env:DB_NAME="railway"
+$env:DB_USER="postgres"
+$env:DB_PASSWORD="tLROTZxyMimaqKbGDVRPkAfSbugxwEta"
+$env:DB_SSL="true"
+
+npm.cmd run db:import-data
+
+
+
+
+cd D:\tiengAnh\backend
+$env:DATABASE_URL="postgresql://postgres:tLROTZxyMimaqKbGDVRPkAfSbugxwEta@zephyr.proxy.rlwy.net:39619/railway"
+$env:DB_SSL="true"
+npm.cmd run db:import-data

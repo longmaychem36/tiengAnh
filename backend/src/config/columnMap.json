@@ -7,6 +7,11 @@
   "audiourl": "AudioUrl",
   "imageurl": "ImageUrl",
   "avatarurl": "AvatarUrl",
+  "onboardingcompleted": "OnboardingCompleted",
+  "placementlevel": "PlacementLevel",
+  "placementsource": "PlacementSource",
+  "placementcompletedat": "PlacementCompletedAt",
+  "isfoundation": "IsFoundation",
   "correctanswer": "CorrectAnswer",
   "questiontype": "QuestionType",
   "setid": "SetId",
@@ -41,7 +46,6 @@
   "creatorrole": "CreatorRole",
   "reviewername": "ReviewerName",
   "dictionaryentryid": "DictionaryEntryId",
-  "achievementid": "AchievementId",
   "iscompleted": "IsCompleted",
   "besttime": "BestTime",
   "createdat": "CreatedAt",
@@ -95,6 +99,5 @@
   "masteredvocab": "MasteredVocab",
   "gamesplayed": "GamesPlayed",
   "avgscore": "AvgScore",
-  "masteredwords": "MasteredWords",
-  "achievementsunlocked": "AchievementsUnlocked"
+  "masteredwords": "MasteredWords"
 }

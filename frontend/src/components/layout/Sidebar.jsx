@@ -2,18 +2,18 @@
 // Sidebar Component - Role-based Navigation
 // ============================================
 import { NavLink } from 'react-router-dom';
-import { FiSettings, FiShield } from 'react-icons/fi';
+import { FiShield } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 
 const navItems = [
-  { to: '/dashboard', image: '/nav-icons/learn.svg', label: 'Học' },
+  { to: '/dashboard', image: '/nav-icons/learn.svg', label: 'Tổng quan' },
   { to: '/daily-tasks', image: '/nav-icons/tasks.svg', label: 'Nhiệm vụ' },
   { to: '/courses', image: '/nav-icons/courses.svg', label: 'Khóa học' },
   { to: '/grammar', image: '/nav-icons/grammar.svg', label: 'Ngữ pháp' },
   { to: '/dictionary', image: '/nav-icons/dictionary.svg', label: 'Từ điển' },
-  { to: '/vocabulary', image: '/nav-icons/collections.svg', label: 'Vocabulary' },
-  { to: '/progress', image: '/nav-icons/progress.svg', label: 'Tiến độ' },
-  { to: '/profile', image: '/nav-icons/profile.svg', label: 'Hồ sơ' }
+  { to: '/vocabulary', image: '/nav-icons/collections.svg', label: 'Từ vựng' },
+  { to: '/games', image: '/nav-icons/admin-games.svg', label: 'Mini game' },
+  { to: '/profile', image: '/nav-icons/profile.svg', label: 'Hồ sơ & tiến độ' }
 ];
 
 function NavItem({ to, image, icon: Icon, label, isAdminLink }) {
@@ -41,7 +41,7 @@ function Sidebar() {
         <div className="lingo-brand-mark">L</div>
         <div>
           <strong>LingoWeb</strong>
-          <span>English Learning</span>
+          <span>Học tiếng Anh</span>
         </div>
       </div>
 
@@ -52,7 +52,7 @@ function Sidebar() {
         {isAdmin && (
           <>
             <span className="lingo-nav-label lingo-admin-label"><FiShield size={12} /> Admin</span>
-            <NavItem to="/admin" icon={FiSettings} label="Bảng điều khiển" isAdminLink />
+            <NavItem to="/admin" image="/nav-icons/admin.svg" label="Bảng điều khiển" isAdminLink />
           </>
         )}
       </nav>

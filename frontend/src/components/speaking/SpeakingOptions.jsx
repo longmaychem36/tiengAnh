@@ -24,8 +24,7 @@ function SpeakingOptions() {
       </button>
 
       <div className="page-header" style={{ marginBottom: 'var(--space-8)' }}>
-        <h1>Luyện Nói (Speaking)</h1>
-        <p>Chọn cách luyện phù hợp với mục tiêu của bạn.</p>
+        <h1>Luyện nói</h1>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-8)' }}>

@@ -62,7 +62,7 @@ function SpeakingAiBuilder() {
   return (
     <div className="fade-in" style={{ maxWidth: 820, margin: '0 auto', paddingBottom: 'var(--space-12)' }}>
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/speaking/options')} style={{ marginBottom: 'var(--space-6)', padding: 0 }}>
-        <FiArrowLeft /> Về lựa chọn Speaking
+        <FiArrowLeft /> Về lựa chọn nói
       </button>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card" style={{ padding: 'var(--space-8)' }}>

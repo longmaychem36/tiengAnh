@@ -2,50 +2,36 @@
 // Admin Sidebar — Admin-specific navigation
 // ============================================
 import { NavLink } from 'react-router-dom';
-import {
-  FiGrid, FiBookOpen, FiMic, FiEdit3, FiHeadphones,
-  FiPlay, FiUsers, FiShield, FiLogOut
-} from 'react-icons/fi';
+import { FiShield } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 
 const adminItems = [
-  { to: '/admin', icon: FiGrid, label: 'Tổng quan', exact: true },
-  { to: '/admin/listening', icon: FiHeadphones, label: 'Listening' },
-  { to: '/admin/reading', icon: FiBookOpen, label: 'Reading' },
-  { to: '/admin/speaking', icon: FiMic, label: 'Speaking' },
-  { to: '/admin/writing', icon: FiEdit3, label: 'Writing' },
-  { to: '/admin/grammar', icon: FiBookOpen, label: 'Grammar' },
-  { to: '/admin/vocabulary', icon: FiBookOpen, label: 'Vocabulary' },
-  { to: '/admin/games', icon: FiPlay, label: 'Mini Games' },
+  { to: '/admin', image: '/nav-icons/admin-dashboard.svg', label: 'Tổng quan', exact: true },
+  { to: '/admin/listening', image: '/nav-icons/admin-listening.svg', label: 'Listening' },
+  { to: '/admin/reading', image: '/nav-icons/admin-reading.svg', label: 'Reading' },
+  { to: '/admin/speaking', image: '/nav-icons/admin-speaking.svg', label: 'Speaking' },
+  { to: '/admin/writing', image: '/nav-icons/admin-writing.svg', label: 'Writing' },
+  { to: '/admin/grammar', image: '/nav-icons/admin-grammar.svg', label: 'Grammar' },
+  { to: '/admin/vocabulary', image: '/nav-icons/admin-vocabulary.svg', label: 'Vocabulary' },
+  { to: '/admin/placement-tests', image: '/nav-icons/admin-placement.svg', label: 'Kiểm tra đầu vào' },
+  { to: '/admin/games', image: '/nav-icons/admin-games.svg', label: 'Mini Games' },
 ];
 
 const superAdminItems = [
-  { to: '/admin/users', icon: FiUsers, label: 'Người dùng' },
+  { to: '/admin/users', image: '/nav-icons/admin-users.svg', label: 'Người dùng' },
 ];
 
-function NavItem({ to, icon: Icon, label, exact }) {
+function NavItem({ to, image, label, exact }) {
   return (
     <NavLink
       to={to}
       end={exact}
-      style={({ isActive }) => ({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        padding: '10px 16px',
-        borderRadius: '10px',
-        marginBottom: '2px',
-        fontSize: '0.875rem',
-        fontWeight: isActive ? 600 : 500,
-        color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
-        background: isActive ? 'rgba(194,24,91,0.32)' : 'transparent',
-        transition: 'background 150ms ease, color 150ms ease',
-        textDecoration: 'none',
-        letterSpacing: '0.01em'
-      })}
+      className={({ isActive }) => `admin-sidebar-link ${isActive ? 'is-active' : ''}`}
     >
-      <Icon size={18} />
-      {label}
+      <span className="admin-sidebar-icon">
+        <img src={image} alt="" aria-hidden="true" />
+      </span>
+      <span>{label}</span>
     </NavLink>
   );
 }
@@ -56,27 +42,15 @@ function AdminSidebar() {
 
   return (
     <aside className="admin-sidebar">
-      {/* Logo */}
       <div className="admin-sidebar-logo">
-        <div style={{
-          width: 38, height: 38, borderRadius: '10px',
-          background: 'linear-gradient(135deg, #c2185b, #8a4b35)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', fontWeight: 800, fontSize: '18px'
-        }}>E</div>
+        <div className="admin-brand-mark">E</div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: '1rem', color: '#fff', lineHeight: 1.2 }}>
-            EngLearn
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Admin Panel
-          </div>
+          <div className="admin-brand-title">EngLearn</div>
+          <div className="admin-brand-subtitle">Admin Panel</div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
-        {/* Admin Section */}
+      <nav className="admin-sidebar-nav">
         <div className="admin-sidebar-section-label">
           <FiShield size={11} />
           Quản lý nội dung
@@ -95,37 +69,16 @@ function AdminSidebar() {
         )}
       </nav>
 
-      {/* Bottom section */}
-      <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        {/* Role badge */}
-        <div style={{
-          padding: '10px', borderRadius: '10px', marginBottom: '8px',
-          background: isSuperAdmin
-            ? 'linear-gradient(135deg, rgba(200,133,30,0.16), rgba(201,74,85,0.16))'
-            : 'rgba(194,24,91,0.14)',
-          textAlign: 'center'
-        }}>
-          <span style={{
-            fontSize: '0.75rem', fontWeight: 700,
-            color: isSuperAdmin ? '#fbbf24' : '#f8bfd5'
-          }}>
-            {isSuperAdmin ? '👑 Super Admin' : '🛡️ Admin'}
-          </span>
+      <div className="admin-sidebar-bottom">
+        <div className={`admin-role-badge ${isSuperAdmin ? 'is-super' : ''}`}>
+          <span>{isSuperAdmin ? 'Super Admin' : 'Admin'}</span>
         </div>
 
-        {/* Logout */}
-        <button type="button" onClick={logout} style={{
-          display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
-          padding: '10px 16px', borderRadius: '10px', border: 'none',
-          background: 'transparent', color: 'rgba(255,255,255,0.4)',
-          fontSize: '0.85rem', cursor: 'pointer', transition: 'background 150ms ease, color 150ms ease',
-          fontWeight: 500
-        }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = '#fca5a5'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}
-        >
-          <FiLogOut size={16} />
-          Đăng xuất
+        <button type="button" onClick={logout} className="admin-logout-button">
+          <span className="admin-sidebar-icon">
+            <img src="/nav-icons/logout.svg" alt="" aria-hidden="true" />
+          </span>
+          <span>Đăng xuất</span>
         </button>
       </div>
     </aside>

@@ -24,6 +24,9 @@ const billingRoutes = require('./modules/billing/billing.routes');
 const listeningRoutes = require('./modules/listening/listening.routes');
 const readingRoutes = require('./modules/reading/reading.routes');
 const dailyRoutes = require('./modules/daily/daily.routes');
+const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const studyTimeRoutes = require('./modules/study-time/study-time.routes');
+const onboardingRoutes = require('./modules/onboarding/onboarding.routes');
 const app = express();
 
 // ==================
@@ -66,6 +69,9 @@ app.use('/api/v1/billing', billingRoutes);
 app.use('/api/v1/listening', listeningRoutes);
 app.use('/api/v1/reading', readingRoutes);
 app.use('/api/v1/daily-tasks', dailyRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/study-time', studyTimeRoutes);
+app.use('/api/v1/onboarding', onboardingRoutes);
 
 // Admin routes (role-guarded internally)
 const adminRoutes = require('./modules/admin/admin.routes');

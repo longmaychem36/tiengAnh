@@ -4,6 +4,16 @@ export const adminApi = {
   // Dashboard
   getDashboardStats: () => axiosClient.get('/admin/dashboard/stats'),
 
+  // Placement tests
+  getPlacementTests: () => axiosClient.get('/admin/placement/tests'),
+  createPlacementTest: (data) => axiosClient.post('/admin/placement/tests', data),
+  updatePlacementTest: (id, data) => axiosClient.put(`/admin/placement/tests/${id}`, data),
+  deletePlacementTest: (id) => axiosClient.delete(`/admin/placement/tests/${id}`),
+  getPlacementQuestions: (testId) => axiosClient.get(`/admin/placement/tests/${testId}/questions`),
+  createPlacementQuestion: (data) => axiosClient.post('/admin/placement/questions', data),
+  updatePlacementQuestion: (id, data) => axiosClient.put(`/admin/placement/questions/${id}`, data),
+  deletePlacementQuestion: (id) => axiosClient.delete(`/admin/placement/questions/${id}`),
+
   // Game Sets
   createSet: (data) => axiosClient.post('/admin/games/sets', data),
   updateSet: (id, data) => axiosClient.put(`/admin/games/sets/${id}`, data),

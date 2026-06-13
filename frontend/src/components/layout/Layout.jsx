@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import ErrorBoundary from '../common/ErrorBoundary';
+import { useStudyTimeTracker } from '../../hooks/useStudyTimeTracker';
 
 function Layout() {
   const { pathname } = useLocation();
@@ -11,6 +12,8 @@ function Layout() {
       || /^\/games\/play\/[^/]+/.test(pathname),
     [pathname]
   );
+
+  useStudyTimeTracker(true);
 
   useEffect(() => {
     document.body.classList.toggle('lesson-focus-mode', isFocusRoute);

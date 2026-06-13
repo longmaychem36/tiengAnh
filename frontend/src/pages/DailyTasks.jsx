@@ -22,10 +22,10 @@ import ExpReward from '../components/common/ExpReward';
 
 const taskMeta = {
   daily_login: { icon: FiLogIn, label: 'Khởi động', color: '#1cb0f6' },
-  listening_lesson: { icon: FiHeadphones, label: 'Listening', color: '#1cb0f6' },
-  speaking_lesson: { icon: FiMic, label: 'Speaking', color: '#8b5cf6' },
-  reading_lesson: { icon: FiBookOpen, label: 'Reading', color: '#14b8a6' },
-  writing_lesson: { icon: FiEdit3, label: 'Writing', color: '#f59e0b' },
+  listening_lesson: { icon: FiHeadphones, label: 'Nghe', color: '#1cb0f6' },
+  speaking_lesson: { icon: FiMic, label: 'Nói', color: '#8b5cf6' },
+  reading_lesson: { icon: FiBookOpen, label: 'Đọc', color: '#14b8a6' },
+  writing_lesson: { icon: FiEdit3, label: 'Viết', color: '#f59e0b' },
   game_level: { icon: FiPlay, label: 'Mini game', color: '#ef4444' },
   vocabulary_review: { icon: FiStar, label: 'Từ vựng', color: '#22c55e' },
   grammar_topic: { icon: FiBookOpen, label: 'Ngữ pháp', color: '#6366f1' }
@@ -66,7 +66,6 @@ function DailyTasks() {
         <div>
           <span className="daily-eyebrow"><FiGift /> Nhiệm vụ hằng ngày</span>
           <h1>Hoàn thành vài việc nhỏ, giữ nhịp học lớn.</h1>
-          <p>Mỗi ngày có một danh sách ngắn: đăng nhập tự cộng EXP, học một bài chính, rồi ôn nhanh bằng hoạt động nhẹ.</p>
         </div>
         <div className="daily-hero-progress">
           <FiStar />
@@ -137,21 +136,14 @@ function DailyTasks() {
             <div className="daily-empty-state">
               <FiRefreshCw />
               <h3>Chưa có nhiệm vụ học</h3>
-              <p>Hãy tạo thêm bài học hoặc thử lại sau. Nhiệm vụ đăng nhập sẽ luôn là nhiệm vụ đầu tiên trong ngày.</p>
             </div>
           )}
         </main>
 
         <aside className="daily-side-panel">
-          <div className="daily-side-card">
-            <span>Gợi ý nhịp học</span>
-            <h3>3 bước là đủ</h3>
-            <p>EXP được cộng tự động khi nhiệm vụ chuyển sang hoàn thành. Không cần bấm nhận thủ công.</p>
-          </div>
           <div className="daily-side-card is-blue">
             <span>Phần thưởng</span>
             <h3>{tasks.reduce((sum, task) => sum + Number(task.rewardExp || 0), 0)} EXP</h3>
-            <p>Hoàn thành toàn bộ nhiệm vụ hôm nay để lấy trọn EXP.</p>
           </div>
         </aside>
       </section>

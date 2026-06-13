@@ -14,7 +14,6 @@ import toast from 'react-hot-toast';
 
 import { speakingApi } from '../../api/speakingApi';
 import Loading from '../common/Loading';
-import CourseGuide from '../common/CourseGuide';
 
 const getLevelLabel = (index) => {
   if (index < 2) return 'A1';
@@ -49,14 +48,13 @@ const SpeakingList = () => {
   return (
     <div className="receptive-page fade-in" style={{ '--receptive-accent': '#2563eb' }}>
       <button type="button" className="btn btn-ghost btn-sm receptive-back-btn" onClick={() => navigate('/speaking/options')}>
-        <FiArrowLeft /> Về lựa chọn Speaking
+        <FiArrowLeft /> Về lựa chọn nói
       </button>
 
       <section className="receptive-hero">
         <div>
-          <span className="receptive-eyebrow">Speaking course</span>
-          <h1>Luyện Nói Theo Lộ Trình</h1>
-          <p>Chọn chủ đề, nghe câu hỏi mẫu, đọc một câu trả lời đã chọn và nhận phản hồi phát âm sau mỗi lượt ghi âm.</p>
+          <span className="receptive-eyebrow">Khóa luyện nói</span>
+          <h1>Luyện nói theo lộ trình</h1>
           <div className="receptive-hero-stats">
             <span><FiTarget /> {lessons.length} chủ đề</span>
             <span><FiCheck /> {summary.completed} đã hoàn thành</span>
@@ -68,22 +66,10 @@ const SpeakingList = () => {
         </div>
       </section>
 
-      <CourseGuide
-        storageKey="speaking_course_guide_seen"
-        title="Luyện Nói"
-        description="Hướng dẫn này chỉ hiện một lần. Trong bài học, hãy chọn câu mẫu rồi ghi âm trực tiếp để nhận phản hồi."
-        steps={[
-          'Nghe câu hỏi và chọn một câu trả lời mẫu bạn muốn luyện.',
-          'Nghe mẫu câu trả lời nếu cần, sau đó bấm micro để ghi âm.',
-          'Bấm lại để dừng, xem điểm và luyện lại đến khi đạt ngưỡng.'
-        ]}
-      />
-
       <section className="receptive-section">
         <div className="receptive-section-title">
           <div>
             <h2>Lộ trình chủ đề</h2>
-            <p>Hoàn thành từng chủ đề để mở khóa bài tiếp theo. Bài đã khóa sẽ tự mở khi bạn hoàn thành bài trước đó.</p>
           </div>
         </div>
 
@@ -115,11 +101,11 @@ const SpeakingList = () => {
                     <span className="receptive-card-index">
                       {isLocked ? <FiLock /> : isCompleted ? <FiCheck /> : index + 1}
                     </span>
-                    <span className="receptive-topic">Speaking</span>
+                    <span className="receptive-topic">Nói</span>
                   </div>
 
                   <h3>{lesson.title}</h3>
-                  <p>Luyện trả lời câu hỏi theo chủ đề, nghe mẫu và ghi âm để hệ thống chấm độ khớp.</p>
+                  <p>{lesson.description || 'Luyện trả lời câu hỏi theo chủ đề, nghe mẫu và ghi âm để hệ thống chấm độ khớp.'}</p>
 
                   <div className="receptive-card-meta">
                     <span><FiClock /> 8-12 phút</span>

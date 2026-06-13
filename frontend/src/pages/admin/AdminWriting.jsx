@@ -21,6 +21,7 @@ const AdminWriting = () => {
   const [lPassageEN, setLPassageEN] = useState('');
   const [lPassageVI, setLPassageVI] = useState('');
   const [lOrder, setLOrder] = useState(0);
+  const [lFoundation, setLFoundation] = useState(false);
 
   // Exercise state
   const [exContent, setExContent] = useState('');
@@ -82,6 +83,7 @@ const AdminWriting = () => {
     setLPassageEN('');
     setLPassageVI('');
     setLOrder(getNextLessonOrder());
+    setLFoundation(false);
     setShowLessonForm(true);
   };
 
@@ -90,7 +92,8 @@ const AdminWriting = () => {
     Description: lesson.Description || '',
     PassageEN: lesson.PassageEN || '',
     PassageVI: lesson.PassageVI || '',
-    OrderIndex: orderIndex
+    OrderIndex: orderIndex,
+    IsFoundation: Boolean(lesson.IsFoundation)
   });
 
   const handleMoveLesson = async (lessonId, direction) => {
@@ -117,7 +120,14 @@ const AdminWriting = () => {
 
   const handleSaveLesson = async () => {
     try {
-      const data = { Title: lTitle, Description: lDesc, PassageEN: lPassageEN, PassageVI: lPassageVI, OrderIndex: lOrder };
+      const data = {
+        Title: lTitle,
+        Description: lDesc,
+        PassageEN: lPassageEN,
+        PassageVI: lPassageVI,
+        OrderIndex: lOrder,
+        IsFoundation: lFoundation
+      };
       if (editingLesson) {
         await axios.put(`${API_URL}/admin/writing/lessons/${editingLesson.Id}`, data, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -153,7 +163,7 @@ const AdminWriting = () => {
   const closeLessonForm = () => {
     setShowLessonForm(false);
     setEditingLesson(null);
-    setLTitle(''); setLDesc(''); setLPassageEN(''); setLPassageVI(''); setLOrder(0);
+    setLTitle(''); setLDesc(''); setLPassageEN(''); setLPassageVI(''); setLOrder(0); setLFoundation(false);
   };
 
   const handleSelectLesson = (lesson) => {
@@ -276,6 +286,10 @@ const AdminWriting = () => {
               <span className="form-label">Thứ tự</span>
               <input aria-label="Trường nhập" className="form-input" type="number" value={lOrder} onChange={e => setLOrder(e.target.value)} />
             </div>
+            <label className="admin-check-row" style={{ gridColumn: 'span 2' }}>
+              <input type="checkbox" checked={lFoundation} onChange={e => setLFoundation(e.target.checked)} />
+              <span>Bài nền tảng</span>
+            </label>
             <div style={{ gridColumn: 'span 2' }}>
               <span className="form-label">Mô tả</span>
               <textarea aria-label="Nội dung" className="form-input" value={lDesc} onChange={e => setLDesc(e.target.value)} rows={2} />
@@ -291,7 +305,7 @@ const AdminWriting = () => {
           </div>
           <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-2)' }}>
             <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
-            <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Há»§y</button>
+            <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
           </div>
         </div>
       )}
@@ -316,7 +330,7 @@ const AdminWriting = () => {
                 <button type="button" className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => handleMoveLesson(lesson.Id, -1)} title="Đưa lên"><FiArrowUp size={14} /></button>
                 <button type="button" className="btn btn-ghost btn-sm" disabled={index === lessons.length - 1} onClick={() => handleMoveLesson(lesson.Id, 1)} title="Đưa xuống"><FiArrowDown size={14} /></button>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
-                  setEditingLesson(lesson); setLTitle(lesson.Title); setLDesc(lesson.Description); setLPassageEN(lesson.PassageEN || ''); setLPassageVI(lesson.PassageVI || ''); setLOrder(lesson.OrderIndex);
+                  setEditingLesson(lesson); setLTitle(lesson.Title); setLDesc(lesson.Description); setLPassageEN(lesson.PassageEN || ''); setLPassageVI(lesson.PassageVI || ''); setLOrder(lesson.OrderIndex); setLFoundation(Boolean(lesson.IsFoundation));
                   setShowLessonForm(true);
                 }}><FiEdit2 size={14} /></button>
                 <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteLesson(lesson.Id)}><FiTrash2 size={14} /></button>
@@ -348,7 +362,7 @@ const AdminWriting = () => {
                     </div>
                     <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
                       <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveEx}><FiSave /> Lưu</button>
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={closeExForm}><FiX /> Há»§y</button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={closeExForm}><FiX /> Hủy</button>
                     </div>
                   </div>
                 )}
@@ -453,7 +467,7 @@ const VocabManager = ({ exId }) => {
           <input aria-label="Trường nhập" className="input input-sm" style={{ height: 24 }} placeholder="Từ" value={w} onChange={e => setW(e.target.value)} />
           <input aria-label="Trường nhập" className="input input-sm" style={{ height: 24 }} placeholder="NghÄ©a" value={m} onChange={e => setM(e.target.value)} />
           <button type="button" className="btn btn-primary btn-xs" onClick={add}>Lưu</button>
-          <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAdd(false)}>Há»§y</button>
+          <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAdd(false)}>Hủy</button>
         </div>
       )}
     </div>

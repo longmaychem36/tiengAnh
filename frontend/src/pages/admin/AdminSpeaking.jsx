@@ -18,6 +18,7 @@ const AdminSpeaking = () => {
   // Lesson state
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonDesc, setLessonDesc] = useState('');
+  const [lessonFoundation, setLessonFoundation] = useState(false);
   const [lessonOrder, setLessonOrder] = useState(0);
 
   // Question state
@@ -67,6 +68,7 @@ const AdminSpeaking = () => {
     setEditingLesson(null);
     setLessonTitle('');
     setLessonDesc('');
+    setLessonFoundation(false);
     setLessonOrder(getNextLessonOrder());
     setShowLessonForm(true);
   };
@@ -74,6 +76,7 @@ const AdminSpeaking = () => {
   const buildLessonPayload = (lesson, orderIndex = lesson.OrderIndex) => ({
     Title: lesson.Title,
     Description: lesson.Description || '',
+    IsFoundation: Boolean(lesson.IsFoundation),
     OrderIndex: orderIndex
   });
 
@@ -101,7 +104,7 @@ const AdminSpeaking = () => {
 
   const handleSaveLesson = async () => {
     try {
-      const data = { Title: lessonTitle, Description: lessonDesc, OrderIndex: lessonOrder };
+      const data = { Title: lessonTitle, Description: lessonDesc, IsFoundation: lessonFoundation, OrderIndex: lessonOrder };
       if (editingLesson) {
         await axios.put(`${API_URL}/admin/speaking/lessons/${editingLesson.Id}`, data, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -139,6 +142,7 @@ const AdminSpeaking = () => {
     setEditingLesson(null);
     setLessonTitle('');
     setLessonDesc('');
+    setLessonFoundation(false);
     setLessonOrder(0);
   };
 
@@ -270,12 +274,16 @@ const AdminSpeaking = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
             <div>
               <span className="form-label">Tiêu đề</span>
-              <input aria-label="Trường nhập" className="form-input" value={lessonTitle} onChange={e => setLessonTitle(e.target.value)} placeholder="VD: Chào hỏi cÆ¡ bản" />
+              <input aria-label="Trường nhập" className="form-input" value={lessonTitle} onChange={e => setLessonTitle(e.target.value)} placeholder="VD: Chào hỏi cơ bản" />
             </div>
             <div>
               <span className="form-label">Thứ tự</span>
               <input aria-label="Trường nhập" className="form-input" type="number" value={lessonOrder} onChange={e => setLessonOrder(e.target.value)} />
             </div>
+            <label className="admin-check-row" style={{ gridColumn: 'span 2' }}>
+              <input type="checkbox" checked={lessonFoundation} onChange={e => setLessonFoundation(e.target.checked)} />
+              <span>Bài nền tảng</span>
+            </label>
             <div style={{ gridColumn: 'span 2' }}>
               <span className="form-label">Mô tả</span>
               <textarea aria-label="Nội dung" className="form-input" value={lessonDesc} onChange={e => setLessonDesc(e.target.value)} rows={2} />
@@ -283,7 +291,7 @@ const AdminSpeaking = () => {
           </div>
           <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-2)' }}>
             <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
-            <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Há»§y</button>
+            <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
           </div>
         </div>
       )}
@@ -310,6 +318,7 @@ const AdminSpeaking = () => {
                   setEditingLesson(lesson);
                   setLessonTitle(lesson.Title);
                   setLessonDesc(lesson.Description);
+                  setLessonFoundation(Boolean(lesson.IsFoundation));
                   setLessonOrder(lesson.OrderIndex);
                   setShowLessonForm(true);
                 }}><FiEdit2 size={14} /></button>
@@ -369,7 +378,7 @@ const AdminSpeaking = () => {
                     </div>
                     <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
                       <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveQuestion}><FiSave /> Lưu</button>
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={closeQuestionForm}><FiX /> Há»§y</button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={closeQuestionForm}><FiX /> Hủy</button>
                     </div>
                   </div>
                 )}

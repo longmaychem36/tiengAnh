@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const { sql, getPool } = require('../../config/database');
 const { generateToken } = require('../../config/jwt');
 const billingService = require('../billing/billing.service');
+const { ensureOnboardingSchema } = require('../onboarding/onboarding.schema');
 
 let profileSchemaReady = false;
 
@@ -27,6 +28,15 @@ function getPlanInfo(user = {}) {
   };
 }
 
+function getOnboardingInfo(user = {}) {
+  return {
+    onboardingCompleted: Boolean(user.OnboardingCompleted ?? user.onboardingcompleted),
+    placementLevel: user.PlacementLevel || user.placementlevel || null,
+    placementSource: user.PlacementSource || user.placementsource || null,
+    placementCompletedAt: user.PlacementCompletedAt || user.placementcompletedat || null
+  };
+}
+
 const authService = {
   /**
    * Register a new user
@@ -35,6 +45,7 @@ const authService = {
     const pool = getPool();
     await billingService.ensureBillingSchema();
     await ensureProfileSchema();
+    await ensureOnboardingSchema();
 
     // Check if user already exists
     const existing = await pool.request()
@@ -56,8 +67,9 @@ const authService = {
       .input('email', sql.NVarChar, email)
       .input('passwordHash', sql.NVarChar, passwordHash)
       .query(`
-        INSERT INTO Users (Username, Email, PasswordHash, Role, Plan)
-        VALUES (@username, @email, @passwordHash, 'user', 'free') RETURNING Id, Username, Email, Role, Plan, PlusExpiresAt, AvatarUrl, CreatedAt
+        INSERT INTO Users (Username, Email, PasswordHash, Role, Plan, OnboardingCompleted, PlacementLevel, PlacementSource, PlacementCompletedAt)
+        VALUES (@username, @email, @passwordHash, 'user', 'free', false, NULL, NULL, NULL)
+        RETURNING Id, Username, Email, Role, Plan, PlusExpiresAt, AvatarUrl, OnboardingCompleted, PlacementLevel, PlacementSource, PlacementCompletedAt, CreatedAt
       `);
 
     const user = result.recordset[0];
@@ -85,6 +97,7 @@ const authService = {
         role: user.Role,
         avatarUrl: user.AvatarUrl || null,
         ...getPlanInfo(user),
+        ...getOnboardingInfo(user),
         createdAt: user.CreatedAt
       },
       token
@@ -98,12 +111,14 @@ const authService = {
     const pool = getPool();
     await billingService.ensureBillingSchema();
     await ensureProfileSchema();
+    await ensureOnboardingSchema();
 
     // Find user
     const result = await pool.request()
       .input('email', sql.NVarChar, email)
       .query(`
-        SELECT u.Id, u.Username, u.Email, u.PasswordHash, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.AvatarUrl, u.CreatedAt,
+        SELECT u.Id, u.Username, u.Email, u.PasswordHash, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.AvatarUrl,
+               u.OnboardingCompleted, u.PlacementLevel, u.PlacementSource, u.PlacementCompletedAt, u.CreatedAt,
                ll.Code as LevelCode, ll.Name as LevelName,
                us.Exp, us.Level as GameLevel, us.StreakDays
         FROM Users u
@@ -153,6 +168,7 @@ const authService = {
         role: user.Role,
         avatarUrl: user.AvatarUrl || null,
         ...getPlanInfo(user),
+        ...getOnboardingInfo(user),
         level: user.LevelCode ? { code: user.LevelCode, name: user.LevelName } : null,
         stats: {
           exp: user.Exp || 0,
@@ -172,11 +188,13 @@ const authService = {
     const pool = getPool();
     await billingService.ensureBillingSchema();
     await ensureProfileSchema();
+    await ensureOnboardingSchema();
 
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
       .query(`
-        SELECT u.Id, u.Username, u.Email, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.AvatarUrl, u.CreatedAt,
+        SELECT u.Id, u.Username, u.Email, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.AvatarUrl,
+               u.OnboardingCompleted, u.PlacementLevel, u.PlacementSource, u.PlacementCompletedAt, u.CreatedAt,
                ll.Code as LevelCode, ll.Name as LevelName,
                us.Exp, us.Level as GameLevel, us.StreakDays, us.LastLogin
         FROM Users u
@@ -195,6 +213,7 @@ const authService = {
       role: user.Role,
       avatarUrl: user.AvatarUrl || null,
       ...getPlanInfo(user),
+      ...getOnboardingInfo(user),
       level: user.LevelCode ? { code: user.LevelCode, name: user.LevelName } : null,
       stats: {
         exp: user.Exp || 0,

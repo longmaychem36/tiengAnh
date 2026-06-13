@@ -1,4 +1,5 @@
 const { getPool } = require('../../config/database');
+const { ensureOnboardingSchema, getUserPlacementLevel } = require('../onboarding/onboarding.schema');
 
 const SKILL_CONFIG = {
   listening: {
@@ -62,6 +63,8 @@ const receptiveService = {
   async getLessons(skill, userId) {
     const config = getConfig(skill);
     const pool = getPool();
+    await ensureOnboardingSchema();
+    const placementLevel = await getUserPlacementLevel(userId);
 
     const result = await pool.query(`
       SELECT l.*, COUNT(q.Id) AS question_count
@@ -77,10 +80,13 @@ const receptiveService = {
       WHERE UserId = $1
     `, [userId]);
     const progressMap = new Map(progressResult.rows.map((row) => [String(row.lessonid), row]));
+    const visibleRows = placementLevel === 'basic'
+      ? result.rows.filter((row) => !row.isfoundation)
+      : result.rows;
 
-    return result.rows.map((row, index) => {
+    return visibleRows.map((row, index) => {
       const progress = progressMap.get(String(row.id));
-      const previousRow = result.rows[index - 1];
+      const previousRow = visibleRows[index - 1];
       const previousProgress = previousRow ? progressMap.get(String(previousRow.id)) : null;
 
       return {
@@ -94,6 +100,7 @@ const receptiveService = {
         passageTitle: row.passagetitle || '',
         audioUrl: row.audiourl || '',
         orderIndex: row.orderindex || 0,
+        isFoundation: Boolean(row.isfoundation),
         questionCount: Number(row.question_count || 0),
         isCompleted: progress?.status === 'completed',
         score: progress?.score || 0,
@@ -102,9 +109,10 @@ const receptiveService = {
     });
   },
 
-  async getLessonDetails(skill, lessonId) {
+  async getLessonDetails(skill, lessonId, userId) {
     const config = getConfig(skill);
     const pool = getPool();
+    await ensureOnboardingSchema();
 
     const lessonResult = await pool.query(`
       SELECT *
@@ -114,6 +122,9 @@ const receptiveService = {
 
     if (lessonResult.rows.length === 0) return null;
     const lessonRow = lessonResult.rows[0];
+    if (userId && lessonRow.isfoundation && await getUserPlacementLevel(userId) === 'basic') {
+      return null;
+    }
 
     const contentQuery = skill === 'listening'
       ? `
@@ -166,6 +177,7 @@ const receptiveService = {
       duration: lessonRow.duration || '',
       passageTitle: lessonRow.passagetitle || lessonRow.title,
       audioUrl: lessonRow.audiourl || '',
+      isFoundation: Boolean(lessonRow.isfoundation),
       speakers: speakerResult.rows.map((row) => ({
         id: row.id,
         name: row.name,

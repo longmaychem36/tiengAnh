@@ -7,6 +7,7 @@ const { sql, getPool } = require('../../config/database');
 const gamificationService = require('../gamification/gamification.service');
 const dailyService = require('../daily/daily.service');
 const { EXP_REWARDS } = require('../../utils/constants');
+const { ensureOnboardingSchema, getUserPlacementLevel } = require('../onboarding/onboarding.schema');
 
 const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
 const NVIDIA_MODEL = process.env.WRITING_NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
@@ -255,11 +256,13 @@ const writingController = {
   async getLessons(req, res, next) {
     try {
       const pool = getPool();
+      await ensureOnboardingSchema();
+      const placementLevel = await getUserPlacementLevel(req.user.id);
       const query = `
-        SELECT l.Id, l.Title, l.Description, l.OrderIndex, COUNT(e.Id) as ExerciseCount
+        SELECT l.Id, l.Title, l.Description, l.OrderIndex, l.IsFoundation, COUNT(e.Id) as ExerciseCount
         FROM WritingLessons l
         LEFT JOIN WritingExercises e ON e.LessonId = l.Id
-        GROUP BY l.Id, l.Title, l.Description, l.OrderIndex
+        GROUP BY l.Id, l.Title, l.Description, l.OrderIndex, l.IsFoundation
         ORDER BY l.OrderIndex ASC
       `;
       const result = await pool.query(query);
@@ -267,15 +270,19 @@ const writingController = {
       const progressQuery = `SELECT LessonId FROM WritingProgress WHERE UserId = $1 AND Status = 'completed'`;
       const progressResult = await pool.query(progressQuery, [req.user.id]);
       const completedLessons = progressResult.rows.map(r => r.lessonid);
+      const visibleRows = placementLevel === 'basic'
+        ? result.rows.filter((row) => !row.isfoundation)
+        : result.rows;
 
-      const lessons = result.rows.map((row, index) => {
+      const lessons = visibleRows.map((row, index) => {
         const isCompleted = completedLessons.includes(row.id);
-        const isLocked = index > 0 && !completedLessons.includes(result.rows[index - 1].id);
+        const isLocked = index > 0 && !completedLessons.includes(visibleRows[index - 1].id);
         
         return {
           id: row.id,
           title: row.title,
           description: row.description,
+          isFoundation: Boolean(row.isfoundation),
           exerciseCount: row.exercisecount,
           isCompleted,
           isLocked
@@ -292,13 +299,17 @@ const writingController = {
     try {
       const { id } = req.params;
       const pool = getPool();
+      await ensureOnboardingSchema();
       
       const lessonResult = await pool.query(`
-        SELECT Id, Title, Description, PassageEN, PassageVI
+        SELECT Id, Title, Description, PassageEN, PassageVI, IsFoundation
         FROM WritingLessons
         WHERE Id = $1
       `, [id]);
       if (lessonResult.rows.length === 0) return badRequest(res, 'Lesson not found');
+      if (lessonResult.rows[0].isfoundation && await getUserPlacementLevel(req.user.id) === 'basic') {
+        return badRequest(res, 'Lesson not found');
+      }
 
       const exerResult = await pool.query(`
         SELECT Id, ContentVI, CorrectAnswerEN
@@ -327,6 +338,7 @@ const writingController = {
           id: lesson.id,
           title: lesson.title,
           description: lesson.description,
+          isFoundation: Boolean(lesson.isfoundation),
           passageEN: lesson.passageen || buildFallbackPassage(exercises, 'correctAnswerEN'),
           passageVI: lesson.passagevi || buildFallbackPassage(exercises, 'contentVI')
         },

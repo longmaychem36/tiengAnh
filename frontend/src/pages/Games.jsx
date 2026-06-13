@@ -38,6 +38,12 @@ const typeMeta = {
   }
 };
 
+const difficultyLabels = {
+  easy: 'Dễ',
+  medium: 'Vừa',
+  hard: 'Khó'
+};
+
 function Games() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -149,7 +155,7 @@ function Games() {
                     )}
                   </span>
 
-                  <span className="game-difficulty">{difficulty}</span>
+                  <span className="game-difficulty">{difficultyLabels[difficulty] || difficulty}</span>
                   {!locked && <span className="game-level-play"><FiPlay /></span>}
                 </motion.button>
               );
@@ -165,20 +171,20 @@ function Games() {
       <section className="game-hero">
         <div>
           <span className="game-kicker">Arcade học từ vựng</span>
-          <h1>Mini Games</h1>
-          <p>Nối từ, nghe chọn, nghe xếp câu và đúng/sai trong một khu luyện tập nhanh, có cấp độ và điểm thưởng.</p>
+          <h1>Mini game</h1>
+          <p>Luyện nhanh theo cấp độ và nhận EXP sau mỗi màn.</p>
         </div>
         <div className="game-hero-panel">
           <FiZap />
           <strong>Chơi nhanh</strong>
-          <span>Hoàn thành level để nhận EXP và sao.</span>
+          <span>Hoàn thành màn chơi để nhận EXP và sao.</span>
         </div>
       </section>
 
       {sets.length === 0 && (
         <div className="game-empty">
           <FiLock />
-          <p>Chưa có game nào.</p>
+          <p>Chưa có trò chơi nào.</p>
         </div>
       )}
 

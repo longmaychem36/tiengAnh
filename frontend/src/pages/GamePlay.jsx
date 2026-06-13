@@ -321,7 +321,7 @@ function GamePlay() {
   };
 
   if (loading) return <Loading />;
-  if (!levelData) return <div className="game-empty">Không tìm thấy level</div>;
+  if (!levelData) return <div className="game-empty">Không tìm thấy màn chơi</div>;
 
   const { level, questions } = levelData;
 
@@ -334,7 +334,7 @@ function GamePlay() {
           className="game-result-card"
         >
           <div className="game-result-icon">{result.score >= 90 ? '🏆' : result.score >= 70 ? '⭐' : result.score >= 50 ? '👍' : '💪'}</div>
-          <span className="game-kicker">Kết quả level</span>
+          <span className="game-kicker">Kết quả màn chơi</span>
           <h1>{result.passed ? 'Xuất sắc!' : 'Cố gắng thêm nhé!'}</h1>
 
           <div className="game-result-score">{result.score}%</div>
@@ -363,7 +363,7 @@ function GamePlay() {
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/games')}><FiArrowLeft /> Quay lại</button>
             {result.passed && nextLevel && (
               <button type="button" className="btn btn-primary" onClick={() => navigate(`/games/play/${nextLevel.Id}`)}>
-                Level tiếp theo <FiArrowRight />
+                Màn tiếp theo <FiArrowRight />
               </button>
             )}
             <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}><FiRefreshCw /> Chơi lại</button>

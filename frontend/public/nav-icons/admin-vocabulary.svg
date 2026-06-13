@@ -1,0 +1,6 @@
+<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Vocabulary">
+  <rect x="12" y="15" width="44" height="42" rx="7" fill="#58CC02" stroke="#111827" stroke-width="3"/>
+  <rect x="20" y="23" width="44" height="42" rx="7" fill="#FFFFFF" stroke="#111827" stroke-width="3"/>
+  <path d="M29 35h25M29 44h19M29 53h23" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="22" cy="17" r="5" fill="#FF4B4B" stroke="#111827" stroke-width="3"/>
+</svg>

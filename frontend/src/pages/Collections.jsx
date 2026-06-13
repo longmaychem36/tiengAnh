@@ -85,7 +85,7 @@ function Vocabulary() {
       setMyDecks(getData(mineRes, []));
       setPublicDecks(getData(publicRes, []));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Không tải được Vocabulary.'));
+      toast.error(getErrorMessage(err, 'Không tải được từ vựng.'));
     } finally {
       setLoading(false);
     }
@@ -123,7 +123,7 @@ function Vocabulary() {
   const saveDeck = async (event) => {
     event.preventDefault();
     if (!deckForm.name.trim()) return toast.error('Nhập tên học phần.');
-    if (deckForm.isPublic && !isPlus) return toast.error('Tạo học phần public là tính năng Plus.');
+    if (deckForm.isPublic && !isPlus) return toast.error('Tạo học phần công khai là tính năng Plus.');
 
     try {
       if (editingDeck) {
@@ -131,7 +131,7 @@ function Vocabulary() {
         toast.success(deckForm.isPublic ? 'Đã gửi lại để admin duyệt.' : 'Đã cập nhật học phần.');
       } else {
         await collectionApi.createCollection(deckForm);
-        toast.success(deckForm.isPublic ? 'Đã tạo học phần public, đang chờ duyệt.' : 'Đã tạo học phần.');
+        toast.success(deckForm.isPublic ? 'Đã tạo học phần công khai, đang chờ duyệt.' : 'Đã tạo học phần.');
       }
       setShowDeckModal(false);
       setDeckForm(emptyDeckForm);
@@ -222,8 +222,8 @@ function Vocabulary() {
     return (
       <VocabularyGate
         items={vocabularyItems}
-        title={selectedDeck?.Name || 'Vocabulary'}
-        skillLabel="Vocabulary"
+        title={selectedDeck?.Name || 'Từ vựng'}
+        skillLabel="Từ vựng"
         gateKey={`vocabulary-${selectedDeck?.Id}`}
         allowStudy={false}
         passMessage="Đã hoàn thành ôn từ vựng."
@@ -242,7 +242,7 @@ function Vocabulary() {
     <div>
       <div className="page-header flex-between" style={{ alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
         <div>
-          <h1>Vocabulary</h1>
+          <h1>Từ vựng</h1>
         </div>
         {activeTab === 'mine' && (
           <button type="button" className="btn btn-primary" onClick={openCreateDeck}>
@@ -256,7 +256,7 @@ function Vocabulary() {
           <FiBookOpen /> Học phần của tôi
         </button>
         <button type="button" className={`btn ${activeTab === 'public' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('public')}>
-          <FiGlobe /> Học phần public
+          <FiGlobe /> Học phần công khai
         </button>
       </div>
 
@@ -294,7 +294,7 @@ function Vocabulary() {
 
             {selectedDeck.IsPublic && selectedDeck.ReviewStatus !== 'approved' && activeTab === 'mine' && (
               <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)', background: '#fef3c7', color: '#92400e', marginBottom: 'var(--space-4)' }}>
-                Học phần public chỉ hiển thị cho người khác sau khi admin duyệt.
+                Học phần công khai chỉ hiển thị cho người khác sau khi admin duyệt.
               </div>
             )}
 
@@ -358,7 +358,7 @@ function Vocabulary() {
                     <h3 style={{ fontWeight: 800, marginBottom: 6 }}>{deck.Name}</h3>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                       <span className="badge badge-primary">{Number(deck.WordCount || 0)} từ</span>
-                      {deck.IsPublic && <span className="badge badge-secondary"><FiGlobe /> Public</span>}
+                      {deck.IsPublic && <span className="badge badge-secondary"><FiGlobe /> Công khai</span>}
                       {activeTab === 'mine' && deck.IsPublic && <span className="badge badge-secondary">{statusLabel(deck.ReviewStatus)}</span>}
                     </div>
                     <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>{deck.Description}</p>
@@ -397,7 +397,7 @@ function Vocabulary() {
                 disabled={!isPlus}
                 onChange={(e) => setDeckForm({ ...deckForm, isPublic: e.target.checked })}
               />
-              <span>Đăng public {isPlus ? '(cần admin duyệt)' : '(Plus)'}</span>
+              <span>Đăng công khai {isPlus ? '(cần admin duyệt)' : '(Plus)'}</span>
               {!isPlus && <FiLock />}
             </label>
             <div className="flex gap-2" style={{ marginTop: 'var(--space-5)' }}>

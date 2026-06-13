@@ -11,6 +11,7 @@ const billingService = require('../billing/billing.service');
 const gamificationService = require('../gamification/gamification.service');
 const dailyService = require('../daily/daily.service');
 const { EXP_REWARDS } = require('../../utils/constants');
+const { ensureOnboardingSchema, getUserPlacementLevel } = require('../onboarding/onboarding.schema');
 
 const WHISPER_SERVER_URL = process.env.WHISPER_SERVER_URL || 'http://127.0.0.1:5001';
 const WHISPER_TIMEOUT_MS = Number.parseInt(process.env.WHISPER_TIMEOUT_MS, 10) || 45000;
@@ -548,11 +549,13 @@ const speakingController = {
   async getLessons(req, res, next) {
     try {
       const { sql, getPool } = require('../../config/database');
+      await ensureOnboardingSchema();
+      const placementLevel = await getUserPlacementLevel(req.user.id);
       const query = `
-        SELECT l.Id, l.Title as Name, l.OrderIndex, COUNT(q.Id) as QuestionCount
+        SELECT l.Id, l.Title as Name, l.Description, l.OrderIndex, l.IsFoundation, COUNT(q.Id) as QuestionCount
         FROM SpeakingLessons l
         LEFT JOIN SpeakingQuestions q ON q.LessonId = l.Id
-        GROUP BY l.Id, l.Title, l.OrderIndex
+        GROUP BY l.Id, l.Title, l.Description, l.OrderIndex, l.IsFoundation
         ORDER BY l.OrderIndex ASC
       `;
       const pool = getPool();
@@ -561,14 +564,19 @@ const speakingController = {
       const progressQuery = `SELECT LessonId FROM SpeakingProgress WHERE UserId = @userId AND Status = 'completed'`;
       const progressResult = await pool.request().input('userId', sql.UniqueIdentifier, req.user.id).query(progressQuery);
       const completedLevels = progressResult.recordset.map(r => r.LessonId);
+      const visibleLessons = placementLevel === 'basic'
+        ? result.recordset.filter((row) => !row.IsFoundation)
+        : result.recordset;
 
-      const lessons = result.recordset.map((row, index) => {
+      const lessons = visibleLessons.map((row, index) => {
         const isCompleted = completedLevels.includes(row.Id);
-        const isLocked = index > 0 && !completedLevels.includes(result.recordset[index - 1].Id);
+        const isLocked = index > 0 && !completedLevels.includes(visibleLessons[index - 1].Id);
         
         return {
           id: row.Id,
           title: row.Name,
+          description: row.Description || '',
+          isFoundation: Boolean(row.IsFoundation),
           questionCount: row.QuestionCount,
           isCompleted,
           isLocked
@@ -585,10 +593,14 @@ const speakingController = {
     try {
       const { sql, getPool } = require('../../config/database');
       const { id } = req.params;
+      await ensureOnboardingSchema();
       
       const pool = getPool();
-      const levelResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`SELECT Id, Title as Name FROM SpeakingLessons WHERE Id = @id`);
+      const levelResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`SELECT Id, Title as Name, IsFoundation FROM SpeakingLessons WHERE Id = @id`);
       if (levelResult.recordset.length === 0) return badRequest(res, 'Lesson not found');
+      if (levelResult.recordset[0].IsFoundation && await getUserPlacementLevel(req.user.id) === 'basic') {
+        return badRequest(res, 'Lesson not found');
+      }
 
       const qResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`
         SELECT Id, Question, Translation, Option1, Option1VI, Option2, Option2VI, Option3, Option3VI
@@ -611,7 +623,7 @@ const speakingController = {
       });
 
       return success(res, { 
-        lesson: { id: levelResult.recordset[0].Id, title: levelResult.recordset[0].Name },
+        lesson: { id: levelResult.recordset[0].Id, title: levelResult.recordset[0].Name, isFoundation: Boolean(levelResult.recordset[0].IsFoundation) },
         sentences 
       });
     } catch (err) {

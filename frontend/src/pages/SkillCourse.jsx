@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiArrowLeft, FiPlay, FiCheck, FiMic, FiHeadphones, FiEdit3, FiBookOpen, FiStar, FiLock } from 'react-icons/fi';
 import { gameApi } from '../api/gameApi';
@@ -20,10 +20,10 @@ function SkillCourse() {
   };
 
   const getTitle = () => {
-    if (type === 'speaking') return 'Khoá Học Luyện Nói';
-    if (type === 'listening') return 'Khoá Học Luyện Nghe';
-    if (type === 'reading') return 'Khoá Học Luyện Đọc';
-    return 'Khoá Học Luyện Viết';
+    if (type === 'speaking') return 'Khóa học luyện nói';
+    if (type === 'listening') return 'Khóa học luyện nghe';
+    if (type === 'reading') return 'Khóa học luyện đọc';
+    return 'Khóa học luyện viết';
   };
 
   useEffect(() => {
@@ -50,10 +50,9 @@ function SkillCourse() {
   return (
     <div className="fade-in" style={{ maxWidth: 800, margin: '0 auto' }}>
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/courses')} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
-        <FiArrowLeft /> Về Trung tâm Khoá học
+        <FiArrowLeft /> Về khóa học
       </button>
 
-      {/* Course Header */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -70,14 +69,12 @@ function SkillCourse() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--font-size-sm)', opacity: 0.85 }}>
-          <span>📚 {levels.length} Cấp độ phát âm</span>
-          <span>👤 Giảng viên: Hệ thống AI</span>
+          <span>{levels.length} màn luyện tập</span>
         </div>
       </motion.div>
 
-      {/* Syllabus List */}
       <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>
-        Lộ Trình Học Tập
+        Lộ trình học tập
       </h2>
       
       {!set && (
@@ -103,7 +100,6 @@ function SkillCourse() {
                   padding: 'var(--space-5)'
                 }}
               >
-                {/* Level Icon */}
                 <div style={{
                   width: 50, height: 50, flexShrink: 0,
                   borderRadius: 'var(--radius-lg)',
@@ -115,7 +111,6 @@ function SkillCourse() {
                   {locked ? <FiLock size={20} /> : completed ? <FiCheck size={24} /> : i + 1}
                 </div>
                 
-                {/* Content */}
                 <div style={{ flex: 1 }}>
                   <h3 style={{ fontWeight: 700, fontSize: 'var(--font-size-lg)', marginBottom: 4, color: locked ? 'var(--color-text-muted)' : 'inherit' }}>
                     {level.Name}
@@ -126,7 +121,6 @@ function SkillCourse() {
                   </div>
                 </div>
 
-                {/* Score / Action */}
                 {!locked && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
                     {level.UserScore > 0 && (

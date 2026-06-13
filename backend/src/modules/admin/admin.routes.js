@@ -7,10 +7,70 @@ const { requireRole, superAdminOnly } = require('../../middlewares/roleMiddlewar
 const adminGameService = require('./admin.game.service');
 const adminUserService = require('./admin.user.service');
 const adminContentService = require('./admin.content.service');
+const adminPlacementService = require('./admin.placement.service');
 const { success, badRequest, notFound } = require('../../utils/responseHelper');
 
 // All admin routes require at least admin role
 router.use(authMiddleware);
+
+// ========== PLACEMENT TEST MANAGEMENT (admin + superadmin) ==========
+router.get('/placement/tests', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminPlacementService.getTests();
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/placement/tests', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminPlacementService.createTest(req.body);
+    return success(res, data, 'Placement test created');
+  } catch (err) { next(err); }
+});
+
+router.put('/placement/tests/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminPlacementService.updateTest(req.params.id, req.body);
+    if (!data) return notFound(res, 'Placement test not found');
+    return success(res, data, 'Placement test updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/placement/tests/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminPlacementService.deleteTest(req.params.id);
+    return success(res, null, 'Placement test deleted');
+  } catch (err) { next(err); }
+});
+
+router.get('/placement/tests/:id/questions', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminPlacementService.getQuestions(req.params.id);
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
+router.post('/placement/questions', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminPlacementService.createQuestion(req.body);
+    return success(res, data, 'Placement question created');
+  } catch (err) { next(err); }
+});
+
+router.put('/placement/questions/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminPlacementService.updateQuestion(req.params.id, req.body);
+    if (!data) return notFound(res, 'Placement question not found');
+    return success(res, data, 'Placement question updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/placement/questions/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminPlacementService.deleteQuestion(req.params.id);
+    return success(res, null, 'Placement question deleted');
+  } catch (err) { next(err); }
+});
 
 // ========== SPEAKING MANAGEMENT (admin + superadmin) ==========
 router.get('/speaking/lessons', requireRole('admin'), async (req, res, next) => {

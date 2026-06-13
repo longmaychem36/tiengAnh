@@ -23,24 +23,6 @@ const gamificationController = {
     } catch (err) {
       next(err);
     }
-  },
-
-  async getAllAchievements(req, res, next) {
-    try {
-      const achievements = await gamificationService.getAllAchievements();
-      return success(res, achievements);
-    } catch (err) {
-      next(err);
-    }
-  },
-
-  async getMyAchievements(req, res, next) {
-    try {
-      const achievements = await gamificationService.getUserAchievements(req.user.id);
-      return success(res, achievements);
-    } catch (err) {
-      next(err);
-    }
   }
 };
 

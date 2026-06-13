@@ -14,7 +14,6 @@ import toast from 'react-hot-toast';
 
 import { writingApi } from '../../api/writingApi';
 import Loading from '../common/Loading';
-import CourseGuide from '../common/CourseGuide';
 
 const getLevelLabel = (index) => {
   if (index < 2) return 'A1';
@@ -54,9 +53,8 @@ const WritingList = () => {
 
       <section className="receptive-hero">
         <div>
-          <span className="receptive-eyebrow">Writing course</span>
-          <h1>Luyện Viết Theo Lộ Trình</h1>
-          <p>Luyện viết từ câu đơn đến đoạn văn hoàn chỉnh, có từ vựng gợi ý, phản hồi chấm điểm và bài mẫu song ngữ.</p>
+          <span className="receptive-eyebrow">Khóa luyện viết</span>
+          <h1>Luyện viết theo lộ trình</h1>
           <div className="receptive-hero-stats">
             <span><FiTarget /> {lessons.length} chủ đề</span>
             <span><FiCheck /> {summary.completed} đã hoàn thành</span>
@@ -68,22 +66,10 @@ const WritingList = () => {
         </div>
       </section>
 
-      <CourseGuide
-        storageKey="writing_course_guide_seen"
-        title="Luyện Viết"
-        description="Hướng dẫn này chỉ hiện một lần. Trong bài học, màn viết sẽ được giữ gọn để bạn tập trung làm bài."
-        steps={[
-          'Đọc kỹ câu tiếng Việt và xem từ vựng gợi ý nếu có.',
-          'Viết câu tiếng Anh ngắn, rõ ý, đúng cấu trúc trước.',
-          'Chấm điểm, so với đáp án mẫu và sửa lại đến khi đạt từ 80%.'
-        ]}
-      />
-
       <section className="receptive-section">
         <div className="receptive-section-title">
           <div>
             <h2>Lộ trình viết</h2>
-            <p>Mỗi chủ đề gồm nhiều câu luyện tập và phần tổng kết thành một bài viết hoàn chỉnh.</p>
           </div>
         </div>
 
@@ -115,7 +101,7 @@ const WritingList = () => {
                     <span className="receptive-card-index">
                       {isLocked ? <FiLock /> : isCompleted ? <FiCheck /> : index + 1}
                     </span>
-                    <span className="receptive-topic">Writing</span>
+                    <span className="receptive-topic">Viết</span>
                   </div>
 
                   <h3>{lesson.title}</h3>

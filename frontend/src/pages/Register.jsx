@@ -22,9 +22,9 @@ function Register() {
     }
     setLoading(true);
     try {
-      await register({ username: form.username, email: form.email, password: form.password });
-      toast.success('Account created successfully! 🎉');
-      navigate('/dashboard');
+      const userData = await register({ username: form.username, email: form.email, password: form.password });
+      toast.success('Tạo tài khoản thành công.');
+      navigate(userData.onboardingCompleted === false ? '/onboarding' : '/dashboard');
     } catch (err) {
       toast.error(err.message || 'Registration failed');
     } finally {

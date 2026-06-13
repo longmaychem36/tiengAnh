@@ -13,7 +13,6 @@ import {
 
 import { getReceptiveLessons, receptiveSkillMeta } from '../../data/receptiveLessons';
 import { receptiveApi } from '../../api/receptiveApi';
-import CourseGuide from '../common/CourseGuide';
 import Loading from '../common/Loading';
 
 const getStoredProgress = (skill) => {
@@ -76,18 +75,6 @@ const ReceptiveLessonList = ({ skill }) => {
     source === 'api' ? lesson.isCompleted : progress[lesson.id]?.completed
   )).length;
 
-  const guideSteps = skill === 'listening'
-    ? [
-      'Nghe toàn bài trước khi mở transcript.',
-      'Trả lời câu hỏi theo trí nhớ, sau đó mới xem giải thích.',
-      'Mở transcript để nghe lại những câu khó và luyện lại nếu điểm dưới 70%.'
-    ]
-    : [
-      'Đọc lướt bài một lần để nắm ý chính.',
-      'Trả lời câu hỏi, ưu tiên tìm thông tin trong đoạn văn thay vì đoán.',
-      'Xem lại từ vựng được đánh dấu và luyện lại nếu điểm dưới 70%.'
-    ];
-
   if (loading) return <Loading />;
 
   return (
@@ -100,7 +87,6 @@ const ReceptiveLessonList = ({ skill }) => {
         <div>
           <span className="receptive-eyebrow">{meta.subtitle}</span>
           <h1>{meta.title}</h1>
-          <p>{meta.description}</p>
           <div className="receptive-hero-stats">
             <span><FiTarget /> {lessons.length} bài học</span>
             <span><FiCheck /> {completedCount} đã hoàn thành</span>
@@ -111,18 +97,10 @@ const ReceptiveLessonList = ({ skill }) => {
         </div>
       </section>
 
-      <CourseGuide
-        storageKey={`${skill}_course_guide_seen`}
-        title={meta.title}
-        description="Hướng dẫn này chỉ hiện một lần trên máy hiện tại. Khi vào từng bài, màn làm bài sẽ được tối giản để tập trung luyện tập."
-        steps={guideSteps}
-      />
-
       <section className="receptive-section">
         <div className="receptive-section-title">
           <div>
             <h2>Lộ trình gợi ý</h2>
-            <p>Học lần lượt từ dễ đến khó, mỗi bài gồm từ vựng, nội dung chính và bài kiểm tra hiểu.</p>
           </div>
         </div>
 

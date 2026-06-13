@@ -10,7 +10,5 @@ router.use(authMiddleware, learnerOnly());
 
 router.get('/stats', gamificationController.getStats);
 router.post('/exp', gamificationController.addExp);
-router.get('/achievements', gamificationController.getAllAchievements);
-router.get('/achievements/my', gamificationController.getMyAchievements);
 
 module.exports = router;

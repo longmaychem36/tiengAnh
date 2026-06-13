@@ -19,12 +19,12 @@ function Login() {
     setLoading(true);
     try {
       const userData = await login(form);
-      toast.success('Welcome back! 🎉');
+      toast.success('Đăng nhập thành công.');
       // Redirect admin/superadmin to admin dashboard
       if (userData.role === 'admin' || userData.role === 'superadmin') {
         navigate('/admin');
       } else {
-        navigate('/dashboard');
+        navigate(userData.onboardingCompleted === false ? '/onboarding' : '/dashboard');
       }
     } catch (err) {
       toast.error(err.message || 'Login failed');

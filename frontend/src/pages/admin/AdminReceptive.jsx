@@ -45,6 +45,7 @@ const emptyLesson = {
   Duration: '',
   PassageTitle: '',
   AudioUrl: '',
+  IsFoundation: false,
   OrderIndex: 0
 };
 
@@ -176,6 +177,7 @@ function AdminReceptive({ skill }) {
     Duration: lesson.Duration || '',
     PassageTitle: lesson.PassageTitle || '',
     AudioUrl: lesson.AudioUrl || '',
+    IsFoundation: Boolean(lesson.IsFoundation),
     OrderIndex: orderIndex
   });
 
@@ -469,6 +471,7 @@ function AdminReceptive({ skill }) {
       Duration: lesson.Duration || '',
       PassageTitle: lesson.PassageTitle || '',
       AudioUrl: lesson.AudioUrl || '',
+      IsFoundation: Boolean(lesson.IsFoundation),
       OrderIndex: lesson.OrderIndex || 0
     });
     setShowLessonForm(true);
@@ -581,6 +584,10 @@ function AdminReceptive({ skill }) {
               <span>Thứ tự</span>
               <input aria-label="Trường nhập" className="form-input" type="number" value={lessonForm.OrderIndex} onChange={(event) => updateLessonField('OrderIndex', event.target.value)} />
             </span>
+            <label className="admin-check-row">
+              <input type="checkbox" checked={Boolean(lessonForm.IsFoundation)} onChange={(event) => updateLessonField('IsFoundation', event.target.checked)} />
+              <span>Bài nền tảng</span>
+            </label>
             <span className="is-wide">
               <span>Mô tả</span>
               <textarea aria-label="Nội dung" className="form-input" rows={2} value={lessonForm.Description} onChange={(event) => updateLessonField('Description', event.target.value)} />
@@ -592,7 +599,7 @@ function AdminReceptive({ skill }) {
           </div>
           <div className="admin-form-actions">
             <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
-            <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Há»§y</button>
+            <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
           </div>
         </div>
       )}
@@ -833,7 +840,7 @@ function ContentForm({ skill, form, speakers = [], editing, onChange, onSave, on
               <input aria-label="Trường nhập" className="form-input" type="number" value={form.OrderIndex} onChange={(event) => onChange('OrderIndex', event.target.value)} />
             </span>
             <span className="is-wide">
-              <span>Ná»™i dung transcript</span>
+              <span>Nội dung transcript</span>
               <textarea aria-label="Nội dung" className="form-input" rows={3} value={form.Text} onChange={(event) => onChange('Text', event.target.value)} />
             </span>
           </>
@@ -937,7 +944,7 @@ function QuestionForm({ form, editing, onChange, onSave, onCancel }) {
         {isBlank && (
           <span className="is-wide">
             <span>Đáp án chấp nhận thêm</span>
-            <textarea aria-label="Nội dung" className="form-input" rows={2} value={form.AcceptedAnswers} onChange={(event) => onChange('AcceptedAnswers', event.target.value)} placeholder="Má»—i đáp án má»™t dòng hoặc cách nhau bằng dấu phẩy" />
+            <textarea aria-label="Nội dung" className="form-input" rows={2} value={form.AcceptedAnswers} onChange={(event) => onChange('AcceptedAnswers', event.target.value)} placeholder="Mỗi đáp án một dòng hoặc cách nhau bằng dấu phẩy" />
           </span>
         )}
         <span className="is-wide">
@@ -954,7 +961,7 @@ function FormActions({ editing, onSave, onCancel }) {
   return (
     <div className="admin-form-actions">
       <button type="button" className="btn btn-primary btn-sm" onClick={onSave}><FiSave /> {editing ? 'Cập nhật' : 'Lưu'}</button>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}><FiX /> Há»§y</button>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}><FiX /> Hủy</button>
     </div>
   );
 }

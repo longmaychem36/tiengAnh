@@ -1,0 +1,8 @@
+<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Placement test">
+  <rect x="15" y="12" width="42" height="50" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="3"/>
+  <rect x="25" y="8" width="22" height="10" rx="5" fill="#CE82FF" stroke="#111827" stroke-width="3"/>
+  <path d="M25 31h22M25 42h22M25 53h16" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
+  <path d="M22 30l3 3 6-7M22 41l3 3 6-7" fill="none" stroke="#58CC02" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="51" cy="54" r="8" fill="#FFDE00" stroke="#111827" stroke-width="3"/>
+  <path d="M48 54h6" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
+</svg>

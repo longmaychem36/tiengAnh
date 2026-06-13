@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../config/database');
+const { ensureOnboardingSchema } = require('../onboarding/onboarding.schema');
 
 const RECEPTIVE_CONFIG = {
   listening: {
@@ -35,6 +36,7 @@ function mapLesson(row) {
     Duration: row.duration,
     PassageTitle: row.passagetitle,
     AudioUrl: row.audiourl,
+    IsFoundation: row.isfoundation,
     OrderIndex: row.orderindex,
     CreatedAt: row.createdat,
     UpdatedAt: row.updatedat
@@ -155,34 +157,39 @@ function mapQuestion(row) {
 const adminContentService = {
   // ========== SPEAKING MANAGEMENT ==========
   async getSpeakingLessons() {
+    await ensureOnboardingSchema();
     const pool = getPool();
     const res = await pool.request().query(`SELECT * FROM SpeakingLessons ORDER BY OrderIndex ASC`);
     return res.recordset;
   },
 
   async createSpeakingLesson(data) {
+    await ensureOnboardingSchema();
     const pool = getPool();
     const res = await pool.request()
       .input('title', sql.NVarChar, data.Title)
       .input('desc', sql.NVarChar, data.Description)
+      .input('isFoundation', sql.Bit, data.IsFoundation === true || data.IsFoundation === 'true')
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
-        INSERT INTO SpeakingLessons (Title, Description, OrderIndex)
-        VALUES (@title, @desc, @order) RETURNING *
+        INSERT INTO SpeakingLessons (Title, Description, IsFoundation, OrderIndex)
+        VALUES (@title, @desc, @isFoundation, @order) RETURNING *
       `);
     return res.recordset[0];
   },
 
   async updateSpeakingLesson(id, data) {
+    await ensureOnboardingSchema();
     const pool = getPool();
     await pool.request()
       .input('id', sql.UniqueIdentifier, id)
       .input('title', sql.NVarChar, data.Title)
       .input('desc', sql.NVarChar, data.Description)
+      .input('isFoundation', sql.Bit, data.IsFoundation === true || data.IsFoundation === 'true')
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         UPDATE SpeakingLessons 
-        SET Title = @title, Description = @desc, OrderIndex = @order
+        SET Title = @title, Description = @desc, IsFoundation = @isFoundation, OrderIndex = @order
         WHERE Id = @id
       `);
   },
@@ -250,27 +257,31 @@ const adminContentService = {
 
   // ========== WRITING MANAGEMENT ==========
   async getWritingLessons() {
+    await ensureOnboardingSchema();
     const pool = getPool();
     const res = await pool.request().query(`SELECT * FROM WritingLessons ORDER BY OrderIndex ASC`);
     return res.recordset;
   },
 
   async createWritingLesson(data) {
+    await ensureOnboardingSchema();
     const pool = getPool();
     const res = await pool.request()
       .input('title', sql.NVarChar, data.Title)
       .input('desc', sql.NVarChar, data.Description)
       .input('passageEN', sql.NText, data.PassageEN || data.passageEN || '')
       .input('passageVI', sql.NText, data.PassageVI || data.passageVI || '')
+      .input('isFoundation', sql.Bit, data.IsFoundation === true || data.IsFoundation === 'true')
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
-        INSERT INTO WritingLessons (Title, Description, PassageEN, PassageVI, OrderIndex)
-        VALUES (@title, @desc, @passageEN, @passageVI, @order) RETURNING *
+        INSERT INTO WritingLessons (Title, Description, PassageEN, PassageVI, IsFoundation, OrderIndex)
+        VALUES (@title, @desc, @passageEN, @passageVI, @isFoundation, @order) RETURNING *
       `);
     return res.recordset[0];
   },
 
   async updateWritingLesson(id, data) {
+    await ensureOnboardingSchema();
     const pool = getPool();
     await pool.request()
       .input('id', sql.UniqueIdentifier, id)
@@ -278,10 +289,11 @@ const adminContentService = {
       .input('desc', sql.NVarChar, data.Description)
       .input('passageEN', sql.NText, data.PassageEN || data.passageEN || '')
       .input('passageVI', sql.NText, data.PassageVI || data.passageVI || '')
+      .input('isFoundation', sql.Bit, data.IsFoundation === true || data.IsFoundation === 'true')
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         UPDATE WritingLessons 
-        SET Title = @title, Description = @desc, PassageEN = @passageEN, PassageVI = @passageVI, OrderIndex = @order
+        SET Title = @title, Description = @desc, PassageEN = @passageEN, PassageVI = @passageVI, IsFoundation = @isFoundation, OrderIndex = @order
         WHERE Id = @id
       `);
   },
@@ -358,6 +370,7 @@ const adminContentService = {
 
   // ========== LISTENING / READING MANAGEMENT ==========
   async getReceptiveLessons(skill) {
+    await ensureOnboardingSchema();
     const config = getReceptiveConfig(skill);
     const pool = getPool();
     const res = await pool.query(`
@@ -369,12 +382,13 @@ const adminContentService = {
   },
 
   async createReceptiveLesson(skill, data) {
+    await ensureOnboardingSchema();
     const config = getReceptiveConfig(skill);
     const pool = getPool();
     const res = await pool.query(`
       INSERT INTO ${config.lessonTable}
-        (Title, Description, Level, Topic, Objective, Duration, PassageTitle, AudioUrl, OrderIndex, UpdatedAt)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        (Title, Description, Level, Topic, Objective, Duration, PassageTitle, AudioUrl, IsFoundation, OrderIndex, UpdatedAt)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
       RETURNING *
     `, [
       data.Title,
@@ -385,12 +399,14 @@ const adminContentService = {
       data.Duration || '',
       data.PassageTitle || '',
       data.AudioUrl || '',
+      data.IsFoundation === true || data.IsFoundation === 'true',
       Number(data.OrderIndex || 0)
     ]);
     return mapLesson(res.rows[0]);
   },
 
   async updateReceptiveLesson(skill, id, data) {
+    await ensureOnboardingSchema();
     const config = getReceptiveConfig(skill);
     const pool = getPool();
     await pool.query(`
@@ -403,9 +419,10 @@ const adminContentService = {
           Duration = $6,
           PassageTitle = $7,
           AudioUrl = $8,
-          OrderIndex = $9,
+          IsFoundation = $9,
+          OrderIndex = $10,
           UpdatedAt = NOW()
-      WHERE Id = $10
+      WHERE Id = $11
     `, [
       data.Title,
       data.Description || '',
@@ -415,6 +432,7 @@ const adminContentService = {
       data.Duration || '',
       data.PassageTitle || '',
       data.AudioUrl || '',
+      data.IsFoundation === true || data.IsFoundation === 'true',
       Number(data.OrderIndex || 0),
       id
     ]);

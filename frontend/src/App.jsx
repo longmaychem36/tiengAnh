@@ -17,12 +17,12 @@ import Collections from './pages/Collections';
 import Games from './pages/Games';
 import GamePlay from './pages/GamePlay';
 import Profile from './pages/Profile';
-import Progress from './pages/Progress';
 import NotFound from './pages/NotFound';
 import Grammar from './pages/Grammar';
 import CoursesHub from './pages/CoursesHub';
 import SkillCourse from './pages/SkillCourse';
 import DailyTasks from './pages/DailyTasks';
+import Onboarding from './pages/Onboarding';
 
 // New Speaking Module
 import SpeakingList from './components/speaking/SpeakingList';
@@ -45,6 +45,7 @@ import AdminWriting from './pages/admin/AdminWriting';
 import AdminGrammar from './pages/admin/AdminGrammar';
 import AdminReceptive from './pages/admin/AdminReceptive';
 import AdminVocabulary from './pages/admin/AdminVocabulary';
+import AdminPlacementTests from './pages/admin/AdminPlacementTests';
 
 function App() {
   const { user } = useAuth();
@@ -76,8 +77,10 @@ function App() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<Home />} />
-      <Route path="/login" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to="/dashboard" />) : <Login />} />
-      <Route path="/register" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to="/dashboard" />) : <Register />} />
+      <Route path="/login" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <Login />} />
+      <Route path="/register" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <Register />} />
+
+      <Route path="/onboarding" element={<ProtectedRoute learnerOnly><Onboarding /></ProtectedRoute>} />
 
       {/* Learning routes - regular learners only */}
       <Route element={<ProtectedRoute learnerOnly><Layout /></ProtectedRoute>}>
@@ -105,7 +108,7 @@ function App() {
         <Route path="/games" element={<Games />} />
         <Route path="/games/play/:levelId" element={<GamePlay />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/progress" element={<Progress />} />
+        <Route path="/progress" element={<Navigate to="/profile" replace />} />
         <Route path="/grammar" element={<Grammar />} />
       </Route>
 
@@ -118,6 +121,7 @@ function App() {
         <Route path="/admin/reading" element={<AdminReceptive skill="reading" />} />
         <Route path="/admin/grammar" element={<AdminGrammar />} />
         <Route path="/admin/vocabulary" element={<AdminVocabulary />} />
+        <Route path="/admin/placement-tests" element={<AdminPlacementTests />} />
         <Route path="/admin/games" element={<AdminGames />} />
         <Route path="/admin/users" element={<AdminUsers />} />
       </Route>

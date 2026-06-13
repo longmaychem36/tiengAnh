@@ -128,27 +128,6 @@ const gamificationService = {
       levelsGained
     };
   },
-
-  async getAllAchievements() {
-    const pool = getPool();
-    const result = await pool.request()
-      .query('SELECT Id, Name, Description, Condition FROM Achievements');
-    return result.recordset;
-  },
-
-  async getUserAchievements(userId) {
-    const pool = getPool();
-    const result = await pool.request()
-      .input('userId', sql.UniqueIdentifier, userId)
-      .query(`
-        SELECT a.Id, a.Name, a.Description, a.Condition, ua.UnlockedAt
-        FROM UserAchievements ua
-        INNER JOIN Achievements a ON ua.AchievementId = a.Id
-        WHERE ua.UserId = @userId
-        ORDER BY ua.UnlockedAt DESC
-      `);
-    return result.recordset;
-  },
   getLevelForExp,
   getLevelMeta,
   shapeStats

@@ -1,3 +1,5 @@
-Navigation icons use OpenMoji assets.
+Some learner navigation icons use OpenMoji assets.
 OpenMoji is licensed under CC BY-SA 4.0.
 Source: https://openmoji.org/ and https://github.com/hfg-gmuend/openmoji
+
+Admin and feature icons named admin-*.svg and logout.svg were created in-project for this app.

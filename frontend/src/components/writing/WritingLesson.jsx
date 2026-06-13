@@ -411,7 +411,7 @@ const WritingLesson = () => {
       current={currentIndex}
       onSelect={handleSelectQuestion}
       getStatus={getQuestionStatus}
-      title="Question Navigator"
+      title="Câu"
       summary={`${passedCount}/${totalQuestions}`}
     />
   );
@@ -423,8 +423,8 @@ const WritingLesson = () => {
       header={(
         <LessonHeader
           title={lessonData?.title || 'Luyện viết'}
-          level={lessonData?.level || 'Writing'}
-          topic={lessonData?.topic || 'Writing'}
+          level={lessonData?.level || 'Viết'}
+          topic={lessonData?.topic || 'Viết'}
           progress={progressPercent}
           answered={answeredCount}
           total={totalQuestions}
