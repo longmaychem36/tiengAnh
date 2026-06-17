@@ -508,29 +508,14 @@ router.delete('/vocabulary/words/:wordId', requireRole('admin'), async (req, res
 
 // ========== GAME MANAGEMENT (admin + superadmin) ==========
 
-// Sets CRUD
-router.post('/games/sets', requireRole('admin'), async (req, res, next) => {
-  try {
-    const set = await adminGameService.createSet(req.body);
-    return success(res, set, 'Game set created');
-  } catch (err) { next(err); }
-});
-
-router.put('/games/sets/:id', requireRole('admin'), async (req, res, next) => {
-  try {
-    const set = await adminGameService.updateSet(req.params.id, req.body);
-    return success(res, set, 'Game set updated');
-  } catch (err) { next(err); }
-});
-
-router.delete('/games/sets/:id', superAdminOnly(), async (req, res, next) => {
-  try {
-    await adminGameService.deleteSet(req.params.id);
-    return success(res, null, 'Game set deleted');
-  } catch (err) { next(err); }
-});
-
 // Levels CRUD
+router.get('/games/levels', requireRole('admin'), async (req, res, next) => {
+  try {
+    const levels = await adminGameService.getLevels();
+    return success(res, levels);
+  } catch (err) { next(err); }
+});
+
 router.post('/games/levels', requireRole('admin'), async (req, res, next) => {
   try {
     const level = await adminGameService.createLevel(req.body);
@@ -597,7 +582,6 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       countTable('Users'),
       pool.query("SELECT count(*) as count FROM Users WHERE isactive = true"),
       pool.query("SELECT count(*) as count FROM Users WHERE createdat >= NOW() - INTERVAL '7 days'"),
-      countTable('GameSets'),
       countTable('GameLevels'),
       countTable('MiniGameQuestions'),
       countTable('SpeakingLessons'),
@@ -615,19 +599,18 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       totalUsers: parseInt(queries[0].rows[0].count),
       activeUsers: parseInt(queries[1].rows[0].count),
       newUsers7d: parseInt(queries[2].rows[0].count),
-      totalGameSets: parseInt(queries[3].rows[0].count),
-      totalGameLevels: parseInt(queries[4].rows[0].count),
-      totalQuestions: parseInt(queries[5].rows[0].count),
-      totalSpeakingLessons: parseInt(queries[6].rows[0].count),
-      totalSpeakingQuestions: parseInt(queries[7].rows[0].count),
-      totalWritingLessons: parseInt(queries[8].rows[0].count),
-      totalWritingExercises: parseInt(queries[9].rows[0].count),
-      totalGrammarCategories: parseInt(queries[10].rows[0].count),
-      totalGrammarTopics: parseInt(queries[11].rows[0].count),
-      totalListeningLessons: parseInt(queries[12].rows[0].count),
-      totalListeningQuestions: parseInt(queries[13].rows[0].count),
-      totalReadingLessons: parseInt(queries[14].rows[0].count),
-      totalReadingQuestions: parseInt(queries[15].rows[0].count),
+      totalGameLevels: parseInt(queries[3].rows[0].count),
+      totalQuestions: parseInt(queries[4].rows[0].count),
+      totalSpeakingLessons: parseInt(queries[5].rows[0].count),
+      totalSpeakingQuestions: parseInt(queries[6].rows[0].count),
+      totalWritingLessons: parseInt(queries[7].rows[0].count),
+      totalWritingExercises: parseInt(queries[8].rows[0].count),
+      totalGrammarCategories: parseInt(queries[9].rows[0].count),
+      totalGrammarTopics: parseInt(queries[10].rows[0].count),
+      totalListeningLessons: parseInt(queries[11].rows[0].count),
+      totalListeningQuestions: parseInt(queries[12].rows[0].count),
+      totalReadingLessons: parseInt(queries[13].rows[0].count),
+      totalReadingQuestions: parseInt(queries[14].rows[0].count),
     };
     stats.totalSkillLessons = stats.totalSpeakingLessons + stats.totalWritingLessons + stats.totalListeningLessons + stats.totalReadingLessons;
     return success(res, stats);

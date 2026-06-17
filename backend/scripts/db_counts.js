@@ -9,7 +9,6 @@ const tables = [
   'dictionaryentries',
   'dictionarysearchhistory',
   'dictionarysynonyms',
-  'gamesets',
   'gamelevels',
   'minigamequestions',
   'grammarcategories',

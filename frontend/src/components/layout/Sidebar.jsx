@@ -1,31 +1,31 @@
 // ============================================
 // Sidebar Component - Role-based Navigation
 // ============================================
-import { NavLink } from 'react-router-dom';
-import { FiShield } from 'react-icons/fi';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import SoftIcon from '../common/SoftIcon';
 
 const navItems = [
-  { to: '/dashboard', image: '/nav-icons/learn.svg', label: 'Tổng quan' },
-  { to: '/daily-tasks', image: '/nav-icons/tasks.svg', label: 'Nhiệm vụ' },
-  { to: '/courses', image: '/nav-icons/courses.svg', label: 'Khóa học' },
-  { to: '/grammar', image: '/nav-icons/grammar.svg', label: 'Ngữ pháp' },
-  { to: '/dictionary', image: '/nav-icons/dictionary.svg', label: 'Từ điển' },
-  { to: '/vocabulary', image: '/nav-icons/collections.svg', label: 'Từ vựng' },
-  { to: '/games', image: '/nav-icons/admin-games.svg', label: 'Mini game' },
-  { to: '/profile', image: '/nav-icons/profile.svg', label: 'Hồ sơ & tiến độ' }
+  { to: '/dashboard', label: 'Tổng quan', icon: 'home' },
+  { to: '/daily-tasks', label: 'Nhiệm vụ', icon: 'tasks' },
+  { to: '/courses', label: 'Khóa học', icon: 'courses', activePaths: ['/games'] },
+  { to: '/grammar', label: 'Ngữ pháp', icon: 'grammar' },
+  { to: '/dictionary', label: 'Từ điển', icon: 'dictionary' },
+  { to: '/vocabulary', label: 'Từ vựng', icon: 'vocabulary' },
+  { to: '/profile', label: 'Hồ sơ & tiến độ', icon: 'profile' }
 ];
 
-function NavItem({ to, image, icon: Icon, label, isAdminLink }) {
+function NavItem({ to, label, icon, isAdminLink, activePaths = [] }) {
+  const { pathname } = useLocation();
+  const isRelatedActive = activePaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+
   return (
     <NavLink
       to={to}
-      className={({ isActive }) => `lingo-nav-item ${isActive ? 'is-active' : ''} ${isAdminLink ? 'is-admin' : ''}`}
+      className={({ isActive }) => `lingo-nav-item ${isActive || isRelatedActive ? 'is-active' : ''} ${isAdminLink ? 'is-admin' : ''}`}
     >
-      <span className="lingo-nav-icon">
-        {image ? <img src={image} alt="" aria-hidden="true" /> : <Icon size={21} />}
-      </span>
-      <span>{label}</span>
+      {icon && <SoftIcon name={icon} className="lingo-nav-icon" />}
+      <span className="lingo-nav-text">{label}</span>
     </NavLink>
   );
 }
@@ -51,8 +51,8 @@ function Sidebar() {
 
         {isAdmin && (
           <>
-            <span className="lingo-nav-label lingo-admin-label"><FiShield size={12} /> Admin</span>
-            <NavItem to="/admin" image="/nav-icons/admin.svg" label="Bảng điều khiển" isAdminLink />
+            <span className="lingo-nav-label lingo-admin-label">Admin</span>
+            <NavItem to="/admin" label="Bảng điều khiển" icon="admin" isAdminLink />
           </>
         )}
       </nav>

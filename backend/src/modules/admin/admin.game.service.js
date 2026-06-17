@@ -1,57 +1,50 @@
 // ============================================
-// Admin Game Management — Service (PostgreSQL)
+// Admin Mini Game Management - Service (PostgreSQL)
 // ============================================
 const { getPool } = require('../../config/database');
 
 const adminGameService = {
-  // ========== GAME SETS ==========
-  async createSet(data) {
-    const pool = getPool();
-    const { name, description, gameType, icon, orderIndex } = data;
-    const r = await pool.query(
-      `INSERT INTO GameSets (Id, Name, Description, GameType, Icon, OrderIndex)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING *`,
-      [name, description || '', gameType || 'mixed', icon || '🎮', orderIndex || 0]
-    );
-    return r.rows[0];
-  },
-
-  async updateSet(id, data) {
-    const pool = getPool();
-    const { name, description, gameType, icon, orderIndex } = data;
-    await pool.query(
-      `UPDATE GameSets SET Name=$1, Description=$2, GameType=$3, Icon=$4, OrderIndex=$5 WHERE Id=$6`,
-      [name, description || '', gameType || 'mixed', icon || '🎮', orderIndex || 0, id]
-    );
-    return { Id: id, ...data };
-  },
-
-  async deleteSet(id) {
-    const pool = getPool();
-    await pool.query(`DELETE FROM MiniGameQuestions WHERE LevelId IN (SELECT Id FROM GameLevels WHERE SetId=$1)`, [id]);
-    await pool.query(`DELETE FROM UserGameProgress WHERE LevelId IN (SELECT Id FROM GameLevels WHERE SetId=$1)`, [id]);
-    await pool.query(`DELETE FROM GameLevels WHERE SetId=$1`, [id]);
-    await pool.query(`DELETE FROM GameSets WHERE Id=$1`, [id]);
-  },
-
   // ========== LEVELS ==========
+  async getLevels() {
+    const pool = getPool();
+    const r = await pool.query(
+      `SELECT Id, LevelNumber, Name, Difficulty, TimeLimit, PassScore, IsLocked,
+              (SELECT COUNT(*) FROM MiniGameQuestions WHERE LevelId = GameLevels.Id) as "QuestionCount"
+       FROM GameLevels
+       ORDER BY LevelNumber ASC, CreatedAt ASC`
+    );
+
+    return r.rows.map(level => ({
+      Id: level.id,
+      LevelNumber: level.levelnumber,
+      Name: level.name,
+      Difficulty: level.difficulty,
+      TimeLimit: level.timelimit,
+      PassScore: level.passscore,
+      IsLocked: level.islocked,
+      QuestionCount: parseInt(level.QuestionCount, 10) || 0,
+    }));
+  },
+
   async createLevel(data) {
     const pool = getPool();
-    const { setId, levelNumber, name, difficulty, timeLimit, passScore } = data;
+    const { levelNumber, name, difficulty, timeLimit, passScore } = data;
     const r = await pool.query(
-      `INSERT INTO GameLevels (Id, SetId, LevelNumber, Name, Difficulty, TimeLimit, PassScore, IsLocked)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, false) RETURNING *`,
-      [setId, levelNumber || 1, name, difficulty || 'easy', timeLimit || 60, passScore || 70]
+      `INSERT INTO GameLevels (Id, LevelNumber, Name, Difficulty, TimeLimit, PassScore, IsLocked)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, false) RETURNING *`,
+      [levelNumber || 1, name, difficulty || 'easy', timeLimit || 60, passScore || 70]
     );
     return r.rows[0];
   },
 
   async updateLevel(id, data) {
     const pool = getPool();
-    const { name, difficulty, timeLimit, passScore } = data;
+    const { levelNumber, name, difficulty, timeLimit, passScore } = data;
     await pool.query(
-      `UPDATE GameLevels SET Name=$1, Difficulty=$2, TimeLimit=$3, PassScore=$4 WHERE Id=$5`,
-      [name, difficulty || 'easy', timeLimit || 60, passScore || 70, id]
+      `UPDATE GameLevels
+       SET LevelNumber=$1, Name=$2, Difficulty=$3, TimeLimit=$4, PassScore=$5
+       WHERE Id=$6`,
+      [levelNumber || 1, name, difficulty || 'easy', timeLimit || 60, passScore || 70, id]
     );
   },
 

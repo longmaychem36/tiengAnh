@@ -14,7 +14,6 @@
   "isfoundation": "IsFoundation",
   "correctanswer": "CorrectAnswer",
   "questiontype": "QuestionType",
-  "setid": "SetId",
   "levelnumber": "LevelNumber",
   "timelimit": "TimeLimit",
   "passscore": "PassScore",

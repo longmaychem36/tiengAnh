@@ -3,8 +3,8 @@ import axios from 'axios';
 import 'react-quill/dist/quill.snow.css';
 import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiChevronRight, FiChevronDown, FiBookOpen } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { API_URL } from '../../api/config';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 const ReactQuill = lazy(() => import('react-quill'));
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const textValue = (value) => value ?? '';

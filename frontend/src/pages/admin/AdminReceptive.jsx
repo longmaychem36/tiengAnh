@@ -12,8 +12,7 @@ import {
   FiX
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+import { API_URL } from '../../api/config';
 
 const SKILL_META = {
   listening: {

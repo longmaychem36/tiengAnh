@@ -199,9 +199,8 @@ async function collectCandidateTargets(userId) {
     },
     async () => {
       const result = await pool.query(`
-        SELECT gl.Id, gl.Name, gl.Difficulty, gs.Name AS SetName, COALESCE(ugp.IsCompleted, false) AS IsCompleted
+        SELECT gl.Id, gl.Name, gl.Difficulty, COALESCE(ugp.IsCompleted, false) AS IsCompleted
         FROM GameLevels gl
-        INNER JOIN GameSets gs ON gs.Id = gl.SetId
         LEFT JOIN UserGameProgress ugp ON ugp.LevelId = gl.Id AND ugp.UserId = $1
         ORDER BY COALESCE(ugp.IsCompleted, false) ASC, gl.LevelNumber ASC
         LIMIT 8
@@ -211,7 +210,7 @@ async function collectCandidateTargets(userId) {
         targetType: 'game_level',
         targetId: row.id,
         title: `Game: ${row.name}`,
-        description: row.setname ? `${row.setname} - ${row.difficulty || 'practice'}` : 'Ôn tập nhanh bằng mini game.',
+        description: `Mini game - ${row.difficulty || 'practice'}`,
         reasonSeed: 'Review mistakes through quick games.'
       }));
     },

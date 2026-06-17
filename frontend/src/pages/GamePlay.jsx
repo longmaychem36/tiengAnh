@@ -127,7 +127,7 @@ function GamePlay() {
         setTimeLeft(res.data.level.TimeLimit);
 
         try {
-          const levelsRes = await gameApi.getLevels(res.data.level.SetId);
+          const levelsRes = await gameApi.getLevels();
           if (cancelled) return;
           const levels = levelsRes.data || [];
           const currentLevelIndex = levels.findIndex(level => String(level.Id) === String(levelId));

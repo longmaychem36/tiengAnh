@@ -1,15 +1,13 @@
 // ============================================
-// Admin Game Management — Sets, Levels, Questions CRUD
+// Admin Mini Game Management - Levels and Questions
 // ============================================
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiPlus, FiEdit2, FiTrash2, FiArrowLeft, FiChevronRight, FiSave, FiX, FiList } from 'react-icons/fi';
+import { FiArrowLeft, FiChevronRight, FiEdit2, FiList, FiPlus, FiSave, FiTrash2, FiX } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import { gameApi } from '../../api/gameApi';
 import { adminApi } from '../../api/adminApi';
 import { useAuth } from '../../hooks/useAuth';
 
-// ========== SHARED FORM MODAL ==========
 const FormModal = ({ title, fields, onSave, formData, setFormData, setShowForm }) => (
   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowForm(false)}>
     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 'var(--radius-xl)', padding: 'var(--space-8)', width: '100%', maxWidth: 500, maxHeight: '80vh', overflow: 'auto' }}>
@@ -21,11 +19,11 @@ const FormModal = ({ title, fields, onSave, formData, setFormData, setShowForm }
         <div key={f.key} style={{ marginBottom: 'var(--space-4)' }}>
           <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--font-size-sm)', marginBottom: 4, color: 'var(--color-text-secondary)' }}>{f.label}</span>
           {f.type === 'select' ? (
-            <select aria-label="Lựa chọn" className="form-input" value={formData[f.key] || ''} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))}>
+            <select aria-label={f.label} className="form-input" value={formData[f.key] || ''} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))}>
               {f.options.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           ) : (
-            <input aria-label="Trường nhập" className="form-input" type={f.type || 'text'} value={formData[f.key] || ''} onChange={e => setFormData(p => ({ ...p, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))} placeholder={f.placeholder || ''} />
+            <input aria-label={f.label} className="form-input" type={f.type || 'text'} value={formData[f.key] || ''} onChange={e => setFormData(p => ({ ...p, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))} placeholder={f.placeholder || ''} />
           )}
         </div>
       ))}
@@ -34,11 +32,10 @@ const FormModal = ({ title, fields, onSave, formData, setFormData, setShowForm }
   </div>
 );
 
-function Breadcrumb({ view, activeSet, activeLevel, onSets, onLevels }) {
+function Breadcrumb({ view, activeLevel, onLevels }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-      <span onClick={onSets} style={{ cursor: 'pointer', fontWeight: view === 'sets' ? 700 : 400 }}>Game Sets</span>
-      {activeSet && <><FiChevronRight size={14} /><span onClick={onLevels} style={{ cursor: 'pointer', fontWeight: view === 'levels' ? 700 : 400 }}>{activeSet.Name}</span></>}
+      <span onClick={onLevels} style={{ cursor: 'pointer', fontWeight: view === 'levels' ? 700 : 400 }}>Mini game levels</span>
       {activeLevel && <><FiChevronRight size={14} /><span style={{ fontWeight: 700 }}>{activeLevel.Name}</span></>}
     </div>
   );
@@ -48,70 +45,72 @@ function AdminGames() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'superadmin';
 
-  // View state
-  const [view, setView] = useState('sets'); // 'sets' | 'levels' | 'questions'
-  const [sets, setSets] = useState([]);
+  const [view, setView] = useState('levels');
   const [levels, setLevels] = useState([]);
   const [questions, setQuestions] = useState([]);
-  const [activeSet, setActiveSet] = useState(null);
   const [activeLevel, setActiveLevel] = useState(null);
-
-  // Form state
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [formData, setFormData] = useState({});
 
-  useEffect(() => { loadSets(); }, []);
+  useEffect(() => { loadLevels(); }, []);
 
-  const loadSets = async () => {
-    try { const res = await gameApi.getSets(); setSets(res.data || []); } catch { toast.error('Lỗi tải sets'); }
+  const loadLevels = async () => {
+    try {
+      const res = await adminApi.getLevels();
+      setLevels(res.data || []);
+    } catch {
+      toast.error('Lỗi tải level mini game');
+    }
   };
 
-  // ========== SET CRUD (superadmin only) ==========
-  const [showSetForm, setShowSetForm] = useState(false);
-  const [setData, setSetData] = useState({});
-  const openSetForm = () => { setSetData({ name: '', description: '', icon: '🎮', gameType: 'mixed', orderIndex: sets.length }); setShowSetForm(true); };
-  const saveSet = async () => {
-    try { await adminApi.createSet(setData); toast.success('Đã tạo game set!'); setShowSetForm(false); loadSets(); } catch { toast.error('Lỗi tạo set'); }
-  };
-  const deleteSet = async (id) => {
-    if (!confirm('Xóa game set này? Tất cả level và câu hỏi sẽ bị xóa!')) return;
-    try { await adminApi.deleteSet(id); toast.success('Đã xóa!'); loadSets(); } catch { toast.error('Lỗi xóa set'); }
-  };
-  const loadLevels = async (set) => {
-    setActiveSet(set); setView('levels');
-    try { const res = await gameApi.getLevels(set.Id); setLevels(res.data || []); } catch { toast.error('Lỗi tải levels'); }
-  };
   const loadQuestions = async (level) => {
-    setActiveLevel(level); setView('questions');
-    try { const res = await adminApi.getQuestions(level.Id); setQuestions(res.data || []); } catch { toast.error('Lỗi tải câu hỏi'); }
+    setActiveLevel(level);
+    setView('questions');
+    try {
+      const res = await adminApi.getQuestions(level.Id);
+      setQuestions(res.data || []);
+    } catch {
+      toast.error('Lỗi tải câu hỏi');
+    }
   };
 
-  // ========== SET CRUD (Disabled creation/editing/deleting for hardcoded sets) ==========
-
-
-  // ========== LEVEL CRUD ==========
   const openLevelForm = (level = null) => {
     setEditItem(level);
-    setFormData(level ? { name: level.Name, difficulty: level.Difficulty, timeLimit: level.TimeLimit, passScore: level.PassScore }
-      : { name: '', difficulty: 'easy', timeLimit: 60, passScore: 70, levelNumber: levels.length + 1 });
+    setFormData(level
+      ? { levelNumber: level.LevelNumber, name: level.Name, difficulty: level.Difficulty, timeLimit: level.TimeLimit, passScore: level.PassScore }
+      : { levelNumber: levels.length + 1, name: '', difficulty: 'easy', timeLimit: 60, passScore: 70 });
     setShowForm(true);
   };
+
   const saveLevel = async () => {
     try {
-      if (editItem) { await adminApi.updateLevel(editItem.Id, formData); toast.success('Đã cập nhật!'); }
-      else { await adminApi.createLevel({ ...formData, setId: activeSet.Id, levelNumber: formData.levelNumber || levels.length + 1 }); toast.success('Đã tạo!'); }
-      setShowForm(false); loadLevels(activeSet);
-    } catch { toast.error('Lỗi lưu level'); }
-  };
-  const deleteLevel = async (id) => {
-    if (!confirm('Xóa level này?')) return;
-    try { await adminApi.deleteLevel(id); toast.success('Đã xóa!'); loadLevels(activeSet); } catch { toast.error('Lỗi xóa'); }
+      if (editItem) {
+        await adminApi.updateLevel(editItem.Id, formData);
+        toast.success('Đã cập nhật level');
+      } else {
+        await adminApi.createLevel(formData);
+        toast.success('Đã tạo level');
+      }
+      setShowForm(false);
+      setEditItem(null);
+      await loadLevels();
+    } catch {
+      toast.error('Lỗi lưu level');
+    }
   };
 
-  // ========== QUESTION CRUD ==========
-  // For mixed sets, questionType is chosen per-question
-  const getDefaultQType = () => 'matching';
+  const deleteLevel = async (id) => {
+    if (!confirm('Xóa level này? Câu hỏi và tiến độ liên quan cũng sẽ bị xóa.')) return;
+    try {
+      await adminApi.deleteLevel(id);
+      toast.success('Đã xóa level');
+      await loadLevels();
+    } catch {
+      toast.error('Lỗi xóa level');
+    }
+  };
+
   const openQuestionForm = (q = null) => {
     setEditItem(q);
     const optionsText = q?.Options ? q.Options.join(', ') : '';
@@ -120,6 +119,7 @@ function AdminGames() {
       : { questionType: 'matching', contentEN: '', contentVI: '', audioUrl: '', correctAnswer: '', options: '', orderIndex: questions.length });
     setShowForm(true);
   };
+
   const saveQuestion = async () => {
     try {
       const qType = formData.questionType || 'matching';
@@ -131,7 +131,6 @@ function AdminGames() {
         finalCorrectAnswer = formData.contentEN;
         finalOptions = [];
       } else if (qType === 'listenbuild') {
-        // Options = words of the sentence + distractors
         const sentenceWords = finalCorrectAnswer.split(' ').map(s => s.trim()).filter(Boolean);
         const extra = finalOptions.filter(o => !sentenceWords.includes(o));
         finalOptions = [...sentenceWords, ...extra];
@@ -144,18 +143,40 @@ function AdminGames() {
         finalCorrectAnswer = formData.correctAnswer === 'true' ? 'true' : 'false';
       }
 
-      const d = { ...formData, contentEN: finalContentEN, levelId: activeLevel.Id, questionType: qType, options: finalOptions, correctAnswer: finalCorrectAnswer };
-      if (editItem) { await adminApi.updateQuestion(editItem.Id, d); toast.success('Đã cập nhật!'); }
-      else { await adminApi.createQuestion(d); toast.success('Đã tạo!'); }
-      setShowForm(false); loadQuestions(activeLevel);
-    } catch (e) { toast.error('Lỗi lưu câu hỏi: ' + e.message); }
+      const payload = {
+        ...formData,
+        contentEN: finalContentEN,
+        levelId: activeLevel.Id,
+        questionType: qType,
+        options: finalOptions,
+        correctAnswer: finalCorrectAnswer
+      };
+
+      if (editItem) {
+        await adminApi.updateQuestion(editItem.Id, payload);
+        toast.success('Đã cập nhật câu hỏi');
+      } else {
+        await adminApi.createQuestion(payload);
+        toast.success('Đã tạo câu hỏi');
+      }
+      setShowForm(false);
+      setEditItem(null);
+      await loadQuestions(activeLevel);
+    } catch (e) {
+      toast.error('Lỗi lưu câu hỏi: ' + e.message);
+    }
   };
+
   const deleteQuestion = async (id) => {
     if (!confirm('Xóa câu hỏi này?')) return;
-    try { await adminApi.deleteQuestion(id); toast.success('Đã xóa!'); loadQuestions(activeLevel); } catch { toast.error('Lỗi xóa'); }
+    try {
+      await adminApi.deleteQuestion(id);
+      toast.success('Đã xóa câu hỏi');
+      await loadQuestions(activeLevel);
+    } catch {
+      toast.error('Lỗi xóa câu hỏi');
+    }
   };
-
-
 
   const getQuestionFields = () => {
     const qType = formData.questionType || 'matching';
@@ -170,20 +191,20 @@ function AdminGames() {
     ];
     if (qType === 'listening') return [
       ...base,
-      { key: 'correctAnswer', label: 'Câu/từ sẽ được đọc (đáp án đúng)', placeholder: 'Good morning' },
-      { key: 'contentVI', label: 'Nghĩa tiếng Việt (tuỳ chọn)', placeholder: 'Chào buổi sáng' },
-      { key: 'options', label: 'Các đáp án sai, cách nhau bằng dấu phẩy', placeholder: 'Good night, Good evening' },
+      { key: 'correctAnswer', label: 'Câu/từ sẽ được đọc', placeholder: 'Good morning' },
+      { key: 'contentVI', label: 'Nghĩa tiếng Việt', placeholder: 'Chào buổi sáng' },
+      { key: 'options', label: 'Đáp án sai, cách nhau bằng dấu phẩy', placeholder: 'Good night, Good evening' },
     ];
     if (qType === 'listenbuild') return [
       ...base,
-      { key: 'correctAnswer', label: 'Câu tiếng Anh hoàn chỉnh (sẽ được đọc)', placeholder: 'I go to school' },
-      { key: 'contentVI', label: 'Nghĩa tiếng Việt (gợi ý)', placeholder: 'Tôi đi học' },
-      { key: 'options', label: 'Từ gây nhiễu thêm (tuỳ chọn, cách nhau bằng dấu phẩy)', placeholder: 'goes, going' },
+      { key: 'correctAnswer', label: 'Câu tiếng Anh hoàn chỉnh', placeholder: 'I go to school' },
+      { key: 'contentVI', label: 'Nghĩa tiếng Việt', placeholder: 'Tôi đi học' },
+      { key: 'options', label: 'Từ gây nhiễu thêm', placeholder: 'goes, going' },
     ];
     if (qType === 'truefalse') return [
       ...base,
       { key: 'contentEN', label: 'Câu tiếng Anh', placeholder: 'Hello' },
-      { key: 'contentVI', label: 'Bản dịch tiếng Việt (đúng hoặc sai)', placeholder: 'Xin chào' },
+      { key: 'contentVI', label: 'Bản dịch tiếng Việt', placeholder: 'Xin chào' },
       { key: 'correctAnswer', label: 'Đáp án', type: 'select', options: ['true', 'false'] },
     ];
     return base;
@@ -196,49 +217,23 @@ function AdminGames() {
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1>Quản lý Mini Games</h1>
-          <p style={{ color: 'var(--color-text-muted)' }}>Tạo, sửa, xóa bộ game, level và câu hỏi</p>
+          <h1>Quản lý Mini game</h1>
+          <p style={{ color: 'var(--color-text-muted)' }}>Quản lý trực tiếp level và câu hỏi trong một tuyến mini game duy nhất.</p>
         </div>
-        {isSuperAdmin && view === 'sets' && (
-          <button type="button" className="btn btn-primary btn-sm" onClick={openSetForm}><FiPlus /> Tạo Game Set</button>
+        {view === 'levels' && (
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => openLevelForm()}><FiPlus /> Thêm level</button>
         )}
       </div>
 
       <Breadcrumb
         view={view}
-        activeSet={activeSet}
         activeLevel={activeLevel}
-        onSets={() => { setView('sets'); setActiveSet(null); }}
         onLevels={() => { setView('levels'); setActiveLevel(null); }}
       />
 
-      {/* ========== SETS VIEW ========== */}
-      {view === 'sets' && (
-        <>
-          {sets.map(set => (
-            <div key={set.Id} style={cardStyle}>
-              <div onClick={() => loadLevels(set)} style={{ cursor: 'pointer', flex: 1 }}>
-                <span style={{ fontSize: 24, marginRight: 12 }}>{set.Icon}</span>
-                <b>{set.Name}</b>
-                <span style={{ marginLeft: 12, fontSize: 'var(--font-size-xs)', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: set.GameType === 'mixed' ? '#ede9fe' : 'var(--color-primary-light)', color: set.GameType === 'mixed' ? '#7c3aed' : 'var(--color-primary)' }}>{set.GameType}</span>
-                <span style={{ marginLeft: 8, color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>{set.LevelCount} levels</span>
-              </div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button type="button" style={btnIcon} onClick={() => loadLevels(set)}><FiChevronRight size={16} /></button>
-                {isSuperAdmin && <button type="button" style={btnIcon} onClick={() => deleteSet(set.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>}
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-
-      {/* ========== LEVELS VIEW ========== */}
       {view === 'levels' && (
         <>
-          <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setView('sets'); setActiveSet(null); }}><FiArrowLeft /> Quay lại</button>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => openLevelForm()}><FiPlus /> Thêm level</button>
-          </div>
+          {levels.length === 0 && <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: 'var(--space-8)' }}>Chưa có level mini game nào.</p>}
           {levels.map(lv => (
             <div key={lv.Id} style={cardStyle}>
               <div onClick={() => loadQuestions(lv)} style={{ cursor: 'pointer', flex: 1 }}>
@@ -257,7 +252,6 @@ function AdminGames() {
         </>
       )}
 
-      {/* ========== QUESTIONS VIEW ========== */}
       {view === 'questions' && (
         <>
           <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
@@ -266,32 +260,32 @@ function AdminGames() {
           </div>
           {questions.length === 0 && <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: 'var(--space-8)' }}>Chưa có câu hỏi nào.</p>}
           {questions.map((q, i) => {
-            const typeLabels = { matching: '🔗', listening: '🎧', listenbuild: '🎵', truefalse: '✅' };
+            const typeLabels = { matching: 'Nối từ', listening: 'Nghe chọn', listenbuild: 'Xếp câu', truefalse: 'Đúng/Sai' };
             const mainText = q.QuestionType === 'truefalse' || q.QuestionType === 'listenbuild' ? q.CorrectAnswer : (q.ContentEN || q.CorrectAnswer);
             return (
-            <div key={q.Id} style={{ ...cardStyle, alignItems: 'flex-start' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 'var(--font-size-sm)' }}>#{i + 1}</span>
-                  <span style={{ fontSize: 'var(--font-size-xs)', background: '#f1f5f9', padding: '2px 8px', borderRadius: 99 }}>{typeLabels[q.QuestionType] || '❓'} {q.QuestionType}</span>
-                  <b>{mainText}</b>
+              <div key={q.Id} style={{ ...cardStyle, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 'var(--font-size-sm)' }}>#{i + 1}</span>
+                    <span style={{ fontSize: 'var(--font-size-xs)', background: '#f1f5f9', padding: '2px 8px', borderRadius: 99 }}>{typeLabels[q.QuestionType] || q.QuestionType}</span>
+                    <b>{mainText}</b>
+                  </div>
+                  {q.ContentVI && <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>→ {q.ContentVI}</div>}
+                  {q.Options && q.Options.length > 0 && <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 2 }}>Options: {q.Options.join(' | ')}</div>}
                 </div>
-                {q.ContentVI && <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>→ {q.ContentVI}</div>}
-                {q.Options && q.Options.length > 0 && <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 2 }}>Options: {q.Options.join(' | ')}</div>}
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button type="button" style={btnIcon} onClick={() => openQuestionForm(q)}><FiEdit2 size={16} style={{ color: 'var(--color-primary)' }} /></button>
+                  <button type="button" style={btnIcon} onClick={() => deleteQuestion(q.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button type="button" style={btnIcon} onClick={() => openQuestionForm(q)}><FiEdit2 size={16} style={{ color: 'var(--color-primary)' }} /></button>
-                <button type="button" style={btnIcon} onClick={() => deleteQuestion(q.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>
-              </div>
-            </div>
             );
           })}
         </>
       )}
 
-      {/* ========== FORM MODAL ========== */}
       {showForm && view === 'levels' && (
         <FormModal title={editItem ? 'Sửa level' : 'Tạo level mới'} onSave={saveLevel} formData={formData} setFormData={setFormData} setShowForm={setShowForm} fields={[
+          { key: 'levelNumber', label: 'Số level', type: 'number' },
           { key: 'name', label: 'Tên level', placeholder: 'VD: Động vật' },
           { key: 'difficulty', label: 'Độ khó', type: 'select', options: ['easy', 'medium', 'hard'] },
           { key: 'timeLimit', label: 'Thời gian (giây)', type: 'number' },
@@ -300,22 +294,6 @@ function AdminGames() {
       )}
       {showForm && view === 'questions' && (
         <FormModal title={editItem ? 'Sửa câu hỏi' : 'Thêm câu hỏi'} onSave={saveQuestion} formData={formData} setFormData={setFormData} setShowForm={setShowForm} fields={getQuestionFields()} />
-      )}
-      {showSetForm && isSuperAdmin && (
-        <FormModal
-          title="Tạo Game Set mới"
-          onSave={saveSet}
-          formData={setData}
-          setFormData={setSetData}
-          setShowForm={setShowSetForm}
-          fields={[
-            { key: 'name', label: 'Tên bộ game', placeholder: 'VD: Tổng hợp nâng cao' },
-            { key: 'description', label: 'Mô tả', placeholder: 'Kết hợp 4 loại mini game...' },
-            { key: 'icon', label: 'Icon (emoji)', placeholder: '🎮' },
-            { key: 'gameType', label: 'Loại game', type: 'select', options: ['mixed'] },
-            { key: 'orderIndex', label: 'Thứ tự hiển thị', type: 'number' },
-          ]}
-        />
       )}
     </div>
   );

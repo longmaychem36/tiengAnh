@@ -32,8 +32,7 @@ router.get('/audio/proxy', async (req, res) => {
 
 // Learning endpoints
 router.use(authMiddleware, learnerOnly());
-router.get('/sets', gameController.getSets);
-router.get('/sets/:setId/levels', gameController.getLevels);
+router.get('/levels', gameController.getLevels);
 router.get('/levels/:levelId/questions', gameController.getQuestions);
 router.post('/submit', gameController.submit);
 

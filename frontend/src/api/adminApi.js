@@ -14,12 +14,8 @@ export const adminApi = {
   updatePlacementQuestion: (id, data) => axiosClient.put(`/admin/placement/questions/${id}`, data),
   deletePlacementQuestion: (id) => axiosClient.delete(`/admin/placement/questions/${id}`),
 
-  // Game Sets
-  createSet: (data) => axiosClient.post('/admin/games/sets', data),
-  updateSet: (id, data) => axiosClient.put(`/admin/games/sets/${id}`, data),
-  deleteSet: (id) => axiosClient.delete(`/admin/games/sets/${id}`),
-
   // Game Levels
+  getLevels: () => axiosClient.get('/admin/games/levels'),
   createLevel: (data) => axiosClient.post('/admin/games/levels', data),
   updateLevel: (id, data) => axiosClient.put(`/admin/games/levels/${id}`, data),
   deleteLevel: (id) => axiosClient.delete(`/admin/games/levels/${id}`),

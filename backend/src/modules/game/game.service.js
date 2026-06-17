@@ -32,68 +32,29 @@ function calculateGameExp({ difficulty, scorePercent, totalQuestions, alreadyCom
 
 const gameService = {
   // ==================
-  // GET all game sets (with user progress)
+  // GET all mini-game levels directly
   // ==================
-  async getSets(userId) {
-    const pool = getPool();
-    const result = await pool.query(`
-      SELECT gs.*,
-        (SELECT COUNT(*) FROM GameLevels WHERE SetId = gs.Id) as "LevelCount"
-      FROM GameSets gs
-      ORDER BY gs.OrderIndex ASC
-    `);
-
-    const sets = result.rows.map(r => ({
-      ...r,
-      Id: r.id, Name: r.name, Description: r.description, Icon: r.icon,
-      GameType: r.gametype, OrderIndex: r.orderindex, LevelCount: parseInt(r.LevelCount)
-    }));
-
-    if (userId) {
-      for (const set of sets) {
-        const progressRes = await pool.query(`
-          SELECT COUNT(*) as completedlevels,
-                 COALESCE(SUM(ugp.stars), 0) as totalstars
-          FROM GameLevels gl
-          INNER JOIN UserGameProgress ugp ON gl.Id = ugp.LevelId AND ugp.UserId = $1 AND ugp.IsCompleted = true
-          WHERE gl.SetId = $2
-        `, [userId, set.Id]);
-        set.CompletedLevels = parseInt(progressRes.rows[0].completedlevels);
-        set.TotalStars = parseInt(progressRes.rows[0].totalstars);
-        set.MaxStars = set.LevelCount * 3;
-        set.IsSetCompleted = set.CompletedLevels >= set.LevelCount;
-      }
-    }
-
-    return sets;
-  },
-
-  // ==================
-  // GET levels by set (with user progress & dynamic unlock)
-  // ==================
-  async getLevelsBySet(setId, userId) {
+  async getLevels(userId) {
     const pool = getPool();
 
     const result = await pool.query(`
-      SELECT gl.Id, gl.SetId, gl.LevelNumber, gl.Name, gl.Difficulty,
+      SELECT gl.Id, gl.LevelNumber, gl.Name, gl.Difficulty,
              gl.TimeLimit, gl.PassScore, gl.IsLocked,
              (SELECT COUNT(*) FROM MiniGameQuestions WHERE LevelId = gl.Id) as "QuestionCount"
              ${userId ? `, ugp.Score as "UserScore", ugp.Stars as "UserStars", ugp.IsCompleted as "UserCompleted", ugp.BestTime, ugp.Attempts` : ''}
       FROM GameLevels gl
-      ${userId ? `LEFT JOIN UserGameProgress ugp ON gl.Id = ugp.LevelId AND ugp.UserId = $2` : ''}
-      WHERE gl.SetId = $1
+      ${userId ? `LEFT JOIN UserGameProgress ugp ON gl.Id = ugp.LevelId AND ugp.UserId = $1` : ''}
       ORDER BY gl.LevelNumber ASC
-    `, userId ? [setId, userId] : [setId]);
+    `, userId ? [userId] : []);
 
     const levels = result.rows.map(r => ({
-      Id: r.id, SetId: r.setid, LevelNumber: r.levelnumber, Name: r.name,
+      Id: r.id, LevelNumber: r.levelnumber, Name: r.name,
       Difficulty: r.difficulty, TimeLimit: r.timelimit, PassScore: r.passscore,
       IsLocked: r.islocked, QuestionCount: parseInt(r.QuestionCount),
       UserScore: r.UserScore || 0, UserStars: r.UserStars || 0,
       UserCompleted: r.UserCompleted || false,
     }));
 
-    // Dynamic unlock: level N is unlocked if level N-1 is completed
     if (userId) {
       for (let i = 0; i < levels.length; i++) {
         levels[i].IsLocked = i === 0 ? false : !levels[i - 1].UserCompleted;
@@ -110,18 +71,17 @@ const gameService = {
     const pool = getPool();
 
     const levelRes = await pool.query(`
-      SELECT gl.*, gs.GameType, gs.Name as "SetName"
+      SELECT gl.*
       FROM GameLevels gl
-      JOIN GameSets gs ON gl.SetId = gs.Id
       WHERE gl.Id = $1
     `, [levelId]);
     if (levelRes.rows.length === 0) return null;
 
     const row = levelRes.rows[0];
     const level = {
-      Id: row.id, SetId: row.setid, LevelNumber: row.levelnumber, Name: row.name,
+      Id: row.id, LevelNumber: row.levelnumber, Name: row.name,
       Difficulty: row.difficulty, TimeLimit: row.timelimit, PassScore: row.passscore,
-      IsLocked: row.islocked, GameType: row.gametype, SetName: row.setname
+      IsLocked: row.islocked, GameType: 'mixed', SetName: 'Mini game'
     };
 
     // Get questions — shuffle via random(), limit 10

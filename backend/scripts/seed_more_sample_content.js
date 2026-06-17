@@ -212,10 +212,10 @@ const writingLessons = [
     title: 'Một ngày thường nhật',
     description: 'Viết đoạn văn ngắn kể về lịch trình mỗi ngày.',
     orderIndex: 4,
-    passageEN: 'I usually wake up at six o'clock and drink a glass of water. After that, I have breakfast with my family before going to school. In the afternoon, I review my lessons and do my homework carefully. In the evening, I spend thirty minutes practicing English online. This routine helps me stay healthy and study better every day.',
+    passageEN: 'I usually wake up at six o\'clock and drink a glass of water. After that, I have breakfast with my family before going to school. In the afternoon, I review my lessons and do my homework carefully. In the evening, I spend thirty minutes practicing English online. This routine helps me stay healthy and study better every day.',
     passageVI: 'Tôi thường thức dậy lúc sáu giờ và uống một ly nước. Sau đó, tôi ăn sáng với gia đình trước khi đến trường. Vào buổi chiều, tôi ôn lại bài và làm bài tập cẩn thận. Vào buổi tối, tôi dành ba mươi phút luyện tiếng Anh trực tuyến. Thói quen này giúp tôi khỏe mạnh và học tốt hơn mỗi ngày.',
     exercises: [
-      ['Tôi thường thức dậy lúc sáu giờ và uống một ly nước.', 'I usually wake up at six o'clock and drink a glass of water.', [['usually', 'thường'], ['wake up', 'thức dậy']]],
+      ['Tôi thường thức dậy lúc sáu giờ và uống một ly nước.', 'I usually wake up at six o\'clock and drink a glass of water.', [['usually', 'thường'], ['wake up', 'thức dậy']]],
       ['Sau đó, tôi ăn sáng với gia đình trước khi đến trường.', 'After that, I have breakfast with my family before going to school.', [['after that', 'sau đó'], ['breakfast', 'bữa sáng']]],
       ['Vào buổi chiều, tôi ôn lại bài và làm bài tập cẩn thận.', 'In the afternoon, I review my lessons and do my homework carefully.', [['review', 'ôn lại'], ['carefully', 'cẩn thận']]],
       ['Vào buổi tối, tôi dành ba mươi phút luyện tiếng Anh trực tuyến.', 'In the evening, I spend thirty minutes practicing English online.', [['spend', 'dành thời gian'], ['online', 'trực tuyến']]],
@@ -315,20 +315,12 @@ const writingLessons = [
 ];
 
 async function upsertGameContent(pool) {
-  const singleSetId = '2f2131f7-33c3-4c00-a3c9-7db3c93b9ea2';
+  const trackId = '2f2131f7-33c3-4c00-a3c9-7db3c93b9ea2';
 
   await pool.query(`
-    INSERT INTO GameSets (Id, Name, Description, GameType, Icon, OrderIndex, UnlockCondition)
-    VALUES ($1, $2, $3, 'mixed', $4, 3, 'none')
-    ON CONFLICT (Id) DO UPDATE SET
-      Name = EXCLUDED.Name,
-      Description = EXCLUDED.Description,
-      GameType = EXCLUDED.GameType,
-      Icon = EXCLUDED.Icon,
-      OrderIndex = EXCLUDED.OrderIndex,
-      UnlockCondition = EXCLUDED.UnlockCondition
+    SELECT $1::uuid AS Id, $2::text AS Name, $3::text AS Description, $4::text AS Icon
   `, [
-    singleSetId,
+    trackId,
     'Mini Games tổng hợp',
     'Một thẻ mini game duy nhất, các chủ đề được chia thành nhiều cấp độ bên trong.',
     '🎮'
@@ -341,10 +333,9 @@ async function upsertGameContent(pool) {
       const sourceLevelNumber = levelIndex + 1;
       const levelId = stableId('game-level', `${set.key}-${sourceLevelNumber}`);
       await pool.query(`
-        INSERT INTO GameLevels (Id, SetId, LevelNumber, Name, Difficulty, TimeLimit, PassScore, IsLocked)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, false)
+        INSERT INTO GameLevels (Id, LevelNumber, Name, Difficulty, TimeLimit, PassScore, IsLocked)
+        VALUES ($1, $2, $3, $4, $5, $6, false)
         ON CONFLICT (Id) DO UPDATE SET
-          SetId = EXCLUDED.SetId,
           LevelNumber = EXCLUDED.LevelNumber,
           Name = EXCLUDED.Name,
           Difficulty = EXCLUDED.Difficulty,
@@ -353,7 +344,6 @@ async function upsertGameContent(pool) {
           IsLocked = EXCLUDED.IsLocked
       `, [
         levelId,
-        singleSetId,
         globalLevelNumber,
         `${set.name} - ${level.name}`,
         level.difficulty,
@@ -384,7 +374,7 @@ async function upsertGameContent(pool) {
   }
 
   for (const set of gameSets) {
-    await pool.query('DELETE FROM GameSets WHERE Id = $1', [stableId('game-set', set.key)]);
+    await pool.query('SELECT $1::uuid', [stableId('game-set', set.key)]);
   }
 }
 

@@ -46,13 +46,6 @@ const learningTracks = [
     desc: 'Viết câu, đoạn văn và nhận góp ý',
     to: '/writing/lessons',
     color: '#10b981'
-  },
-  {
-    icon: '/nav-icons/admin-games.svg',
-    label: 'Mini game',
-    desc: 'Ôn nhanh bằng trò chơi',
-    to: '/games',
-    color: '#c2185b'
   }
 ];
 
@@ -96,7 +89,6 @@ function Dashboard() {
   const quickActions = [
     { icon: '/nav-icons/courses.svg', label: 'Khóa học', desc: 'Chọn kỹ năng cần luyện', to: '/courses', color: '#c2185b' },
     { icon: '/nav-icons/dictionary.svg', label: 'Từ điển', desc: 'Tra cứu và lưu từ mới', to: '/dictionary', color: '#8a4b35' },
-    { icon: '/nav-icons/admin-games.svg', label: 'Mini game', desc: 'Ôn tập bằng trò chơi', to: '/games', color: '#c2185b' },
     { icon: '/nav-icons/profile.svg', label: 'Hồ sơ', desc: 'Xem EXP và thông tin tài khoản', to: '/profile', color: '#8a4b35' }
   ];
 
@@ -108,7 +100,6 @@ function Dashboard() {
           <h1>Xin chào, {user?.username || 'bạn'}!</h1>
           <div className="lingo-hero-actions">
             <Link className="btn btn-primary btn-lg" to="/courses">Bắt đầu học</Link>
-            <Link className="btn btn-secondary btn-lg" to="/games">Chơi mini game</Link>
           </div>
         </div>
 

@@ -31,7 +31,7 @@ function AdminDashboard() {
     { icon: <FiUsers size={22} />, label: 'Tổng người dùng', value: stats?.totalUsers || 0, sub: `${stats?.activeUsers || 0} đang hoạt động`, color: '#6366f1', bg: 'linear-gradient(135deg, #6366f1, #818cf8)' },
     { icon: <FiUserPlus size={22} />, label: 'User mới (7 ngày)', value: stats?.newUsers7d || 0, sub: 'đăng ký gần đây', color: '#10b981', bg: 'linear-gradient(135deg, #10b981, #34d399)' },
     { icon: <FiLayers size={22} />, label: 'Bài kỹ năng', value: stats?.totalSkillLessons || 0, sub: 'nghe, nói, đọc, viết', color: '#8b5cf6', bg: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
-    { icon: <FiPlay size={22} />, label: 'Mini Games', value: stats?.totalGameSets || 0, sub: `${stats?.totalGameLevels || 0} levels · ${stats?.totalQuestions || 0} câu hỏi`, color: '#ec4899', bg: 'linear-gradient(135deg, #ec4899, #f472b6)' },
+    { icon: <FiPlay size={22} />, label: 'Level Mini game', value: stats?.totalGameLevels || 0, sub: `${stats?.totalQuestions || 0} câu hỏi`, color: '#ec4899', bg: 'linear-gradient(135deg, #ec4899, #f472b6)' },
   ];
 
   const contentCards = [
@@ -40,7 +40,7 @@ function AdminDashboard() {
     { icon: <FiMic size={20} />, label: 'Speaking', count: stats?.totalSpeakingLessons || 0, sub: `${stats?.totalSpeakingQuestions || 0} câu hỏi`, to: '/admin/speaking', color: '#f59e0b' },
     { icon: <FiEdit3 size={20} />, label: 'Writing', count: stats?.totalWritingLessons || 0, sub: `${stats?.totalWritingExercises || 0} bài tập`, to: '/admin/writing', color: '#10b981' },
     { icon: <FiBookOpen size={20} />, label: 'Grammar', count: stats?.totalGrammarCategories || 0, sub: `${stats?.totalGrammarTopics || 0} chủ đề`, to: '/admin/grammar', color: '#6366f1' },
-    { icon: <FiPlay size={20} />, label: 'Mini Games', count: stats?.totalGameSets || 0, sub: `${stats?.totalGameLevels || 0} levels`, to: '/admin/games', color: '#ec4899' },
+    { icon: <FiPlay size={20} />, label: 'Mini Games', count: stats?.totalGameLevels || 0, sub: `${stats?.totalQuestions || 0} câu hỏi`, to: '/admin/games', color: '#ec4899' },
   ];
 
   const quickActions = [
@@ -49,7 +49,7 @@ function AdminDashboard() {
     { icon: <FiMic size={18} />, label: 'Quản lý Speaking', desc: 'Quản lý bài & câu hỏi speaking', to: '/admin/speaking', color: '#f59e0b' },
     { icon: <FiEdit3 size={18} />, label: 'Quản lý Writing', desc: 'Quản lý bài & bài tập writing', to: '/admin/writing', color: '#10b981' },
     { icon: <FiBookOpen size={18} />, label: 'Quản lý Grammar', desc: 'Danh mục, chủ đề & quiz grammar', to: '/admin/grammar', color: '#6366f1' },
-    { icon: <FiPlay size={18} />, label: 'Quản lý Mini Games', desc: 'Game sets, levels & câu hỏi', to: '/admin/games', color: '#ec4899' },
+    { icon: <FiPlay size={18} />, label: 'Quản lý Mini Games', desc: 'Levels & câu hỏi', to: '/admin/games', color: '#ec4899' },
     ...(user?.role === 'superadmin' ? [{ icon: <FiUsers size={18} />, label: 'Quản lý người dùng', desc: 'Phân quyền & khóa tài khoản', to: '/admin/users', color: '#ef4444' }] : []),
   ];
 
