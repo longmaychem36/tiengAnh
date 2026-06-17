@@ -3,8 +3,8 @@
 // ============================================
 import axios from 'axios';
 import { stopAllPlayback } from '../utils/audioControl';
+import { API_URL } from './config';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 const TOKEN_STORAGE_KEY = 'token';
 const USER_STORAGE_KEY = 'user:v1';
 const LEGACY_USER_STORAGE_KEY = 'user';

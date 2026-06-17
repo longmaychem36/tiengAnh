@@ -1,6 +1,6 @@
 import axiosClient from './axiosClient';
+import { API_URL } from './config';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 const TOKEN_STORAGE_KEY = 'token';
 
 export const studyTimeApi = {

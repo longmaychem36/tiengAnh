@@ -175,6 +175,27 @@ npm.cmd run db:import-data:check
 
 Luu y: `cosodulieu.sql` dung cu phap `COPY ... FROM stdin`. PostgreSQL CLI `psql` doc duoc cu phap nay, nhung SQL editor tren web hoac script Node chay thang `client.query(sqlContent)` thuong chi tao duoc bang roi khong nap duoc du lieu.
 
+Sau khi import database, chạy thêm migration/seed cho nội dung học hiện tại. Bước này đặc biệt quan trọng với trang Admin Listening/Reading: trang user có fallback dữ liệu tĩnh trong frontend, còn trang admin chỉ đọc dữ liệu thật trong PostgreSQL.
+
+```powershell
+cd D:\tiengAnh\backend
+$env:DATABASE_URL="postgresql://PGUSER:POSTGRES_PASSWORD@RAILWAY_TCP_PROXY_DOMAIN:RAILWAY_TCP_PROXY_PORT/PGDATABASE"
+$env:DB_SSL="true"
+npm.cmd run db:migrate-receptive
+npm.cmd run db:seed-receptive
+npm.cmd run db:migrate-onboarding
+npm.cmd run db:seed-onboarding
+npm.cmd run db:migrate-minigames
+npm.cmd run db:counts
+```
+
+Kiểm tra nhanh Listening/Reading có dữ liệu:
+
+```powershell
+psql "POSTGRES_PUBLIC_URL" -c "select count(*) from public.listeninglessons;"
+psql "POSTGRES_PUBLIC_URL" -c "select count(*) from public.readinglessons;"
+```
+
 ## 7. Deploy Whisper Service Trên Railway
 
 Whisper là Python Flask service. Nên deploy riêng, không chung với backend Node.
@@ -475,7 +496,29 @@ VITE_API_URL=https://english-learning-api-production.up.railway.app/api/v1
 
 Sau khi sửa env, phải redeploy frontend trên Vercel.
 
-### 13.3 Backend Không Kết Nối Database
+### 13.3 Admin Listening/Reading Không Thấy Bài Nhưng User Vẫn Thấy
+
+Nguyên nhân thường gặp: database Railway chưa được seed bài Listening/Reading. Trang user có fallback dữ liệu tĩnh nên vẫn hiển thị, còn trang admin chỉ quản lý dữ liệu trong PostgreSQL.
+
+Chạy trên máy local với public database URL của Railway:
+
+```powershell
+cd D:\tiengAnh\backend
+$env:DATABASE_URL="POSTGRES_PUBLIC_URL"
+$env:DB_SSL="true"
+npm.cmd run db:seed-receptive
+npm.cmd run db:counts
+```
+
+Nếu vẫn rỗng, kiểm tra Vercel có đúng biến:
+
+```env
+VITE_API_URL=https://english-learning-api-production.up.railway.app/api/v1
+```
+
+Sau khi sửa env, redeploy frontend.
+
+### 13.4 Backend Không Kết Nối Database
 
 Kiểm tra Railway backend logs.
 
@@ -485,13 +528,13 @@ Nếu lỗi connection:
 - Nếu dùng private Railway variables, thử `DB_SSL=false`.
 - Nếu dùng public TCP proxy, thử `DB_SSL=true`.
 
-### 13.4 Import SQL Lỗi Permission Hoặc Extension
+### 13.5 Import SQL Lỗi Permission Hoặc Extension
 
 File `cosodulieu.sql` đã bỏ `OWNER TO postgres` và dùng `CREATE EXTENSION IF NOT EXISTS pgcrypto`.
 
 Nếu vẫn lỗi, kiểm tra PostgreSQL user của Railway có quyền tạo extension không.
 
-### 13.5 Whisper Crash Vì Hết RAM
+### 13.6 Whisper Crash Vì Hết RAM
 
 Sửa Whisper variables:
 
@@ -503,7 +546,7 @@ WHISPER_COMPUTE=int8
 
 Sau đó redeploy Whisper.
 
-### 13.6 Speaking Báo Whisper Offline
+### 13.7 Speaking Báo Whisper Offline
 
 Kiểm tra backend variable:
 
@@ -519,11 +562,11 @@ curl https://english-whisper-production.up.railway.app/health
 
 Nếu health chạy được mà backend vẫn lỗi, xem backend logs khi bấm ghi âm.
 
-### 13.7 Railway Service Sleep Hoặc Cold Start
+### 13.8 Railway Service Sleep Hoặc Cold Start
 
 Lần đầu truy cập có thể chậm. Whisper có thể chậm hơn vì cần load model. Nếu cần ổn định, nâng cấp plan Railway.
 
-### 13.8 Railpack Báo Không Xác Định Được Cách Build App
+### 13.9 Railpack Báo Không Xác Định Được Cách Build App
 
 Lỗi thường gặp:
 
@@ -561,7 +604,7 @@ Sau khi sửa:
 2. Bấm **Redeploy**.
 3. Nếu vẫn lỗi, vào **Settings** và xóa mọi command cũ kiểu `start.sh`.
 
-### 13.9 Whisper Báo `ModuleNotFoundError: No module named 'requests'`
+### 13.10 Whisper Báo `ModuleNotFoundError: No module named 'requests'`
 
 Lỗi:
 
