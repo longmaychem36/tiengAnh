@@ -38,7 +38,7 @@ const authHeaders = () => ({
 const emptyLesson = {
   Title: '',
   Description: '',
-  Level: 'A1',
+  Level: '',
   Topic: '',
   Objective: '',
   Duration: '',
@@ -170,7 +170,7 @@ function AdminReceptive({ skill }) {
   const buildLessonPayload = (lesson, orderIndex = lesson.OrderIndex) => ({
     Title: lesson.Title,
     Description: lesson.Description || '',
-    Level: lesson.Level || 'A1',
+    Level: lesson.Level || '',
     Topic: lesson.Topic || '',
     Objective: lesson.Objective || '',
     Duration: lesson.Duration || '',
@@ -464,7 +464,7 @@ function AdminReceptive({ skill }) {
     setLessonForm({
       Title: lesson.Title || '',
       Description: lesson.Description || '',
-      Level: lesson.Level || 'A1',
+      Level: lesson.Level || '',
       Topic: lesson.Topic || '',
       Objective: lesson.Objective || '',
       Duration: lesson.Duration || '',
@@ -552,6 +552,7 @@ function AdminReceptive({ skill }) {
             <span>
               <span>Cấp độ</span>
               <select aria-label="Lựa chọn" className="form-input" value={lessonForm.Level} onChange={(event) => updateLessonField('Level', event.target.value)}>
+                <option value="">Chưa đặt cấp độ</option>
                 <option value="A1">A1</option>
                 <option value="A2">A2</option>
                 <option value="B1">B1</option>
@@ -611,7 +612,7 @@ function AdminReceptive({ skill }) {
                 {selectedLesson?.Id === lesson.Id ? <FiChevronDown /> : <FiChevronRight />}
                 <div>
                   <strong>{lesson.Title}</strong>
-                  <span>{lesson.Level || 'A1'} · {lesson.Topic || 'Chưa có chủ đề'} · {lesson.Duration || 'Chưa đặt thời lượng'}</span>
+                  <span>{lesson.Level || 'Chưa đặt cấp độ'} · {lesson.Topic || 'Chưa có chủ đề'} · {lesson.Duration || 'Chưa đặt thời lượng'}</span>
                   <p className="admin-order-badge">STT {lesson.OrderIndex || index + 1}</p>
                 </div>
               </button>

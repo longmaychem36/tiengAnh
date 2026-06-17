@@ -16,15 +16,11 @@ import {
   FiXCircle
 } from 'react-icons/fi';
 
-import {
-  getNextReceptiveLesson,
-  getReceptiveLesson,
-  receptiveSkillMeta
-} from '../../data/receptiveLessons';
 import { receptiveApi } from '../../api/receptiveApi';
 import Loading from '../common/Loading';
 import VocabularyGate from '../common/VocabularyGate';
 import QuestionNavigator from '../common/QuestionNavigator';
+import { receptiveSkillMeta } from './receptiveMeta';
 import {
   LearningLayout,
   LessonCard,
@@ -47,29 +43,6 @@ const normalizeAnswer = (value) => {
 };
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-const getStoredProgress = (skill) => {
-  try {
-    return JSON.parse(localStorage.getItem(`${skill}_lesson_progress`) || '{}');
-  } catch {
-    return {};
-  }
-};
-
-const saveLessonProgress = (skill, lessonId, score) => {
-  const key = `${skill}_lesson_progress`;
-  const progress = getStoredProgress(skill);
-  const previousScore = Number(progress[lessonId]?.score || 0);
-
-  progress[lessonId] = {
-    completed: score >= PASS_SCORE || Boolean(progress[lessonId]?.completed),
-    score: Math.max(previousScore, score),
-    lastScore: score,
-    updatedAt: new Date().toISOString()
-  };
-
-  localStorage.setItem(key, JSON.stringify(progress));
-};
 
 const buildSpeechText = (lesson, skill) => {
   if (skill === 'listening') {
@@ -156,14 +129,11 @@ const HighlightedText = ({ text, vocabulary }) => {
 const ReceptiveLesson = ({ skill }) => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const staticLesson = getReceptiveLesson(skill, id);
-  const staticNextLesson = getNextReceptiveLesson(skill, id);
   const meta = receptiveSkillMeta[skill];
   const SkillIcon = skill === 'listening' ? FiHeadphones : FiBookOpen;
 
   const [lesson, setLesson] = useState(null);
   const [nextLesson, setNextLesson] = useState(null);
-  const [source, setSource] = useState('static');
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
@@ -200,7 +170,6 @@ const ReceptiveLesson = ({ skill }) => {
         if (!apiLesson) throw new Error('Lesson not found');
 
         setLesson(apiLesson);
-        setSource('api');
 
         const lessons = lessonsRes?.data?.lessons || [];
         const index = lessons.findIndex((item) => String(item.id) === String(id));
@@ -208,9 +177,8 @@ const ReceptiveLesson = ({ skill }) => {
       })
       .catch(() => {
         if (cancelled) return;
-        setLesson(staticLesson);
-        setNextLesson(staticNextLesson);
-        setSource('static');
+        setLesson(null);
+        setNextLesson(null);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -220,7 +188,7 @@ const ReceptiveLesson = ({ skill }) => {
       cancelled = true;
       stopAllPlayback();
     };
-  }, [skill, id, staticLesson, staticNextLesson]);
+  }, [skill, id]);
 
   useEffect(() => {
     if (!hasSpeechSupport()) return undefined;
@@ -315,14 +283,11 @@ const ReceptiveLesson = ({ skill }) => {
     const correctCount = lesson.questions.filter((question) => isQuestionCorrect(question, answers[question.id])).length;
     const score = Math.round((correctCount / lesson.questions.length) * 100);
     setResult({ correctCount, score });
-    saveLessonProgress(skill, lesson.id, score);
-    if (source === 'api') {
-      receptiveApi.saveProgress(skill, {
-        lessonId: lesson.id,
-        score,
-        completed: score >= PASS_SCORE
-      }).catch(() => {});
-    }
+    receptiveApi.saveProgress(skill, {
+      lessonId: lesson.id,
+      score,
+      completed: score >= PASS_SCORE
+    }).catch(() => {});
 
     if (score >= PASS_SCORE) toast.success('Đã hoàn thành bài học.');
     else toast('Bạn nên luyện lại bài này để đạt ít nhất 70%.');
@@ -651,8 +616,8 @@ const ReceptiveLesson = ({ skill }) => {
       header={(
         <LessonHeader
           title={lesson.title}
-          level={lesson.level || skillLabel}
-          topic={lesson.topic || skillLabel}
+          level={lesson.level || ''}
+          topic={lesson.topic || ''}
           progress={progressPercent}
           answered={answeredCount}
           total={totalQuestions}

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
+  FiAlertCircle,
   FiArrowLeft,
   FiBookOpen,
   FiCheck,
@@ -11,25 +12,17 @@ import {
   FiTarget
 } from 'react-icons/fi';
 
-import { getReceptiveLessons, receptiveSkillMeta } from '../../data/receptiveLessons';
 import { receptiveApi } from '../../api/receptiveApi';
 import Loading from '../common/Loading';
-
-const getStoredProgress = (skill) => {
-  try {
-    return JSON.parse(localStorage.getItem(`${skill}_lesson_progress`) || '{}');
-  } catch {
-    return {};
-  }
-};
+import { receptiveSkillMeta } from './receptiveMeta';
 
 const normalizeLesson = (lesson, skill) => ({
   ...lesson,
-  level: lesson.level || 'A1',
+  level: lesson.level || '',
   topic: lesson.topic || '',
-  duration: lesson.duration || '8-12 phút',
+  duration: lesson.duration || '',
   description: lesson.description || '',
-  questionCount: lesson.questionCount ?? lesson.questions?.length ?? 0,
+  questionCount: lesson.questionCount ?? 0,
   sourceSkill: skill
 });
 
@@ -37,30 +30,25 @@ const ReceptiveLessonList = ({ skill }) => {
   const navigate = useNavigate();
   const meta = receptiveSkillMeta[skill];
   const [lessons, setLessons] = useState([]);
-  const [source, setSource] = useState('static');
   const [loading, setLoading] = useState(true);
-  const progress = useMemo(() => getStoredProgress(skill), [skill]);
+  const [loadError, setLoadError] = useState(false);
   const SkillIcon = skill === 'listening' ? FiHeadphones : FiBookOpen;
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setLoadError(false);
 
     receptiveApi.getLessons(skill)
       .then((res) => {
         if (cancelled) return;
         const apiLessons = res.data?.lessons || [];
-        if (apiLessons.length > 0) {
-          setLessons(apiLessons.map((lesson) => normalizeLesson(lesson, skill)));
-          setSource('api');
-        } else {
-          setLessons(getReceptiveLessons(skill).map((lesson) => normalizeLesson(lesson, skill)));
-          setSource('static');
-        }
+        setLessons(apiLessons.map((lesson) => normalizeLesson(lesson, skill)));
       })
       .catch(() => {
         if (cancelled) return;
-        setLessons(getReceptiveLessons(skill).map((lesson) => normalizeLesson(lesson, skill)));
-        setSource('static');
+        setLessons([]);
+        setLoadError(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -71,9 +59,7 @@ const ReceptiveLessonList = ({ skill }) => {
     };
   }, [skill]);
 
-  const completedCount = lessons.filter((lesson) => (
-    source === 'api' ? lesson.isCompleted : progress[lesson.id]?.completed
-  )).length;
+  const completedCount = lessons.filter((lesson) => lesson.isCompleted).length;
 
   if (loading) return <Loading />;
 
@@ -104,48 +90,59 @@ const ReceptiveLessonList = ({ skill }) => {
           </div>
         </div>
 
-        <div className="receptive-lesson-grid">
-          {lessons.map((lesson, index) => {
-            const saved = progress[lesson.id];
-            const score = Number(source === 'api' ? lesson.score || 0 : saved?.score || 0);
-            const completed = source === 'api' ? lesson.isCompleted : Boolean(saved?.completed);
-            const locked = Boolean(lesson.isLocked);
+        {lessons.length === 0 ? (
+          <div className="receptive-empty">
+            <FiAlertCircle />
+            <h3>{loadError ? 'Không tải được dữ liệu' : 'Chưa có bài học trong database'}</h3>
+            <p>
+              {loadError
+                ? 'Kiểm tra API, token đăng nhập hoặc biến VITE_API_URL khi deploy.'
+                : 'Hãy seed Listening/Reading vào PostgreSQL để trang này hiển thị bài học.'}
+            </p>
+          </div>
+        ) : (
+          <div className="receptive-lesson-grid">
+            {lessons.map((lesson, index) => {
+              const score = Number(lesson.score || 0);
+              const completed = Boolean(lesson.isCompleted);
+              const locked = Boolean(lesson.isLocked);
 
-            return (
-              <motion.button
-                key={lesson.id}
-                type="button"
-                className="receptive-lesson-card"
-                disabled={locked}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => navigate(`/${skill}/lessons/${lesson.id}`)}
-              >
-                <span className="receptive-level">{lesson.level}</span>
-                <div className="receptive-card-top">
-                  <span className="receptive-card-index">
-                    {completed ? <FiCheck /> : index + 1}
-                  </span>
-                  <span className="receptive-topic">{lesson.topic || skill}</span>
-                </div>
+              return (
+                <motion.button
+                  key={lesson.id}
+                  type="button"
+                  className="receptive-lesson-card"
+                  disabled={locked}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  onClick={() => navigate(`/${skill}/lessons/${lesson.id}`)}
+                >
+                  <span className="receptive-level">{lesson.level || 'Chưa đặt cấp độ'}</span>
+                  <div className="receptive-card-top">
+                    <span className="receptive-card-index">
+                      {completed ? <FiCheck /> : index + 1}
+                    </span>
+                    <span className="receptive-topic">{lesson.topic || 'Chưa có chủ đề'}</span>
+                  </div>
 
-                <h3>{lesson.title}</h3>
-                <p>{lesson.description}</p>
+                  <h3>{lesson.title}</h3>
+                  <p>{lesson.description || 'Chưa có mô tả trong database.'}</p>
 
-                <div className="receptive-card-meta">
-                  <span><FiClock /> {lesson.duration}</span>
-                  <span>{lesson.questionCount} câu hỏi</span>
-                </div>
+                  <div className="receptive-card-meta">
+                    <span><FiClock /> {lesson.duration || 'Chưa đặt thời lượng'}</span>
+                    <span>{lesson.questionCount} câu hỏi</span>
+                  </div>
 
-                <div className="receptive-card-footer">
-                  <span>{locked ? 'Cần hoàn thành bài trước' : completed ? `Điểm tốt nhất: ${score}%` : 'Bắt đầu luyện tập'}</span>
-                  {!locked && <FiPlay />}
-                </div>
-              </motion.button>
-            );
-          })}
-        </div>
+                  <div className="receptive-card-footer">
+                    <span>{locked ? 'Cần hoàn thành bài trước' : completed ? `Điểm tốt nhất: ${score}%` : 'Bắt đầu luyện tập'}</span>
+                    {!locked && <FiPlay />}
+                  </div>
+                </motion.button>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );

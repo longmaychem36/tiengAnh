@@ -15,13 +15,6 @@ import toast from 'react-hot-toast';
 import { speakingApi } from '../../api/speakingApi';
 import Loading from '../common/Loading';
 
-const getLevelLabel = (index) => {
-  if (index < 2) return 'A1';
-  if (index < 4) return 'A2';
-  if (index < 6) return 'B1';
-  return 'B2';
-};
-
 const SpeakingList = () => {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
@@ -96,7 +89,7 @@ const SpeakingList = () => {
                   transition={{ delay: index * 0.05 }}
                   onClick={() => navigate(`/speaking/lessons/${lesson.id}`)}
                 >
-                  <span className="receptive-level">{getLevelLabel(index)}</span>
+                  <span className="receptive-level">{lesson.level || 'Chưa đặt cấp độ'}</span>
                   <div className="receptive-card-top">
                     <span className="receptive-card-index">
                       {isLocked ? <FiLock /> : isCompleted ? <FiCheck /> : index + 1}
@@ -105,10 +98,10 @@ const SpeakingList = () => {
                   </div>
 
                   <h3>{lesson.title}</h3>
-                  <p>{lesson.description || 'Luyện trả lời câu hỏi theo chủ đề, nghe mẫu và ghi âm để hệ thống chấm độ khớp.'}</p>
+                  <p>{lesson.description || 'Chưa có mô tả trong database.'}</p>
 
                   <div className="receptive-card-meta">
-                    <span><FiClock /> 8-12 phút</span>
+                    <span><FiClock /> {lesson.duration || 'Chưa đặt thời lượng'}</span>
                     <span>{lesson.questionCount} câu luyện tập</span>
                   </div>
 

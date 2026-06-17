@@ -393,7 +393,7 @@ const adminContentService = {
     `, [
       data.Title,
       data.Description || '',
-      data.Level || 'A1',
+      data.Level || '',
       data.Topic || '',
       data.Objective || '',
       data.Duration || '',
@@ -426,7 +426,7 @@ const adminContentService = {
     `, [
       data.Title,
       data.Description || '',
-      data.Level || 'A1',
+      data.Level || '',
       data.Topic || '',
       data.Objective || '',
       data.Duration || '',

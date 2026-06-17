@@ -382,7 +382,7 @@ const WritingLesson = () => {
     return (
       <VocabularyGate
         items={vocabularyItems}
-        title={lessonData?.title || 'Luyện viết'}
+        title={lessonData?.title || 'Chưa có tiêu đề'}
         skillLabel="Writing"
         gateKey={vocabularyGateKey}
         onPassed={() => setVocabPassed(true)}
@@ -422,14 +422,14 @@ const WritingLesson = () => {
       className="learning-session-writing fade-in"
       header={(
         <LessonHeader
-          title={lessonData?.title || 'Luyện viết'}
-          level={lessonData?.level || 'Viết'}
-          topic={lessonData?.topic || 'Viết'}
+          title={lessonData?.title || 'Chưa có tiêu đề'}
+          level={lessonData?.level || ''}
+          topic={lessonData?.topic || ''}
           progress={progressPercent}
           answered={answeredCount}
           total={totalQuestions}
           score={passRate}
-          duration={lessonData?.duration || 'Tự luyện'}
+          duration={lessonData?.duration || '--'}
           backLabel="Về khóa viết"
           onBack={() => navigate('/writing/lessons')}
         />

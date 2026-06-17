@@ -395,8 +395,8 @@ const SpeakingLesson = () => {
         className="learning-session-speaking fade-in"
         header={(
           <LessonHeader
-            title={lessonData?.title || 'Luyện nói'}
-            level={isPersonalized ? 'AI' : 'Nói'}
+            title={lessonData?.title || 'Chưa có tiêu đề'}
+            level={isPersonalized ? 'AI' : ''}
             topic={lessonData?.topic}
             progress={progressPercent}
             answered={answeredCount}

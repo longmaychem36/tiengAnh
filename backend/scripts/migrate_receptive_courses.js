@@ -7,7 +7,7 @@ async function createSkillTables(pool, prefix, contentTable, contentColumns) {
       Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       Title varchar(255) NOT NULL,
       Description text,
-      Level varchar(20) DEFAULT 'A1',
+      Level varchar(20),
       Topic varchar(120),
       Objective text,
       Duration varchar(50),
@@ -19,7 +19,8 @@ async function createSkillTables(pool, prefix, contentTable, contentColumns) {
     )
   `);
 
-  await pool.query(`ALTER TABLE ${prefix}Lessons ADD COLUMN IF NOT EXISTS Level varchar(20) DEFAULT 'A1'`);
+  await pool.query(`ALTER TABLE ${prefix}Lessons ADD COLUMN IF NOT EXISTS Level varchar(20)`);
+  await pool.query(`ALTER TABLE ${prefix}Lessons ALTER COLUMN Level DROP DEFAULT`);
   await pool.query(`ALTER TABLE ${prefix}Lessons ADD COLUMN IF NOT EXISTS Topic varchar(120)`);
   await pool.query(`ALTER TABLE ${prefix}Lessons ADD COLUMN IF NOT EXISTS Objective text`);
   await pool.query(`ALTER TABLE ${prefix}Lessons ADD COLUMN IF NOT EXISTS Duration varchar(50)`);
