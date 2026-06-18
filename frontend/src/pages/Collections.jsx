@@ -239,8 +239,8 @@ function Vocabulary() {
   }
 
   return (
-    <div>
-      <div className="page-header flex-between" style={{ alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
+    <div className="vocabulary-page">
+      <div className="page-header flex-between vocabulary-header" style={{ alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
         <div>
           <h1>Từ vựng</h1>
         </div>
@@ -251,7 +251,7 @@ function Vocabulary() {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: '-4px', marginBottom: 'var(--space-5)' }}>
+      <div className="vocabulary-tabs" style={{ display: 'flex', gap: 'var(--space-2)', marginTop: '-4px', marginBottom: 'var(--space-5)' }}>
         <button type="button" className={`btn ${activeTab === 'mine' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('mine')}>
           <FiBookOpen /> Học phần của tôi
         </button>
@@ -262,7 +262,7 @@ function Vocabulary() {
 
       {selectedDeck ? (
         <section>
-          <div className="card">
+          <div className="card vocabulary-detail-card">
             <div className="flex-between" style={{ alignItems: 'flex-start', marginBottom: 'var(--space-5)' }}>
               <div>
                 <button
@@ -299,15 +299,15 @@ function Vocabulary() {
             )}
 
             {words.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-8)' }}>
+              <div className="vocabulary-empty" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-8)' }}>
                 Học phần này chưa có từ vựng.
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-3)' }}>
+              <div className="vocabulary-word-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-3)' }}>
                 {words.map((raw) => {
                   const item = normalizeWord(raw);
                   return (
-                    <article key={item.id} style={{ padding: 'var(--space-4)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', background: 'var(--color-bg-secondary)' }}>
+                    <article key={item.id} className="vocabulary-word-card" style={{ padding: 'var(--space-4)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', background: 'var(--color-bg-secondary)' }}>
                       <div className="flex-between" style={{ gap: 8, alignItems: 'flex-start' }}>
                         <button type="button" onClick={() => speakWord(item.word)} className="btn btn-icon btn-ghost" aria-label={`Nghe ${item.word}`}>
                           <FiVolume2 />
@@ -336,14 +336,14 @@ function Vocabulary() {
               {activeTab === 'mine' ? 'Chưa có học phần từ vựng.' : ''}
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-3)' }}>
+            <div className="vocabulary-deck-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-3)' }}>
               {visibleDecks.map((deck, index) => (
                 <motion.article
                   key={deck.Id}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.03 }}
-                  className="card"
+                  className="card vocabulary-deck-card"
                   onClick={() => loadWords(deck)}
                   style={{
                     cursor: 'pointer',

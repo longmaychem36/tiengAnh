@@ -217,12 +217,11 @@ async function collectCandidateTargets(userId) {
     async () => {
       const result = await pool.query(`
         SELECT ucw.Id,
-               COALESCE(de.Word, ucw.CustomWord) AS Word,
-               COALESCE(de.MeaningVI, ucw.CustomMeaning) AS Meaning,
+               ucw.CustomWord AS Word,
+               ucw.CustomMeaning AS Meaning,
                uc.Name AS CollectionName
         FROM UserCollectionWords ucw
         INNER JOIN UserCollections uc ON uc.Id = ucw.CollectionId
-        LEFT JOIN DictionaryEntries de ON de.Id = ucw.DictionaryEntryId
         WHERE uc.UserId = $1
         ORDER BY ucw.AddedAt DESC
         LIMIT 6
@@ -234,23 +233,6 @@ async function collectCandidateTargets(userId) {
         title: `Vocabulary: ${row.word}`,
         description: row.meaning || row.collectionname || 'Ôn từ đã lưu trong bộ sưu tập.',
         reasonSeed: 'Review saved vocabulary.'
-      }));
-    },
-    async () => {
-      const result = await pool.query(`
-        SELECT Id, Word
-        FROM DictionarySearchHistory
-        WHERE UserId = $1
-        ORDER BY SearchedAt DESC
-        LIMIT 5
-      `, [userId]);
-      result.rows.forEach((row) => addCandidate(candidates, {
-        skill: 'vocabulary',
-        targetType: 'vocabulary_review',
-        targetId: row.id,
-        title: `Vocabulary: ${row.word}`,
-        description: 'Ôn lại từ bạn đã tra gần đây.',
-        reasonSeed: 'Review recently searched vocabulary.'
       }));
     }
   ];

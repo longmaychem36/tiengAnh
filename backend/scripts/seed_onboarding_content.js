@@ -149,69 +149,6 @@ const writingLessons = [
   }
 ];
 
-const placementTests = [
-  {
-    key: 'placement-a',
-    title: 'Kiểm tra đầu vào A',
-    description: 'Đánh giá nhanh từ vựng, đọc hiểu và phản hồi giao tiếp cơ bản.',
-    orderIndex: 1,
-    questions: [
-      ['listening', 'multiple_choice', 'Choose the correct meaning of “hello”.', ['xin chào', 'tạm biệt', 'cảm ơn', 'xin lỗi'], 'xin chào'],
-      ['speaking', 'best_reply', 'A: What is your name? B: ____', ['My name is Nam.', 'I am fine.', 'It is a pen.', 'I live it.'], 'My name is Nam.'],
-      ['reading', 'multiple_choice', 'Read: “Linh is a student.” Who is a student?', ['Linh', 'Ben', 'Anna', 'Tom'], 'Linh'],
-      ['writing', 'fill_blank', 'Complete: I ____ a student.', [], 'am'],
-      ['listening', 'multiple_choice', 'Choose the number: eighteen.', ['18', '8', '80', '10'], '18'],
-      ['speaking', 'best_reply', 'A: How are you? B: ____', ['I am fine, thank you.', 'My name is Mai.', 'This is my book.', 'I am in Vietnam.'], 'I am fine, thank you.'],
-      ['reading', 'multiple_choice', 'Read: “My pen is in my bag.” Where is the pen?', ['In my bag', 'On the desk', 'Under the chair', 'At school'], 'In my bag'],
-      ['writing', 'fill_blank', 'Complete: My name ____ Linh.', [], 'is'],
-      ['reading', 'multiple_choice', 'What does “student” mean?', ['học sinh/sinh viên', 'giáo viên', 'bác sĩ', 'tài xế'], 'học sinh/sinh viên'],
-      ['speaking', 'best_reply', 'A: Nice to meet you. B: ____', ['Nice to meet you too.', 'I am eighteen.', 'It is blue.', 'I wake up early.'], 'Nice to meet you too.'],
-      ['writing', 'fill_blank', 'Complete: This is ____ book.', [], 'my'],
-      ['reading', 'multiple_choice', 'Read: “I live in Hanoi.” Where do I live?', ['Hanoi', 'Da Nang', 'School', 'Home'], 'Hanoi']
-    ]
-  },
-  {
-    key: 'placement-b',
-    title: 'Kiểm tra đầu vào B',
-    description: 'Đánh giá câu hỏi cá nhân, đồ vật và câu thường gặp.',
-    orderIndex: 2,
-    questions: [
-      ['speaking', 'best_reply', 'A: Where do you live? B: ____', ['I live in Da Nang.', 'I am fine.', 'It is a desk.', 'I am a book.'], 'I live in Da Nang.'],
-      ['reading', 'multiple_choice', 'Read: “The book is on the desk.” Where is the book?', ['On the desk', 'In the bag', 'Under the desk', 'On the chair'], 'On the desk'],
-      ['writing', 'fill_blank', 'Complete: She ____ my teacher.', [], 'is'],
-      ['listening', 'multiple_choice', 'Choose the correct meaning of “phone number”.', ['số điện thoại', 'tên', 'tuổi', 'địa chỉ'], 'số điện thoại'],
-      ['speaking', 'best_reply', 'A: How old are you? B: ____', ['I am eighteen years old.', 'I am from coffee.', 'It is my bag.', 'I live English.'], 'I am eighteen years old.'],
-      ['reading', 'multiple_choice', 'Read: “There are many chairs.” What are there many of?', ['Chairs', 'Books', 'Pens', 'Boards'], 'Chairs'],
-      ['writing', 'fill_blank', 'Complete: I live ____ Vietnam.', [], 'in'],
-      ['reading', 'multiple_choice', 'What does “board” mean in a classroom?', ['bảng', 'ghế', 'cửa', 'bút'], 'bảng'],
-      ['speaking', 'best_reply', 'A: Are you a student? B: ____', ['Yes, I am a student.', 'It is a phone.', 'I am on the chair.', 'Nice to blue.'], 'Yes, I am a student.'],
-      ['writing', 'fill_blank', 'Complete: My pen ____ blue.', [], 'is'],
-      ['reading', 'multiple_choice', 'Read: “I study English every day.” What do I study?', ['English', 'Math', 'Music', 'History'], 'English'],
-      ['speaking', 'best_reply', 'A: Thank you. B: ____', ['You are welcome.', 'My name is.', 'It is eighteen.', 'I live pen.'], 'You are welcome.']
-    ]
-  },
-  {
-    key: 'placement-c',
-    title: 'Kiểm tra đầu vào C',
-    description: 'Đánh giá khả năng hiểu câu ngắn và chọn phản hồi tự nhiên.',
-    orderIndex: 3,
-    questions: [
-      ['reading', 'multiple_choice', 'Read: “Tom is eighteen.” How old is Tom?', ['18', '8', '80', '10'], '18'],
-      ['writing', 'fill_blank', 'Complete: Nice to ____ you.', [], 'meet'],
-      ['speaking', 'best_reply', 'A: Good morning. B: ____', ['Good morning.', 'I am a chair.', 'It is in.', 'My pen live.'], 'Good morning.'],
-      ['listening', 'multiple_choice', 'Choose the correct meaning of “bag”.', ['cặp/túi', 'bảng', 'ghế', 'số'], 'cặp/túi'],
-      ['reading', 'multiple_choice', 'Read: “My bag is on the chair.” Where is the bag?', ['On the chair', 'In the bag', 'On the board', 'Under the book'], 'On the chair'],
-      ['writing', 'fill_blank', 'Complete: I like ____ English.', [], 'learning'],
-      ['speaking', 'best_reply', 'A: What is this? B: ____', ['This is my book.', 'I am fine.', 'I live in Hanoi.', 'Nice to meet you.'], 'This is my book.'],
-      ['reading', 'multiple_choice', 'What does “teacher” mean?', ['giáo viên', 'học sinh', 'sách', 'bút'], 'giáo viên'],
-      ['writing', 'fill_blank', 'Complete: ____ name is Mai.', [], 'My'],
-      ['speaking', 'best_reply', 'A: See you later. B: ____', ['See you later.', 'I am eighteen.', 'It is a desk.', 'My name is English.'], 'See you later.'],
-      ['reading', 'multiple_choice', 'Read: “I have breakfast at seven.” What do I have?', ['Breakfast', 'Lunch', 'Dinner', 'Coffee'], 'Breakfast'],
-      ['writing', 'fill_blank', 'Complete: This ____ my classroom.', [], 'is']
-    ]
-  }
-];
-
 async function resetLessonChildren(pool, lessonId, tables) {
   for (const table of tables) {
     await pool.query(`DELETE FROM ${table} WHERE LessonId = $1`, [lessonId]);
@@ -410,44 +347,8 @@ async function seedWriting(pool) {
 }
 
 async function seedPlacementTests(pool) {
-  for (const test of placementTests) {
-    const testId = stableId('placement-test', test.key);
-    await pool.query(`
-      INSERT INTO PlacementTests (Id, Title, Description, IsActive, OrderIndex, UpdatedAt)
-      VALUES ($1, $2, $3, true, $4, NOW())
-      ON CONFLICT (Id) DO UPDATE SET
-        Title = EXCLUDED.Title,
-        Description = EXCLUDED.Description,
-        IsActive = true,
-        OrderIndex = EXCLUDED.OrderIndex,
-        UpdatedAt = NOW()
-    `, [testId, test.title, test.description, test.orderIndex]);
-
-    await pool.query(`DELETE FROM PlacementTestQuestions WHERE TestId = $1`, [testId]);
-    for (const [index, item] of test.questions.entries()) {
-      const [skill, type, prompt, options, answer] = item;
-      await pool.query(`
-        INSERT INTO PlacementTestQuestions
-          (Id, TestId, QuestionType, Skill, Prompt, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, AcceptedAnswers, Explanation, SourceSkill, SourceQuestionId, OrderIndex, UpdatedAt)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '', $12, $13, $14, NOW())
-      `, [
-        stableId('placement-question', `${test.key}-${index}`),
-        testId,
-        type,
-        skill,
-        prompt,
-        options[0] || '',
-        options[1] || '',
-        options[2] || '',
-        options[3] || '',
-        answer,
-        type === 'fill_blank' ? answer : '',
-        skill,
-        stableId('placement-source', `${skill}-${prompt}`),
-        index + 1
-      ]);
-    }
-  }
+  await pool.query('DELETE FROM PlacementTests WHERE IsActive = true');
+  console.log('Static placement tests removed. Runtime placement now samples real skill lessons.');
 }
 
 async function seed() {

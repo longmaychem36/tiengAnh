@@ -214,7 +214,6 @@ const AdminGrammar = () => {
           <div className="grid grid-2 gap-4">
             <div><span className="form-label">Tên (EN)</span><input aria-label="Trường nhập" className="form-input" value={catName} onChange={e => setCatName(e.target.value)} /></div>
             <div><span className="form-label">Tên (VI)</span><input aria-label="Trường nhập" className="form-input" value={catNameVI} onChange={e => setCatNameVI(e.target.value)} /></div>
-            <div><span className="form-label">Icon</span><input aria-label="Trường nhập" className="form-input" value={catIcon} onChange={e => setCatIcon(e.target.value)} /></div>
             <div><span className="form-label">Thứ tá»±</span><input aria-label="Trường nhập" className="form-input" type="number" value={catOrder} onChange={e => setCatOrder(e.target.value)} /></div>
           </div>
           <div className="mt-4 flex gap-2">
@@ -243,7 +242,6 @@ const AdminGrammar = () => {
               }
             }}>
               <div className="flex items-center gap-3">
-                <span style={{ fontSize: '24px' }}>{cat.Icon}</span>
                 <div>
                   <div style={{ fontWeight: 600 }}>{cat.Name} ({cat.NameVI})</div>
                 </div>
@@ -251,7 +249,7 @@ const AdminGrammar = () => {
               <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
                   setEditingCat(cat); setCatName(textValue(cat.Name)); setCatNameVI(textValue(cat.NameVI)); setCatIcon(cat.Icon || '📘'); setCatOrder(numberValue(cat.OrderIndex)); setShowCatForm(true);
-                }}><FiEdit2 size={14} /></button>
+                }}>Sửa</button>
                 <button type="button" className="btn btn-ghost btn-sm text-error" onClick={async () => {
                   if (window.confirm('Xóa danh mục này?')) {
                     try {
@@ -262,8 +260,8 @@ const AdminGrammar = () => {
                       toast.error('Không thể xóa danh mục này');
                     }
                   }
-                }}><FiTrash2 size={14} /></button>
-                {selectedCat?.Id === cat.Id ? <FiChevronDown /> : <FiChevronRight />}
+                }}>Xóa</button>
+                <span className="admin-expand-label">{selectedCat?.Id === cat.Id ? 'Đóng' : 'Mở'}</span>
               </div>
             </div>
 
@@ -317,13 +315,12 @@ const AdminGrammar = () => {
                         }
                       }}>
                         <div className="flex items-center gap-2">
-                          <FiBookOpen className="text-primary" />
                           <span className="font-medium text-sm">{topic.Title} ({topic.TitleVI})</span>
                         </div>
                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                           <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
                             setEditingTopic(topic); setTopicTitle(textValue(topic.Title)); setTopicTitleVI(textValue(topic.TitleVI)); setTopicContent(textValue(topic.Content)); setTopicOrder(numberValue(topic.OrderIndex)); setShowTopicForm(true);
-                          }}><FiEdit2 size={12} /></button>
+                          }}>Sửa</button>
                           <button type="button" className="btn btn-ghost btn-xs text-error" onClick={async () => {
                             if (window.confirm('Xóa chủ đề này?')) {
                               try {
@@ -334,8 +331,8 @@ const AdminGrammar = () => {
                                 toast.error('Không thể xóa chủ đề này');
                               }
                             }
-                          }}><FiTrash2 size={12} /></button>
-                          {selectedTopic?.Id === topic.Id ? <FiChevronDown size={14} /> : <FiChevronRight size={14} />}
+                          }}>Xóa</button>
+                          <span className="admin-expand-label">{selectedTopic?.Id === topic.Id ? 'Đóng' : 'Mở'}</span>
                         </div>
                       </div>
 
@@ -385,7 +382,7 @@ const AdminGrammar = () => {
                                 <div className="flex gap-1">
                                   <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
                                     setEditingQuiz(q); setQuizQ(textValue(q.Question)); setQA(textValue(q.OptionA)); setQB(textValue(q.OptionB)); setQC(textValue(q.OptionC)); setQD(textValue(q.OptionD)); setQAns(q.CorrectAnswer || 'A'); setQExp(textValue(q.Explanation)); setShowQuizForm(true);
-                                  }}><FiEdit2 size={12} /></button>
+                                  }}>Sửa</button>
                                   <button type="button" className="btn btn-ghost btn-xs text-error" onClick={async () => {
                                     if (window.confirm('Xóa bài tập?')) {
                                       try {
@@ -395,7 +392,7 @@ const AdminGrammar = () => {
                                         toast.error('Không thể xóa bài tập');
                                       }
                                     }
-                                  }}><FiTrash2 size={12} /></button>
+                                  }}>Xóa</button>
                                 </div>
                               </div>
                               {showQuizForm && editingQuiz?.Id === q.Id && (

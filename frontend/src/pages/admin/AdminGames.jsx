@@ -13,7 +13,7 @@ const FormModal = ({ title, fields, onSave, formData, setFormData, setShowForm }
     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 'var(--radius-xl)', padding: 'var(--space-8)', width: '100%', maxWidth: 500, maxHeight: '80vh', overflow: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
         <h3 style={{ fontWeight: 700 }}>{title}</h3>
-        <button type="button" onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><FiX size={20} /></button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Đóng</button>
       </div>
       {fields.map(f => (
         <div key={f.key} style={{ marginBottom: 'var(--space-4)' }}>
@@ -36,7 +36,7 @@ function Breadcrumb({ view, activeLevel, onLevels }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
       <span onClick={onLevels} style={{ cursor: 'pointer', fontWeight: view === 'levels' ? 700 : 400 }}>Mini game levels</span>
-      {activeLevel && <><FiChevronRight size={14} /><span style={{ fontWeight: 700 }}>{activeLevel.Name}</span></>}
+      {activeLevel && <><span>/</span><span style={{ fontWeight: 700 }}>{activeLevel.Name}</span></>}
     </div>
   );
 }
@@ -211,8 +211,6 @@ function AdminGames() {
   };
 
   const cardStyle = { padding: 'var(--space-4) var(--space-5)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', background: 'white', marginBottom: 'var(--space-3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-  const btnIcon = { background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 'var(--radius-md)' };
-
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -243,9 +241,9 @@ function AdminGames() {
                 <span style={{ marginLeft: 8, color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>{lv.QuestionCount} câu · {lv.TimeLimit}s · Đạt {lv.PassScore}%</span>
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
-                <button type="button" style={btnIcon} onClick={() => openLevelForm(lv)}><FiEdit2 size={16} style={{ color: 'var(--color-primary)' }} /></button>
-                {isSuperAdmin && <button type="button" style={btnIcon} onClick={() => deleteLevel(lv.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>}
-                <button type="button" style={btnIcon} onClick={() => loadQuestions(lv)}><FiList size={16} /></button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLevelForm(lv)}>Sửa</button>
+                {isSuperAdmin && <button type="button" className="btn btn-ghost btn-sm" onClick={() => deleteLevel(lv.Id)}>Xóa</button>}
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => loadQuestions(lv)}>Câu hỏi</button>
               </div>
             </div>
           ))}
@@ -274,8 +272,8 @@ function AdminGames() {
                   {q.Options && q.Options.length > 0 && <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 2 }}>Options: {q.Options.join(' | ')}</div>}
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
-                  <button type="button" style={btnIcon} onClick={() => openQuestionForm(q)}><FiEdit2 size={16} style={{ color: 'var(--color-primary)' }} /></button>
-                  <button type="button" style={btnIcon} onClick={() => deleteQuestion(q.Id)}><FiTrash2 size={16} style={{ color: 'var(--color-error)' }} /></button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => openQuestionForm(q)}>Sửa</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => deleteQuestion(q.Id)}>Xóa</button>
                 </div>
               </div>
             );

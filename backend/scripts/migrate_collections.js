@@ -21,7 +21,6 @@ async function runMigration() {
       CREATE TABLE IF NOT EXISTS UserCollectionWords (
         Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         CollectionId uuid NOT NULL REFERENCES UserCollections(Id) ON DELETE CASCADE,
-        DictionaryEntryId uuid REFERENCES DictionaryEntries(Id) ON DELETE SET NULL,
         CustomWord varchar(255),
         CustomMeaning text,
         CustomExample text,
@@ -42,6 +41,11 @@ async function runMigration() {
     await pool.query(`
       ALTER TABLE UserCollectionWords
       ADD COLUMN IF NOT EXISTS UpdatedAt timestamptz NOT NULL DEFAULT now()
+    `);
+
+    await pool.query(`
+      ALTER TABLE UserCollectionWords
+      DROP COLUMN IF EXISTS DictionaryEntryId
     `);
 
     await pool.query(`

@@ -29,6 +29,18 @@ function createLockedError(message) {
   return error;
 }
 
+function pickValue(row, ...keys) {
+  for (const key of keys) {
+    if (row?.[key] !== undefined && row?.[key] !== null) return row[key];
+  }
+  return undefined;
+}
+
+function getNumber(row, fallback, ...keys) {
+  const value = Number(pickValue(row, ...keys));
+  return Number.isFinite(value) ? value : fallback;
+}
+
 const grammarService = {
   async getCategories() {
     const pool = getPool();
@@ -64,7 +76,7 @@ const grammarService = {
     const topics = result.recordset;
     return topics.map((topic, index) => {
       const previousTopic = index > 0 ? topics[index - 1] : null;
-      const previousScore = Number(previousTopic?.BestScore || 0);
+      const previousScore = getNumber(previousTopic, 0, 'BestScore', 'Bestscore', 'bestScore', 'bestscore', 'best_score');
       const isLocked = index > 0 && previousScore < 80;
       return {
         ...topic,
@@ -97,10 +109,12 @@ const grammarService = {
     if (topicResult.recordset.length === 0) return null;
     const topic = topicResult.recordset[0];
 
-    if (userId && Number(topic.OrderIndex || 0) > 0) {
+    const topicOrderIndex = getNumber(topic, 0, 'OrderIndex', 'Orderindex', 'orderIndex', 'orderindex', 'order_index');
+    if (userId && topicOrderIndex > 0) {
+      const categoryId = pickValue(topic, 'CategoryId', 'Categoryid', 'categoryId', 'categoryid', 'category_id');
       const previousResult = await pool.request()
-        .input('categoryId', sql.Int, topic.CategoryId)
-        .input('orderIndex', sql.Int, topic.OrderIndex)
+        .input('categoryId', sql.Int, categoryId)
+        .input('orderIndex', sql.Int, topicOrderIndex)
         .input('userId', sql.UniqueIdentifier, userId)
         .query(`
           SELECT gt.Id, gt.Title, COALESCE(gp.BestScore, 0) as BestScore
@@ -111,7 +125,7 @@ const grammarService = {
           LIMIT 1
         `);
       const previousTopic = previousResult.recordset[0];
-      if (previousTopic && Number(previousTopic.BestScore || 0) < 80) {
+      if (previousTopic && getNumber(previousTopic, 0, 'BestScore', 'Bestscore', 'bestScore', 'bestscore', 'best_score') < 80) {
         throw createLockedError('Bạn cần hoàn thành chủ đề trước ít nhất 80% để mở khóa chủ đề này.');
       }
     }

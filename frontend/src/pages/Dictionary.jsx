@@ -1,27 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FiBookmark,
   FiCheck,
-  FiClock,
   FiCopy,
-  FiPlus,
   FiRepeat,
   FiSearch,
   FiVolume2,
   FiX,
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
 import { dictionaryApi } from '../api/dictionaryApi';
-import { collectionApi } from '../api/collectionApi';
 import { useDebounce } from '../hooks/useDebounce';
-import { useAuth } from '../hooks/useAuth';
 import { playTrackedAudio, speakText as speakWithBrowser, stopAllPlayback } from '../utils/audioControl';
 
 const getErrorMessage = (err, fallback) => err?.message || err?.errors?.[0]?.msg || fallback;
 
 const isSentence = (text) => text.trim().split(/\s+/).filter(Boolean).length >= 3;
+const pickValue = (item, ...keys) => {
+  for (const key of keys) {
+    if (item?.[key] !== undefined && item?.[key] !== null) return item[key];
+  }
+  return undefined;
+};
+const getWord = (item) => pickValue(item, 'Word', 'word') || '';
+const getMeaningVI = (item) => pickValue(item, 'MeaningVI', 'meaningVI', 'meaningvi') || '';
 
 const parseJson = (value, fallback) => {
   if (!value || typeof value !== 'string') return fallback;
@@ -33,7 +35,6 @@ const parseJson = (value, fallback) => {
 };
 
 function Dictionary() {
-  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [direction, setDirection] = useState('en-vi');
   const [results, setResults] = useState([]);
@@ -45,10 +46,6 @@ function Dictionary() {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [sentenceResult, setSentenceResult] = useState(null);
   const [sentenceLoading, setSentenceLoading] = useState(false);
-  const [history, setHistory] = useState([]);
-  const [collections, setCollections] = useState([]);
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [savingCollection, setSavingCollection] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const debouncedQuery = useDebounce(query, 550);
@@ -93,16 +90,6 @@ function Dictionary() {
       stopAllPlayback();
     };
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    dictionaryApi.getHistory()
-      .then((res) => setHistory((res.data || []).slice(0, 8)))
-      .catch(() => setHistory([]));
-    collectionApi.getMyCollections()
-      .then((res) => setCollections(res.data || []))
-      .catch(() => setCollections([]));
-  }, [user]);
 
   useEffect(() => {
     const q = autocompleteQuery.trim();
@@ -169,7 +156,7 @@ function Dictionary() {
         setResults(entries);
         setSuggestions(res.suggestions || []);
 
-        const exactMatch = entries.find((entry) => entry.Word?.toLowerCase() === q.toLowerCase());
+        const exactMatch = entries.find((entry) => getWord(entry).toLowerCase() === q.toLowerCase());
         if (!exactMatch) {
           setSelectedWord(null);
           return;
@@ -231,31 +218,13 @@ function Dictionary() {
     }
   };
 
-  const saveToCollection = async (collectionId) => {
-    if (!selectedWord) return;
-    setSavingCollection(true);
-    try {
-      await collectionApi.addWord(collectionId, {
-        customWord: selectedWord.Word,
-        customMeaning: selectedWord.MeaningVI || selectedWord.MeaningEN || '',
-        customExample: selectedWord.Example || ''
-      });
-      toast.success('Đã lưu từ vào bộ sưu tập.');
-      setShowSaveModal(false);
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Lưu từ thất bại.'));
-    } finally {
-      setSavingCollection(false);
-    }
-  };
-
   return (
     <div className="dictionary-page">
       <section className="dictionary-header">
         <div>
           <span className="lingo-eyebrow">Dictionary</span>
           <h1>Từ điển thông minh</h1>
-          <p>Tra từ, dịch câu, nghe phát âm và lưu từ vào bộ sưu tập cá nhân.</p>
+          <p>Tra từ, dịch câu và nghe phát âm bằng dữ liệu từ API.</p>
         </div>
         <button className="dictionary-direction" type="button" onClick={toggleDirection}>
           <span>{langFrom}</span>
@@ -283,23 +252,14 @@ function Dictionary() {
         {showAutocomplete && autocomplete.length > 0 && !sentenceMode && (
           <div className="dictionary-autocomplete">
             {autocomplete.map((item) => (
-              <button key={`${item.Word}-${item.MeaningVI || ''}`} type="button" onClick={() => selectQuery(direction === 'vi-en' ? item.MeaningVI || item.Word : item.Word)}>
-                <strong>{direction === 'vi-en' ? item.MeaningVI || item.Word : item.Word}</strong>
-                <span>{direction === 'vi-en' ? item.Word : item.MeaningVI}</span>
+              <button key={`${getWord(item)}-${getMeaningVI(item)}`} type="button" onClick={() => selectQuery(direction === 'vi-en' ? getMeaningVI(item) || getWord(item) : getWord(item))}>
+                <strong>{direction === 'vi-en' ? getMeaningVI(item) || getWord(item) : getWord(item)}</strong>
+                <span>{direction === 'vi-en' ? getWord(item) : getMeaningVI(item)}</span>
               </button>
             ))}
           </div>
         )}
       </section>
-
-      {history.length > 0 && trimmedQuery.length < 2 && (
-        <section className="dictionary-history">
-          <span><FiClock /> Tra gần đây</span>
-          {history.map((item) => (
-            <button key={item.Id} type="button" onClick={() => selectQuery(item.Word)}>{item.Word}</button>
-          ))}
-        </section>
-      )}
 
       {error && <div className="dictionary-error">{error}</div>}
 
@@ -346,7 +306,7 @@ function Dictionary() {
             {!loading && trimmedQuery.length >= 2 && results.length === 0 && suggestions.length === 0 && !error && (
               <div className="dictionary-empty">Không tìm thấy kết quả cho "{trimmedQuery}".</div>
             )}
-            {!loading && trimmedQuery.length < 2 && history.length === 0 && (
+            {!loading && trimmedQuery.length < 2 && (
               <div className="dictionary-empty">Nhập ít nhất 2 ký tự để bắt đầu tra cứu.</div>
             )}
 
@@ -385,11 +345,6 @@ function Dictionary() {
                   <button type="button" onClick={copyTranslation} aria-label="Sao chép nghĩa">
                     {copied ? <FiCheck /> : <FiCopy />}
                   </button>
-                  {user && (
-                    <button type="button" onClick={() => setShowSaveModal(true)} aria-label="Lưu từ">
-                      <FiBookmark />
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -423,33 +378,6 @@ function Dictionary() {
         </section>
       )}
 
-      {showSaveModal && (
-        <div className="dictionary-modal-backdrop">
-          <motion.div className="dictionary-modal" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
-            <div className="dictionary-section-head">
-              <span>Lưu "{selectedWord?.Word}"</span>
-              <button type="button" onClick={() => setShowSaveModal(false)} aria-label="Đóng"><FiX /></button>
-            </div>
-
-            {collections.length > 0 ? (
-              <div className="dictionary-collection-list">
-                {collections.map((collection) => (
-                  <button key={collection.Id} type="button" disabled={savingCollection} onClick={() => saveToCollection(collection.Id)}>
-                    <FiBookmark />
-                    <span>{collection.Name}</span>
-                    <small>{collection.WordCount || 0} từ</small>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="dictionary-empty">
-                <p>Bạn chưa có bộ sưu tập nào.</p>
-                <Link to="/collections" className="btn btn-primary no-underline"><FiPlus /> Tạo bộ sưu tập</Link>
-              </div>
-            )}
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 }

@@ -7,6 +7,18 @@ function createHttpError(message, statusCode = 400) {
   return error;
 }
 
+function pickValue(row, ...keys) {
+  for (const key of keys) {
+    if (row?.[key] !== undefined && row?.[key] !== null) return row[key];
+  }
+  return undefined;
+}
+
+function getIdValue(row, ...keys) {
+  const value = pickValue(row, ...keys);
+  return value == null ? '' : String(value);
+}
+
 function isApprovedPublic(collection) {
   return Boolean(collection?.IsPublic || collection?.ispublic) && (collection?.ReviewStatus || collection?.reviewstatus) === 'approved';
 }
@@ -44,17 +56,17 @@ const collectionService = {
   async update(userId, collectionId, data) {
     const collection = await collectionRepo.getById(collectionId);
     if (!collection) throw createHttpError('Collection not found', 404);
-    if (collection.UserId !== userId) throw createHttpError('Unauthorized to modify this collection', 403);
+    if (getIdValue(collection, 'UserId', 'userid') !== String(userId)) throw createHttpError('Unauthorized to modify this collection', 403);
 
-    const isPublic = Boolean(data.isPublic ?? collection.IsPublic);
+    const isPublic = Boolean(data.isPublic ?? pickValue(collection, 'IsPublic', 'ispublic'));
     if (isPublic) {
       const isPlus = await billingService.isPlusUser(userId);
       if (!isPlus) throw createHttpError('Tạo học phần public là tính năng Plus.', 403);
     }
 
     return await collectionRepo.update(collectionId, {
-      name: data.name || collection.Name,
-      description: data.description ?? collection.Description,
+      name: data.name || pickValue(collection, 'Name', 'name'),
+      description: data.description ?? pickValue(collection, 'Description', 'description'),
       isPublic,
       reviewStatus: isPublic ? 'pending' : 'approved'
     });
@@ -63,7 +75,7 @@ const collectionService = {
   async delete(collectionId, userId) {
     const collection = await collectionRepo.getById(collectionId);
     if (!collection) throw createHttpError('Collection not found', 404);
-    if (collection.UserId !== userId) throw createHttpError('Unauthorized to delete this collection', 403);
+    if (getIdValue(collection, 'UserId', 'userid') !== String(userId)) throw createHttpError('Unauthorized to delete this collection', 403);
 
     // Due to ON DELETE CASCADE on UserCollectionWords, words will be automatically deleted
     return await collectionRepo.delete(collectionId);
@@ -72,7 +84,7 @@ const collectionService = {
   async getWords(collectionId, userId) {
     const collection = await collectionRepo.getById(collectionId);
     if (!collection) throw createHttpError('Collection not found', 404);
-    if (collection.UserId !== userId && !isApprovedPublic(collection)) {
+    if (getIdValue(collection, 'UserId', 'userid') !== String(userId) && !isApprovedPublic(collection)) {
       throw createHttpError('Unauthorized to view this collection', 403);
     }
 
@@ -82,7 +94,7 @@ const collectionService = {
   async addWord(userId, collectionId, data) {
     const collection = await collectionRepo.getById(collectionId);
     if (!collection) throw createHttpError('Collection not found', 404);
-    if (collection.UserId !== userId) throw createHttpError('Unauthorized to modify this collection', 403);
+    if (getIdValue(collection, 'UserId', 'userid') !== String(userId)) throw createHttpError('Unauthorized to modify this collection', 403);
 
     if (!data.customWord) {
       throw new Error('Custom word is required');
@@ -90,7 +102,6 @@ const collectionService = {
 
     const word = await collectionRepo.addWord({
       collectionId,
-      dictionaryEntryId: null,
       customWord: data.customWord,
       customMeaning: data.customMeaning,
       customExample: data.customExample
@@ -102,10 +113,10 @@ const collectionService = {
   async updateWord(userId, collectionId, wordId, data) {
     const collection = await collectionRepo.getById(collectionId);
     if (!collection) throw createHttpError('Collection not found', 404);
-    if (collection.UserId !== userId) throw createHttpError('Unauthorized to modify this collection', 403);
+    if (getIdValue(collection, 'UserId', 'userid') !== String(userId)) throw createHttpError('Unauthorized to modify this collection', 403);
 
     const word = await collectionRepo.getWordById(wordId);
-    if (!word || word.CollectionId !== collectionId) throw createHttpError('Word not found', 404);
+    if (!word || getIdValue(word, 'CollectionId', 'collectionid') !== String(collectionId)) throw createHttpError('Word not found', 404);
     if (!data.customWord) throw new Error('Custom word is required');
 
     const updated = await collectionRepo.updateWord(wordId, {
@@ -120,10 +131,10 @@ const collectionService = {
   async removeWord(userId, collectionId, wordId) {
     const collection = await collectionRepo.getById(collectionId);
     if (!collection) throw createHttpError('Collection not found', 404);
-    if (collection.UserId !== userId) throw createHttpError('Unauthorized to modify this collection', 403);
+    if (getIdValue(collection, 'UserId', 'userid') !== String(userId)) throw createHttpError('Unauthorized to modify this collection', 403);
 
     const word = await collectionRepo.getWordById(wordId);
-    if (!word || word.CollectionId !== collectionId) throw createHttpError('Word not found', 404);
+    if (!word || getIdValue(word, 'CollectionId', 'collectionid') !== String(collectionId)) throw createHttpError('Word not found', 404);
     
     const removed = await collectionRepo.removeWord(wordId);
     if (removed && isPublicCollection(collection)) await collectionRepo.markPending(collectionId);

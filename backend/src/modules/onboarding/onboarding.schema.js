@@ -42,6 +42,9 @@ async function ensureOnboardingSchema() {
       TestId uuid NOT NULL REFERENCES PlacementTests(Id) ON DELETE CASCADE,
       QuestionType varchar(50) DEFAULT 'multiple_choice',
       Skill varchar(40) DEFAULT 'general',
+      Difficulty varchar(20) DEFAULT 'easy',
+      Weight double precision DEFAULT 1,
+      ContextText text,
       Prompt text NOT NULL,
       OptionA text,
       OptionB text,
@@ -52,6 +55,10 @@ async function ensureOnboardingSchema() {
       Explanation text,
       SourceSkill varchar(40),
       SourceQuestionId text,
+      SourceLessonId text,
+      SourceLessonTitle varchar(255),
+      SourceLessonType varchar(30),
+      QuestionPayload jsonb DEFAULT '{}'::jsonb,
       OrderIndex integer DEFAULT 0,
       CreatedAt timestamptz DEFAULT now(),
       UpdatedAt timestamptz DEFAULT now()
@@ -78,9 +85,21 @@ async function ensureOnboardingSchema() {
       QuestionId uuid NOT NULL REFERENCES PlacementTestQuestions(Id) ON DELETE CASCADE,
       Answer text,
       IsCorrect boolean DEFAULT false,
+      Weight double precision DEFAULT 1,
+      EarnedWeight double precision DEFAULT 0,
       CreatedAt timestamptz DEFAULT now()
     )
   `);
+
+  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS Difficulty varchar(20) DEFAULT 'easy'`);
+  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS Weight double precision DEFAULT 1`);
+  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS ContextText text`);
+  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS SourceLessonId text`);
+  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS SourceLessonTitle varchar(255)`);
+  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS SourceLessonType varchar(30)`);
+  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS QuestionPayload jsonb DEFAULT '{}'::jsonb`);
+  await pool.query(`ALTER TABLE PlacementAttemptAnswers ADD COLUMN IF NOT EXISTS Weight double precision DEFAULT 1`);
+  await pool.query(`ALTER TABLE PlacementAttemptAnswers ADD COLUMN IF NOT EXISTS EarnedWeight double precision DEFAULT 0`);
 
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_placement_tests_active ON PlacementTests(IsActive, OrderIndex)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_placement_questions_test ON PlacementTestQuestions(TestId, OrderIndex)`);

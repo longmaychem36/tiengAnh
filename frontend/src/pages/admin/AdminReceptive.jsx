@@ -609,7 +609,7 @@ function AdminReceptive({ skill }) {
           <div key={lesson.Id} className={`admin-receptive-card ${selectedLesson?.Id === lesson.Id ? 'is-active' : ''}`}>
             <div className="admin-receptive-card-head">
               <button type="button" className="admin-receptive-title" onClick={() => selectLesson(lesson)}>
-                {selectedLesson?.Id === lesson.Id ? <FiChevronDown /> : <FiChevronRight />}
+                <span className="admin-expand-label">{selectedLesson?.Id === lesson.Id ? 'Đóng' : 'Mở'}</span>
                 <div>
                   <strong>{lesson.Title}</strong>
                   <span>{lesson.Level || 'Chưa đặt cấp độ'} · {lesson.Topic || 'Chưa có chủ đề'} · {lesson.Duration || 'Chưa đặt thời lượng'}</span>
@@ -617,10 +617,10 @@ function AdminReceptive({ skill }) {
                 </div>
               </button>
               <div className="admin-inline-actions">
-                <button type="button" className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => handleMoveLesson(lesson.Id, -1)} title="Đưa lên"><FiArrowUp /></button>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={index === lessons.length - 1} onClick={() => handleMoveLesson(lesson.Id, 1)} title="Đưa xuống"><FiArrowDown /></button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => startEditLesson(lesson)}><FiEdit2 /></button>
-                <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => handleDeleteLesson(lesson.Id)}><FiTrash2 /></button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => handleMoveLesson(lesson.Id, -1)}>Lên</button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={index === lessons.length - 1} onClick={() => handleMoveLesson(lesson.Id, 1)}>Xuống</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => startEditLesson(lesson)}>Sửa</button>
+                <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => handleDeleteLesson(lesson.Id)}>Xóa</button>
               </div>
             </div>
 
@@ -703,8 +703,8 @@ function AdminReceptive({ skill }) {
                     {vocabItems.map((item) => (
                       <span key={item.Id}>
                         <strong>{item.Word}</strong>: {item.Meaning}
-                        <button type="button" onClick={() => startEditVocab(item)}><FiEdit2 /></button>
-                        <button type="button" onClick={() => handleDeleteVocab(item.Id)}><FiX /></button>
+                        <button type="button" onClick={() => startEditVocab(item)}>Sửa</button>
+                        <button type="button" onClick={() => handleDeleteVocab(item.Id)}>Xóa</button>
                       </span>
                     ))}
                     {vocabItems.length === 0 && !showVocabForm && <EmptyState text="Chưa có từ vựng." />}
@@ -769,8 +769,8 @@ function AdminItem({ children, onEdit, onDelete }) {
     <div className="admin-list-item">
       <div>{children}</div>
       <div className="admin-inline-actions">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onEdit}><FiEdit2 /></button>
-        <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={onDelete}><FiTrash2 /></button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onEdit}>Sửa</button>
+        <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={onDelete}>Xóa</button>
       </div>
     </div>
   );

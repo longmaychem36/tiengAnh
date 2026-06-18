@@ -1,7 +1,7 @@
 // ============================================
 // Grammar Page — Category Listing + Topic Viewer + Quiz
 // ============================================
-import { createElement, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiChevronRight, FiCheck, FiX, FiArrowLeft, FiBookOpen, FiAward, FiLock } from 'react-icons/fi';
@@ -12,29 +12,33 @@ import Loading from '../components/common/Loading';
 const GRAMMAR_HTML_TAGS = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'h2', 'h3', 'h4', 'blockquote'];
 const asArray = (value) => (Array.isArray(value) ? value : []);
 const asText = (value, fallback = '') => (value == null ? fallback : String(value));
-const getData = (res, fallback) => res?.data ?? fallback;
+const pickValue = (item, ...keys) => {
+  for (const key of keys) {
+    if (item?.[key] !== undefined && item?.[key] !== null) return item[key];
+  }
+  return undefined;
+};
+const getField = (item, fallback, ...keys) => asText(pickValue(item, ...keys), fallback);
+const getData = (res, fallback) => {
+  const payload = res?.data ?? res;
+  return payload ?? fallback;
+};
 const getErrorMessage = (err, fallback) => asText(err?.message || err?.error || err?.data?.message, fallback);
+const getId = (item) => item?.Id ?? item?.id;
+const getTopicCount = (category) => Number(category?.TopicCount ?? category?.Topiccount ?? category?.topicCount ?? category?.topic_count ?? category?.topiccount ?? 0);
+const getQuizCount = (topic) => Number(topic?.QuizCount ?? topic?.Quizcount ?? topic?.quizCount ?? topic?.quiz_count ?? topic?.quizcount ?? 0);
+const getCorrectAnswer = (quiz) => quiz?.CorrectAnswer ?? quiz?.Correctanswer ?? quiz?.correctAnswer ?? quiz?.correct_answer ?? quiz?.correctanswer;
+const getQuizOption = (quiz, key) => getField(quiz, '', `Option${key}`, `Option${key.toLowerCase()}`, `option${key}`, `option${key.toLowerCase()}`, `option_${key.toLowerCase()}`);
 
-function renderGrammarNode(node, key) {
-  if (!node) return null;
-  if (node.nodeType === 3) return node.textContent;
-  if (node.nodeType !== 1) return null;
-
-  const tag = node.tagName.toLowerCase();
-  const children = Array.from(node.childNodes).map((child, index) => renderGrammarNode(child, `${key}-${index}`));
-  if (!GRAMMAR_HTML_TAGS.includes(tag)) return children;
-
-  return createElement(tag, { key }, children);
-}
-
-function renderGrammarContent(html) {
-  if (!html || typeof DOMParser === 'undefined') return null;
+function getSafeGrammarHtml(html) {
+  if (!html) return '<p>Chưa có nội dung ngữ pháp.</p>';
   try {
-    const safeHtml = DOMPurify.sanitize(asText(html), { ALLOWED_TAGS: GRAMMAR_HTML_TAGS });
-    const doc = new DOMParser().parseFromString(safeHtml, 'text/html');
-    return Array.from(doc.body.childNodes).map((node, index) => renderGrammarNode(node, `grammar-${index}`));
+    return DOMPurify.sanitize(asText(html), {
+      ALLOWED_TAGS: GRAMMAR_HTML_TAGS,
+      ALLOWED_ATTR: ['colspan', 'rowspan']
+    });
   } catch {
-    return <p>Không thể hiển thị nội dung ngữ pháp.</p>;
+    return '<p>Không thể hiển thị nội dung ngữ pháp.</p>';
   }
 }
 
@@ -109,21 +113,23 @@ function Grammar() {
     setSelectedAnswer(answer);
     const quiz = activeTopic?.quizzes?.[currentQ];
     if (!quiz) return;
+    const quizId = getId(quiz);
     const nextAnswers = [
-      ...quizAnswers.filter((item) => item.quizId !== quiz.Id),
-      { quizId: quiz.Id, answer }
+      ...quizAnswers.filter((item) => item.quizId !== quizId),
+      { quizId, answer }
     ];
     setQuizAnswers(nextAnswers);
-    if (answer === quiz.CorrectAnswer) {
+    if (answer === getCorrectAnswer(quiz)) {
       setQuizScore(prev => prev + 1);
     }
   };
 
   const submitQuizAttempt = async (answers) => {
-    if (!activeTopic?.Id || answers.length === 0) return;
+    const topicId = getId(activeTopic);
+    if (!topicId || answers.length === 0) return;
     try {
       await grammarApi.submitAttempt({
-        topicId: activeTopic.Id,
+        topicId,
         answers
       });
       if (activeCategoryId) {
@@ -185,7 +191,7 @@ function Grammar() {
               {quizScore}/{total} ({pct}%)
             </div>
             <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-6)' }}>
-              {asText(activeTopic.TitleVI)}
+              {getField(activeTopic, '', 'TitleVI', 'titleVI', 'titlevi', 'title_vi')}
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center' }}>
               <button type="button" className="btn btn-secondary" onClick={() => { setQuizStarted(false); setQuizFinished(false); }}>
@@ -200,11 +206,12 @@ function Grammar() {
 
     const quiz = activeTopic.quizzes[currentQ] || {};
     const options = [
-      { key: 'A', text: quiz.OptionA },
-      { key: 'B', text: quiz.OptionB },
-      { key: 'C', text: quiz.OptionC },
-      { key: 'D', text: quiz.OptionD },
+      { key: 'A', text: getQuizOption(quiz, 'A') },
+      { key: 'B', text: getQuizOption(quiz, 'B') },
+      { key: 'C', text: getQuizOption(quiz, 'C') },
+      { key: 'D', text: getQuizOption(quiz, 'D') },
     ];
+    const correctAnswer = getCorrectAnswer(quiz);
 
     return (
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -212,7 +219,7 @@ function Grammar() {
           <FiArrowLeft /> Quay lại
         </button>
         <div className="flex-between" style={{ marginBottom: 'var(--space-2)' }}>
-          <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{asText(activeTopic.TitleVI)} — Quiz</span>
+          <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{getField(activeTopic, '', 'TitleVI', 'titleVI', 'titlevi', 'title_vi')} — Quiz</span>
           <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>
             Câu {currentQ + 1}/{asArray(activeTopic.quizzes).length}
           </span>
@@ -223,7 +230,7 @@ function Grammar() {
 
         <motion.div key={currentQ} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="card">
           <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, marginBottom: 'var(--space-6)', lineHeight: 1.5 }}>
-            {asText(quiz.Question)}
+            {getField(quiz, '', 'Question', 'question')}
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -232,9 +239,9 @@ function Grammar() {
               let border = 'var(--color-border)';
               let color = 'var(--color-text)';
               if (selectedAnswer) {
-                if (opt.key === quiz.CorrectAnswer) {
+                if (opt.key === correctAnswer) {
                   bg = 'rgba(16,185,129,0.1)'; border = 'var(--color-success)'; color = 'var(--color-success)';
-                } else if (opt.key === selectedAnswer && opt.key !== quiz.CorrectAnswer) {
+                } else if (opt.key === selectedAnswer && opt.key !== correctAnswer) {
                   bg = 'rgba(239,68,68,0.1)'; border = 'var(--color-error)'; color = 'var(--color-error)';
                 }
               }
@@ -257,14 +264,14 @@ function Grammar() {
           </div>
 
           {selectedAnswer && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 'var(--space-4)', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)', background: selectedAnswer === quiz.CorrectAnswer ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${selectedAnswer === quiz.CorrectAnswer ? 'var(--color-success)' : 'var(--color-error)'}` }}>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 'var(--space-4)', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)', background: selectedAnswer === correctAnswer ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${selectedAnswer === correctAnswer ? 'var(--color-success)' : 'var(--color-error)'}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                {selectedAnswer === quiz.CorrectAnswer
+                {selectedAnswer === correctAnswer
                   ? <><FiCheck style={{ color: 'var(--color-success)' }} /> <b style={{ color: 'var(--color-success)' }}>Đúng rồi!</b></>
                   : <><FiX style={{ color: 'var(--color-error)' }} /> <b style={{ color: 'var(--color-error)' }}>Sai rồi!</b></>}
               </div>
               <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', lineHeight: 1.5 }}>
-                {asText(quiz.Explanation)}
+                {getField(quiz, '', 'Explanation', 'explanation')}
               </p>
               <div style={{ textAlign: 'right', marginTop: 'var(--space-3)' }}>
                 <button type="button" className="btn btn-primary btn-sm" onClick={nextQuizQuestion}>
@@ -290,12 +297,12 @@ function Grammar() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
             <div>
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>
-                {activeTopic.CategoryNameVI}
+                {getField(activeTopic, '', 'CategoryNameVI', 'categoryNameVI', 'categorynamevi', 'category_name_vi')}
               </span>
               <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)', margin: '4px 0' }}>
-                {asText(activeTopic.Title)}
+                {getField(activeTopic, 'Chủ đề', 'Title', 'title')}
               </h1>
-              <p style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{asText(activeTopic.TitleVI)}</p>
+              <p style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{getField(activeTopic, '', 'TitleVI', 'titleVI', 'titlevi', 'title_vi')}</p>
             </div>
             {asArray(activeTopic.quizzes).length > 0 && (
               <button type="button" className="btn btn-primary" onClick={startQuiz} style={{ whiteSpace: 'nowrap' }}>
@@ -304,9 +311,11 @@ function Grammar() {
             )}
           </div>
 
-          <div className="grammar-content" style={{ lineHeight: 1.8, fontSize: 'var(--font-size-base)' }}>
-            {renderGrammarContent(activeTopic.Content)}
-          </div>
+          <div
+            className="grammar-content"
+            style={{ lineHeight: 1.8, fontSize: 'var(--font-size-base)' }}
+            dangerouslySetInnerHTML={{ __html: getSafeGrammarHtml(pickValue(activeTopic, 'Content', 'content')) }}
+          />
         </div>
       </div>
     );
@@ -314,14 +323,14 @@ function Grammar() {
 
   // ========== TOPICS LIST ==========
   if (activeCategoryId && topics.length > 0) {
-    const cat = categories.find(c => c.Id === activeCategoryId);
+    const cat = categories.find(c => getId(c) === activeCategoryId);
     return (
       <div>
         <button type="button" className="btn btn-ghost btn-sm" onClick={goBack} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
           <FiArrowLeft /> Quay lại
         </button>
         <div className="page-header">
-          <h1>{asText(cat?.Icon)} {asText(cat?.NameVI || cat?.Name, 'Ngữ pháp')}</h1>
+          <h1>{getField(cat, '', 'Icon', 'icon')} {getField(cat, 'Ngữ pháp', 'NameVI', 'nameVI', 'namevi', 'name_vi', 'Name', 'name')}</h1>
           <p>{topics.length} chủ đề ngữ pháp</p>
         </div>
         {errorMessage && (
@@ -331,15 +340,15 @@ function Grammar() {
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {topics.map((topic, i) => {
-            const locked = Boolean(topic.IsLocked || topic.isLocked);
-            const bestScore = Number(topic.BestScore || topic.bestScore || 0);
+            const locked = Boolean(topic.IsLocked ?? topic.isLocked ?? topic.islocked);
+            const bestScore = Number(topic.BestScore ?? topic.bestScore ?? topic.best_score ?? topic.bestscore ?? 0);
             return (
-            <motion.div key={topic.Id || i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <motion.div key={getId(topic) || i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <div
                 className="card"
-                onClick={() => topic.Id && !locked && loadTopic(topic.Id)}
+                onClick={() => getId(topic) && !locked && loadTopic(getId(topic))}
                 style={{
-                  cursor: topic.Id && !locked ? 'pointer' : 'default',
+                  cursor: getId(topic) && !locked ? 'pointer' : 'default',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -347,13 +356,13 @@ function Grammar() {
                 }}
               >
                 <div>
-                  <h3 style={{ fontWeight: 700, marginBottom: 4 }}>{asText(topic.Title, 'Chủ đề')}</h3>
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>{asText(topic.TitleVI)}</p>
+                  <h3 style={{ fontWeight: 700, marginBottom: 4 }}>{getField(topic, 'Chủ đề', 'Title', 'title')}</h3>
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>{getField(topic, '', 'TitleVI', 'titleVI', 'titlevi', 'title_vi')}</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                   {bestScore > 0 && <span className="badge badge-secondary">{bestScore}%</span>}
                   {locked && <span className="badge badge-secondary"><FiLock /> Cần 80%</span>}
-                  {Number(topic.QuizCount || 0) > 0 && <span className="badge badge-primary">{Number(topic.QuizCount || 0)} câu hỏi</span>}
+                  {getQuizCount(topic) > 0 && <span className="badge badge-primary">{getQuizCount(topic)} câu hỏi</span>}
                   {locked ? <FiLock style={{ color: 'var(--color-text-muted)' }} /> : <FiChevronRight style={{ color: 'var(--color-text-muted)' }} />}
                 </div>
               </div>
@@ -365,14 +374,14 @@ function Grammar() {
   }
 
   if (activeCategoryId) {
-    const cat = categories.find(c => c.Id === activeCategoryId);
+    const cat = categories.find(c => getId(c) === activeCategoryId);
     return (
       <div>
         <button type="button" className="btn btn-ghost btn-sm" onClick={goBack} style={{ marginBottom: 'var(--space-4)', padding: 0, color: 'var(--color-text-muted)' }}>
           <FiArrowLeft /> Quay lại
         </button>
         <div className="page-header">
-          <h1>{asText(cat?.Icon)} {asText(cat?.NameVI || cat?.Name, 'Ngữ pháp')}</h1>
+          <h1>{getField(cat, '', 'Icon', 'icon')} {getField(cat, 'Ngữ pháp', 'NameVI', 'nameVI', 'namevi', 'name_vi', 'Name', 'name')}</h1>
           <p>Chưa có chủ đề ngữ pháp.</p>
         </div>
         {errorMessage && (
@@ -394,12 +403,12 @@ function Grammar() {
 
       <div className="grid grid-3">
         {categories.map((cat, i) => (
-          <motion.div key={cat.Id || i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <div className="card" onClick={() => cat.Id && loadTopics(cat.Id)} style={{ cursor: cat.Id ? 'pointer' : 'default', textAlign: 'center', transition: 'transform 0.2s, box-shadow 0.2s' }}>
-              <div style={{ fontSize: 40, marginBottom: 'var(--space-3)' }}>{asText(cat.Icon, '📘')}</div>
-              <h3 style={{ fontWeight: 700, fontSize: 'var(--font-size-lg)', marginBottom: 4 }}>{asText(cat.Name, 'Grammar')}</h3>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-3)' }}>{asText(cat.NameVI)}</p>
-              <span className="badge badge-secondary">{Number(cat.TopicCount || 0)} chủ đề</span>
+          <motion.div key={getId(cat) || i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <div className="card" onClick={() => getId(cat) && loadTopics(getId(cat))} style={{ cursor: getId(cat) ? 'pointer' : 'default', textAlign: 'center', transition: 'transform 0.2s, box-shadow 0.2s' }}>
+              <div style={{ fontSize: 40, marginBottom: 'var(--space-3)' }}>{getField(cat, '📘', 'Icon', 'icon')}</div>
+              <h3 style={{ fontWeight: 700, fontSize: 'var(--font-size-lg)', marginBottom: 4 }}>{getField(cat, 'Grammar', 'Name', 'name')}</h3>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-3)' }}>{getField(cat, '', 'NameVI', 'nameVI', 'namevi', 'name_vi')}</p>
+              <span className="badge badge-secondary">{getTopicCount(cat)} chủ đề</span>
             </div>
           </motion.div>
         ))}

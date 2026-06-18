@@ -964,8 +964,8 @@ const adminContentService = {
     const pool = getPool();
     await assertAdminOwnedVocabularyCollection(pool, collectionId);
     const result = await pool.query(`
-      INSERT INTO UserCollectionWords (CollectionId, DictionaryEntryId, CustomWord, CustomMeaning, CustomExample, UpdatedAt)
-      VALUES ($1, NULL, $2, $3, $4, NOW())
+      INSERT INTO UserCollectionWords (CollectionId, CustomWord, CustomMeaning, CustomExample, UpdatedAt)
+      VALUES ($1, $2, $3, $4, NOW())
       RETURNING *
     `, [collectionId, data.CustomWord || data.customWord, data.CustomMeaning || data.customMeaning || '', data.CustomExample || data.customExample || null]);
     await pool.query('UPDATE UserCollections SET UpdatedAt = NOW() WHERE Id = $1', [collectionId]);

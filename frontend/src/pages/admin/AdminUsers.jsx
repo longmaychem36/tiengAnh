@@ -54,31 +54,30 @@ function AdminUsers() {
   };
 
   const roleColors = {
-    superadmin: { bg: '#fef3c7', color: '#d97706', label: '👑 SuperAdmin' },
-    admin: { bg: '#dbeafe', color: '#2563eb', label: '🛡️ Admin' },
-    member: { bg: '#f1f5f9', color: '#64748b', label: '👤 Member' }
+    superadmin: { bg: '#fef3c7', color: '#d97706', label: 'SuperAdmin' },
+    admin: { bg: '#dbeafe', color: '#2563eb', label: 'Admin' },
+    member: { bg: '#f1f5f9', color: '#64748b', label: 'Member' }
   };
 
   return (
     <div>
-      <div className="page-header">
-        <h1>👥 Quản lý người dùng</h1>
-        <p style={{ color: 'var(--color-text-muted)' }}>Phân quyền, khóa/mở tài khoản (Chỉ SuperAdmin)</p>
+      <div className="admin-receptive-header">
+        <h1>Quản lý người dùng</h1>
       </div>
+      <p style={{ color: '#a1a1aa', fontSize: '0.8125rem', marginBottom: '16px' }}>Phân quyền, khóa/mở tài khoản (Chỉ SuperAdmin)</p>
 
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-4" style={{ gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
           {[
-            { label: 'Tổng', value: stats.totalUsers, icon: '👥', color: '#6366f1' },
-            { label: 'Members', value: stats.members, icon: '👤', color: '#10b981' },
-            { label: 'Admins', value: stats.admins, icon: '🛡️', color: '#3b82f6' },
-            { label: 'Bị khóa', value: stats.locked, icon: '🔒', color: '#ef4444' }
+            { label: 'Tổng', value: stats.totalUsers, color: '#6366f1' },
+            { label: 'Members', value: stats.members, color: '#10b981' },
+            { label: 'Admins', value: stats.admins, color: '#3b82f6' },
+            { label: 'Bị khóa', value: stats.locked, color: '#ef4444' }
           ].map((s, i) => (
-            <div key={i} className="card" style={{ padding: 'var(--space-4)', textAlign: 'center' }}>
-              <div style={{ fontSize: 28 }}>{s.icon}</div>
-              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>{s.label}</div>
+            <div key={i} className="admin-stat-card" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: s.color }}>{s.value}</div>
+              <div style={{ fontSize: '0.6875rem', color: '#a1a1aa', marginTop: '4px' }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -87,8 +86,7 @@ function AdminUsers() {
       {/* Search */}
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
         <div style={{ position: 'relative', flex: 1 }}>
-          <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-          <input aria-label="Trường nhập" className="form-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên hoặc email..." style={{ paddingLeft: 36 }} />
+          <input aria-label="Trường nhập" className="form-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên hoặc email..." />
         </div>
         <button className="btn btn-primary" type="submit">Tìm</button>
       </form>
@@ -138,7 +136,7 @@ function AdminUsers() {
                       {/* Lock/Unlock */}
                       <button type="button" onClick={() => toggleActive(u.Id)} title={u.IsActive !== false ? 'Khóa' : 'Mở khóa'}
                         style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '4px 8px', cursor: 'pointer', color: u.IsActive !== false ? '#ef4444' : '#10b981' }}>
-                        {u.IsActive !== false ? <FiLock size={14} /> : <FiUnlock size={14} />}
+                        {u.IsActive !== false ? 'Khóa' : 'Mở khóa'}
                       </button>
                     </div>
                   </td>

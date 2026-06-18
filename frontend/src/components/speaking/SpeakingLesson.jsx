@@ -157,11 +157,15 @@ const SpeakingLesson = () => {
   }, [selectedVoiceURI, voices]);
 
   useEffect(() => {
-    if (currentSentence && !loading && !showSettings) {
+    if (currentSentence && !loading && !showSettings && !showCompletion) {
       const timer = setTimeout(() => playTTS(currentSentence.question), 450);
       return () => clearTimeout(timer);
     }
-  }, [currentSentence, loading, playTTS, showSettings]);
+  }, [currentSentence, loading, playTTS, showCompletion, showSettings]);
+
+  useEffect(() => {
+    if (showCompletion) stopAllPlayback();
+  }, [showCompletion]);
 
   const handleSaveSettings = () => {
     localStorage.setItem('speaking_threshold', passThreshold);
@@ -249,6 +253,7 @@ const SpeakingLesson = () => {
   };
 
   const finishLesson = async (finalAttempts = attempts) => {
+    stopAllPlayback();
     setLoading(true);
     if (isPersonalized) {
       speakingApi.completePersonalizedLesson(sessionId, {

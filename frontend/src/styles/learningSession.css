@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
 :root {
   --learning-primary: #2563EB;
   --learning-primary-hover: #1D4ED8;
@@ -28,7 +26,7 @@
   gap: 24px;
   margin: 0 auto;
   color: var(--learning-text);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-family, 'Nunito', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
 }
 
 .learning-session h1,
@@ -88,7 +86,7 @@
 .lesson-title-block h1 {
   margin: 8px 0 0;
   color: var(--learning-text);
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-display, var(--font-family, system-ui, sans-serif));
   font-size: clamp(1.55rem, 2.4vw, 2.35rem);
   font-weight: 800;
   line-height: 1.12;
@@ -149,7 +147,7 @@
   padding: 0 18px;
   border: 1px solid transparent;
   border-radius: 14px;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-family, system-ui, sans-serif);
   font-size: 0.92rem;
   font-weight: 700;
   line-height: 1;
@@ -305,7 +303,7 @@
 .question-card h2 {
   margin: 0;
   color: var(--learning-text);
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-display, var(--font-family, system-ui, sans-serif));
   font-weight: 800;
   letter-spacing: 0;
 }
@@ -374,7 +372,7 @@
   border-radius: 14px;
   background: #FFFFFF;
   color: var(--learning-text);
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-display, var(--font-family, system-ui, sans-serif));
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -954,7 +952,7 @@
 
 .writing-prompt-box h3 {
   color: var(--learning-text);
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-display, var(--font-family, system-ui, sans-serif));
   font-size: clamp(1.25rem, 2vw, 1.75rem);
   line-height: 1.35;
 }
@@ -1059,7 +1057,7 @@
 
 .productive-modal h3 {
   color: var(--learning-text);
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-display, var(--font-family, system-ui, sans-serif));
 }
 
 .productive-setting {
@@ -1451,17 +1449,223 @@
   }
 }
 
-/* Default lesson workspace density should match the browser at 90% zoom. */
-@media (min-width: 1181px) {
-  .learning-session {
-    zoom: 0.9;
-    width: min(calc(80vw / 0.9), 1280px);
+/* Taste learning session polish */
+:root {
+  --learning-shadow-sm: 0 16px 38px rgba(15, 23, 42, 0.08);
+  --learning-shadow-hover: 0 22px 48px rgba(15, 23, 42, 0.11);
+  --learning-soft-surface: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.learning-session {
+  width: min(92vw, 1320px);
+  letter-spacing: 0;
+}
+
+.lesson-header,
+.lesson-card,
+.question-card,
+.learning-session .question-navigator {
+  border-color: color-mix(in srgb, var(--learning-border) 78%, #94a3b8);
+  background: var(--learning-soft-surface);
+  box-shadow: var(--learning-shadow-sm);
+}
+
+.lesson-header {
+  position: relative;
+}
+
+.lesson-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--learning-primary), #22c55e);
+  pointer-events: none;
+}
+
+.lesson-progress-track span {
+  background: linear-gradient(90deg, var(--learning-primary), #22c55e);
+}
+
+.lesson-title-block h1,
+.lesson-card-header h2,
+.question-card h2,
+.writing-prompt-box h3,
+.productive-modal h3 {
+  font-family: var(--font-display, var(--font-family, system-ui, sans-serif));
+  text-wrap: balance;
+}
+
+.lesson-title-block p,
+.audio-player-copy span,
+.speaking-answer-option p,
+.speaking-question-translation,
+.productive-setting p {
+  text-wrap: pretty;
+}
+
+.lesson-stat,
+.audio-control-grid label,
+.writing-stat-card,
+.recording-status-card,
+.speaking-score,
+.speaking-feedback-grid > div,
+.writing-feedback-grid > div,
+.writing-review-grid > div,
+.writing-diff-box,
+.writing-prompt-box {
+  border-color: color-mix(in srgb, var(--learning-border) 84%, #cbd5e1);
+  background: color-mix(in srgb, #f8fafc 88%, #ffffff);
+}
+
+.lesson-stat strong,
+.learning-session .question-navigator-head strong,
+.learning-session .receptive-result strong,
+.speaking-score strong,
+.writing-stat-card strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.lesson-back-button:focus-visible,
+.learning-btn:focus-visible,
+.learning-session .btn:focus-visible,
+.audio-play-button:focus-visible,
+.learning-session .receptive-options button:focus-visible,
+.speaking-answer-option:focus-visible,
+.learning-session .question-nav-item:focus-visible,
+.vocab-audio-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+}
+
+.lesson-back-button:active:not(:disabled),
+.learning-btn:active:not(:disabled),
+.learning-session .btn:active:not(:disabled),
+.audio-play-button:active:not(:disabled),
+.learning-session .receptive-options button:active:not(:disabled),
+.speaking-answer-option:active:not(:disabled),
+.learning-session .question-nav-item:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+.lesson-card:hover,
+.question-card:hover,
+.learning-session .question-navigator:hover {
+  box-shadow: var(--learning-shadow-hover);
+}
+
+.learning-session .receptive-options button,
+.speaking-answer-option {
+  border-color: color-mix(in srgb, var(--learning-border) 82%, #cbd5e1);
+  background: #ffffff;
+}
+
+.learning-session .receptive-options button.is-selected,
+.speaking-answer-option.is-selected {
+  border-color: color-mix(in srgb, var(--learning-primary) 64%, #ffffff);
+  background: linear-gradient(135deg, #eff6ff, #ffffff);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.1);
+}
+
+.learning-session .question-nav-item.is-active {
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2);
+}
+
+.audio-play-button {
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.audio-play-button:hover {
+  transform: translateY(-1px);
+  background: var(--learning-primary-hover);
+  box-shadow: 0 20px 38px rgba(37, 99, 235, 0.3);
+}
+
+.transcript-chat,
+.speaking-option-list,
+.vocab-card-list,
+.vocab-question-list {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--learning-primary) 36%, #cbd5e1) transparent;
+}
+
+.learning-reading-passage {
+  padding: 2px;
+  font-size: clamp(1rem, 0.9vw + 0.72rem, 1.08rem);
+}
+
+.learning-reading-passage p {
+  margin: 0;
+}
+
+.writing-editor-card .productive-textarea,
+.learning-session .receptive-fill-input {
+  border-color: color-mix(in srgb, var(--learning-border) 80%, #94a3b8);
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.03);
+}
+
+.writing-editor-card .productive-textarea:focus,
+.learning-session .receptive-fill-input:focus {
+  outline: none;
+  border-color: var(--learning-primary);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14), inset 0 1px 0 rgba(15, 23, 42, 0.03);
+}
+
+.speaking-recording-card .speaking-recorder {
+  border: 1px dashed color-mix(in srgb, var(--learning-primary) 24%, var(--learning-border));
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(37, 99, 235, 0.08), transparent 38%),
+    #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --learning-bg: #0f172a;
+    --learning-card: #111827;
+    --learning-border: #334155;
+    --learning-text: #e5edf8;
+    --learning-muted: #9aa8bb;
+    --learning-soft-surface: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+    --learning-shadow-sm: 0 18px 42px rgba(0, 0, 0, 0.26);
+    --learning-shadow-hover: 0 24px 54px rgba(0, 0, 0, 0.32);
+  }
+
+  .lesson-stat,
+  .audio-control-grid label,
+  .writing-stat-card,
+  .recording-status-card,
+  .speaking-score,
+  .speaking-feedback-grid > div,
+  .writing-feedback-grid > div,
+  .writing-review-grid > div,
+  .writing-diff-box,
+  .writing-prompt-box,
+  .learning-session .receptive-options button,
+  .speaking-answer-option,
+  .writing-editor-card .productive-textarea,
+  .learning-session .receptive-fill-input,
+  .productive-modal {
+    background: #0f172a;
+  }
+
+  .learning-session .receptive-options button.is-selected,
+  .speaking-answer-option.is-selected,
+  .learning-session .receptive-explanation,
+  .speaking-feedback-note {
+    background: rgba(37, 99, 235, 0.14);
   }
 }
 
-@media (min-width: 861px) and (max-width: 1180px) {
-  .learning-session {
-    zoom: 0.9;
-    width: calc(100% / 0.9);
+@media (prefers-reduced-motion: reduce) {
+  .lesson-card,
+  .question-card,
+  .learning-btn,
+  .lesson-back-button,
+  .audio-play-button,
+  .learning-session .receptive-options button,
+  .speaking-answer-option,
+  .learning-session .question-nav-item {
+    transition-duration: 1ms !important;
   }
 }

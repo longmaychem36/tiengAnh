@@ -220,8 +220,8 @@ function AdminVocabulary() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 4 }} onClick={(event) => event.stopPropagation()}>
-                  <button type="button" className="btn btn-icon btn-ghost" onClick={() => openEditDeck(deck)}><FiEdit2 /></button>
-                  <button type="button" className="btn btn-icon btn-ghost" onClick={() => deleteDeck(deck)} style={{ color: 'var(--color-error)' }}><FiTrash2 /></button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditDeck(deck)}>Sửa</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => deleteDeck(deck)} style={{ color: 'var(--color-error)' }}>Xóa</button>
                 </div>
               </div>
               {deck.ReviewStatus === 'pending' && (
@@ -258,8 +258,8 @@ function AdminVocabulary() {
                       </div>
                       {canManageSelectedWords && (
                         <div style={{ display: 'flex', gap: 4 }}>
-                          <button type="button" className="btn btn-icon btn-ghost" onClick={() => openEditWord(word)}><FiEdit2 /></button>
-                          <button type="button" className="btn btn-icon btn-ghost" onClick={() => deleteWord(word)} style={{ color: 'var(--color-error)' }}><FiTrash2 /></button>
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditWord(word)}>Sửa</button>
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => deleteWord(word)} style={{ color: 'var(--color-error)' }}>Xóa</button>
                         </div>
                       )}
                     </div>
@@ -327,7 +327,7 @@ function Modal({ title, onClose, children }) {
       <div className="card" style={{ width: 'min(480px, 100%)' }}>
         <div className="flex-between" style={{ marginBottom: 'var(--space-4)' }}>
           <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800 }}>{title}</h3>
-          <button type="button" className="btn btn-icon btn-ghost" onClick={onClose}><FiX /></button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Đóng</button>
         </div>
         {children}
       </div>

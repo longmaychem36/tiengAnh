@@ -7,6 +7,9 @@ const emptyTest = { Title: '', Description: '', IsActive: true, OrderIndex: 0 };
 const emptyQuestion = {
   QuestionType: 'multiple_choice',
   Skill: 'general',
+  Difficulty: 'easy',
+  Weight: 1,
+  ContextText: '',
   Prompt: '',
   OptionA: '',
   OptionB: '',
@@ -140,6 +143,9 @@ function AdminPlacementTests() {
       TestId: selectedTest.Id,
       QuestionType: question.QuestionType || 'multiple_choice',
       Skill: question.Skill || 'general',
+      Difficulty: question.Difficulty || 'easy',
+      Weight: question.Weight || 1,
+      ContextText: question.ContextText || '',
       Prompt: question.Prompt || '',
       OptionA: question.OptionA || '',
       OptionB: question.OptionB || '',
@@ -235,7 +241,7 @@ function AdminPlacementTests() {
           <article key={test.Id} className={`admin-receptive-card ${selectedTest?.Id === test.Id ? 'is-active' : ''}`}>
             <div className="admin-receptive-card-head">
               <button type="button" className="admin-receptive-title" onClick={() => selectTest(test)}>
-                {selectedTest?.Id === test.Id ? <FiChevronDown /> : <FiChevronRight />}
+                <span className="admin-expand-label">{selectedTest?.Id === test.Id ? 'Đóng' : 'Mở'}</span>
                 <div>
                   <strong>{test.Title}</strong>
                   <span>{test.QuestionCount || 0} câu · {test.IsActive ? 'Đang bật' : 'Đang tắt'}</span>
@@ -243,8 +249,8 @@ function AdminPlacementTests() {
                 </div>
               </button>
               <div className="admin-inline-actions">
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditTest(test)}><FiEdit2 /></button>
-                <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteTest(test)}><FiTrash2 /></button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditTest(test)}>Sửa</button>
+                <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteTest(test)}>Xóa</button>
               </div>
             </div>
 
@@ -271,11 +277,11 @@ function AdminPlacementTests() {
                       <div className="admin-list-item" key={question.Id}>
                         <div>
                           <strong>{question.Prompt}</strong>
-                          <p>{question.QuestionType} · {question.Skill} · Đáp án: {question.CorrectAnswer}</p>
+                          <p>{question.QuestionType} · {question.Skill} · {question.Difficulty || 'easy'} x{question.Weight || 1} · Đáp án: {question.CorrectAnswer}</p>
                         </div>
                         <div className="admin-inline-actions">
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditQuestion(question)}><FiEdit2 /></button>
-                          <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteQuestion(question)}><FiTrash2 /></button>
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditQuestion(question)}>Sửa</button>
+                          <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteQuestion(question)}>Xóa</button>
                         </div>
                       </div>
                     ))}
@@ -293,7 +299,7 @@ function AdminPlacementTests() {
 }
 
 function QuestionForm({ form, editing, onChange, onSave, onCancel }) {
-  const needsOptions = form.QuestionType !== 'fill_blank';
+  const needsOptions = !['fill_blank', 'short_answer'].includes(form.QuestionType);
 
   return (
     <div className="admin-nested-form">
@@ -304,6 +310,7 @@ function QuestionForm({ form, editing, onChange, onSave, onCancel }) {
             <option value="multiple_choice">Trắc nghiệm</option>
             <option value="best_reply">Chọn phản hồi</option>
             <option value="fill_blank">Điền từ</option>
+            <option value="short_answer">Trả lời ngắn</option>
           </select>
         </label>
         <label>
@@ -317,8 +324,31 @@ function QuestionForm({ form, editing, onChange, onSave, onCancel }) {
           </select>
         </label>
         <label>
+          <span>Độ khó</span>
+          <select
+            className="form-input"
+            value={form.Difficulty}
+            onChange={(event) => {
+              const difficulty = event.target.value;
+              onChange('Difficulty', difficulty);
+              onChange('Weight', difficulty === 'hard' ? 1.25 : 1);
+            }}
+          >
+            <option value="easy">Dễ</option>
+            <option value="hard">Khó</option>
+          </select>
+        </label>
+        <label>
+          <span>Trọng số</span>
+          <input className="form-input" type="number" step="0.05" min="0.1" value={form.Weight} onChange={(event) => onChange('Weight', Number(event.target.value))} />
+        </label>
+        <label>
           <span>Thứ tự</span>
           <input className="form-input" type="number" value={form.OrderIndex} onChange={(event) => onChange('OrderIndex', Number(event.target.value))} />
+        </label>
+        <label className="is-wide">
+          <span>Ngữ cảnh / audio text / đoạn đọc</span>
+          <textarea className="form-input" rows={3} value={form.ContextText} onChange={(event) => onChange('ContextText', event.target.value)} />
         </label>
         <label className="is-wide">
           <span>Câu hỏi</span>

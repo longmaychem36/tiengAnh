@@ -314,7 +314,7 @@ const AdminWriting = () => {
           <div key={lesson.Id} className="card">
             <div style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }} onClick={() => handleSelectLesson(lesson)}>
-                {selectedLesson?.Id === lesson.Id ? <FiChevronDown /> : <FiChevronRight />}
+                <span className="admin-expand-label">{selectedLesson?.Id === lesson.Id ? 'Đóng' : 'Mở'}</span>
                 <div>
                   <div style={{ fontWeight: 600 }}>{lesson.Title}</div>
                   <div className="admin-order-badge">STT {lesson.OrderIndex || index + 1}</div>
@@ -326,13 +326,13 @@ const AdminWriting = () => {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => handleMoveLesson(lesson.Id, -1)} title="Đưa lên"><FiArrowUp size={14} /></button>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={index === lessons.length - 1} onClick={() => handleMoveLesson(lesson.Id, 1)} title="Đưa xuống"><FiArrowDown size={14} /></button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => handleMoveLesson(lesson.Id, -1)}>Lên</button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={index === lessons.length - 1} onClick={() => handleMoveLesson(lesson.Id, 1)}>Xuống</button>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
                   setEditingLesson(lesson); setLTitle(lesson.Title); setLDesc(lesson.Description); setLPassageEN(lesson.PassageEN || ''); setLPassageVI(lesson.PassageVI || ''); setLOrder(lesson.OrderIndex); setLFoundation(Boolean(lesson.IsFoundation));
                   setShowLessonForm(true);
-                }}><FiEdit2 size={14} /></button>
-                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteLesson(lesson.Id)}><FiTrash2 size={14} /></button>
+                }}>Sửa</button>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteLesson(lesson.Id)}>Xóa</button>
               </div>
             </div>
 
@@ -379,15 +379,15 @@ const AdminWriting = () => {
                           <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
                             setEditingEx(ex); setExContent(ex.ContentVI); setExAnswer(ex.CorrectAnswerEN); setExOrder(ex.OrderIndex);
                             setShowExForm(true);
-                          }}><FiEdit2 size={12} /></button>
-                          <button type="button" className="btn btn-ghost btn-xs" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteEx(ex.Id)}><FiTrash2 size={12} /></button>
+                          }}>Sửa</button>
+                          <button type="button" className="btn btn-ghost btn-xs" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteEx(ex.Id)}>Xóa</button>
                         </div>
                       </div>
 
                       {/* Vocab hints for this exercise */}
                       <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-2)', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)' }}>
                         <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <FiBook size={10} /> GỢI Ý TỪ VỰNG
+                          GỢI Ý TỪ VỰNG
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 'var(--space-2)' }}>
                           <VocabManager exId={ex.Id} />
@@ -456,7 +456,7 @@ const VocabManager = ({ exId }) => {
             display: 'inline-flex', alignItems: 'center', gap: 4
           }}>
             <strong>{v.Word}</strong>: {v.Meaning}
-            <FiX size={10} style={{ cursor: 'pointer', color: 'var(--color-error)' }} onClick={() => del(v.Id)} />
+            <button type="button" className="btn btn-ghost btn-xs" onClick={() => del(v.Id)}>Xóa</button>
           </span>
         ))}
         {!showAdd && <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAdd(true)} style={{ padding: '0 8px', height: 20, minHeight: 0 }}>+ Thêm gợi ý</button>}

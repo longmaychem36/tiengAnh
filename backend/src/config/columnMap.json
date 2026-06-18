@@ -44,7 +44,6 @@
   "creatorname": "CreatorName",
   "creatorrole": "CreatorRole",
   "reviewername": "ReviewerName",
-  "dictionaryentryid": "DictionaryEntryId",
   "iscompleted": "IsCompleted",
   "besttime": "BestTime",
   "createdat": "CreatedAt",

@@ -152,9 +152,9 @@ async function upsertWord(pool, collectionId, word) {
 
   await pool.query(`
     INSERT INTO UserCollectionWords
-      (CollectionId, DictionaryEntryId, CustomWord, CustomMeaning, CustomExample, UpdatedAt)
+      (CollectionId, CustomWord, CustomMeaning, CustomExample, UpdatedAt)
     VALUES
-      ($1, NULL, $2, $3, $4, NOW())
+      ($1, $2, $3, $4, NOW())
   `, [collectionId, customWord, customMeaning, customExample]);
   return 'inserted';
 }

@@ -13,16 +13,6 @@ const dictionaryController = {
       }
       const result = await dictionaryService.search({ query: q, page, limit, levelId, direction });
 
-      // Log search history if user is authenticated
-      if (req.headers.authorization) {
-        try {
-          const { verifyToken } = require('../../config/jwt');
-          const token = req.headers.authorization.split(' ')[1];
-          const decoded = verifyToken(token);
-          await dictionaryService.logSearch(decoded.id, q);
-        } catch (e) { /* ignore auth errors for search logging */ }
-      }
-
       // Include suggestions in response meta
       const response = paginated(res, result.entries, result.total, page, limit, 'Success', { suggestions: result.suggestions || [] });
       return response;

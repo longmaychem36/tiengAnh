@@ -6,9 +6,6 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const tables = [
   'users',
   'learninglevels',
-  'dictionaryentries',
-  'dictionarysearchhistory',
-  'dictionarysynonyms',
   'gamelevels',
   'minigamequestions',
   'grammarcategories',

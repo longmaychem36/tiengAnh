@@ -1,34 +1,29 @@
-// ============================================
-// Admin Sidebar - Admin-specific navigation
-// ============================================
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import SoftIcon from '../common/SoftIcon';
 
 const adminItems = [
-  { to: '/admin', label: 'Tổng quan', icon: 'admin', exact: true },
-  { to: '/admin/listening', label: 'Listening', icon: 'listening' },
-  { to: '/admin/reading', label: 'Reading', icon: 'reading' },
-  { to: '/admin/speaking', label: 'Speaking', icon: 'speaking' },
-  { to: '/admin/writing', label: 'Writing', icon: 'writing' },
-  { to: '/admin/grammar', label: 'Grammar', icon: 'grammar' },
-  { to: '/admin/vocabulary', label: 'Vocabulary', icon: 'vocabulary' },
-  { to: '/admin/placement-tests', label: 'Kiểm tra đầu vào', icon: 'placement' },
-  { to: '/admin/games', label: 'Mini Games', icon: 'games' },
+  { to: '/admin', label: 'Tổng quan', exact: true },
+  { to: '/admin/listening', label: 'Listening' },
+  { to: '/admin/reading', label: 'Reading' },
+  { to: '/admin/speaking', label: 'Speaking' },
+  { to: '/admin/writing', label: 'Writing' },
+  { to: '/admin/grammar', label: 'Grammar' },
+  { to: '/admin/vocabulary', label: 'Vocabulary' },
+  { to: '/admin/placement-tests', label: 'Placement tests' },
+  { to: '/admin/games', label: 'Mini games' },
 ];
 
 const superAdminItems = [
-  { to: '/admin/users', label: 'Người dùng', icon: 'users' },
+  { to: '/admin/users', label: 'Người dùng' },
 ];
 
-function NavItem({ to, label, icon, exact }) {
+function NavItem({ to, label, exact }) {
   return (
     <NavLink
       to={to}
       end={exact}
       className={({ isActive }) => `admin-sidebar-link ${isActive ? 'is-active' : ''}`}
     >
-      <SoftIcon name={icon} className="admin-nav-icon" />
       <span>{label}</span>
     </NavLink>
   );
@@ -41,36 +36,30 @@ function AdminSidebar() {
   return (
     <aside className="admin-sidebar">
       <div className="admin-sidebar-logo">
-        <div className="admin-brand-mark">E</div>
         <div>
           <div className="admin-brand-title">EngLearn</div>
-          <div className="admin-brand-subtitle">Admin Panel</div>
+          <div className="admin-brand-subtitle">Admin</div>
         </div>
       </div>
 
       <nav className="admin-sidebar-nav">
-        <div className="admin-sidebar-section-label">
-          Quản lý nội dung
-        </div>
+        <div className="admin-sidebar-section-label">Nội dung</div>
         {adminItems.map(item => <NavItem key={item.to} {...item} />)}
 
         {isSuperAdmin && (
           <>
-            <div className="admin-sidebar-section-label" style={{ color: '#f59e0b', marginTop: '20px' }}>
-              Super Admin
-            </div>
+            <div className="admin-sidebar-section-label">Super Admin</div>
             {superAdminItems.map(item => <NavItem key={item.to} {...item} />)}
           </>
         )}
       </nav>
 
       <div className="admin-sidebar-bottom">
-        <div className={`admin-role-badge ${isSuperAdmin ? 'is-super' : ''}`}>
+        <div className="admin-role-badge">
           <span>{isSuperAdmin ? 'Super Admin' : 'Admin'}</span>
         </div>
 
         <button type="button" onClick={logout} className="admin-logout-button">
-          <SoftIcon name="logout" className="admin-nav-icon" />
           <span>Đăng xuất</span>
         </button>
       </div>

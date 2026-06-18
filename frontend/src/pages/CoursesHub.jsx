@@ -79,9 +79,7 @@ function CoursesHub() {
           </p>
         </div>
         <div className="course-hero-media" aria-hidden="true">
-          <img src="/skills/listening.jpg" alt="" />
-          <img src="/skills/speaking.png" alt="" />
-          <img src="/skills/writing.png" alt="" />
+          <img src="/landing/features/skill-lessons.png" alt="" />
         </div>
       </section>
 

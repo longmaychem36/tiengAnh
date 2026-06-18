@@ -98,13 +98,12 @@ class CollectionRepository extends BaseRepository {
     const pool = getPool();
     const result = await pool.request()
       .input('collectionId', sql.UniqueIdentifier, wordData.collectionId)
-      .input('dictionaryEntryId', sql.UniqueIdentifier, wordData.dictionaryEntryId || null)
       .input('customWord', sql.NVarChar, wordData.customWord || null)
       .input('customMeaning', sql.NVarChar, wordData.customMeaning || null)
       .input('customExample', sql.NVarChar, wordData.customExample || null)
       .query(`
-        INSERT INTO UserCollectionWords (CollectionId, DictionaryEntryId, CustomWord, CustomMeaning, CustomExample)
-        VALUES (@collectionId, NULL, @customWord, @customMeaning, @customExample) RETURNING *
+        INSERT INTO UserCollectionWords (CollectionId, CustomWord, CustomMeaning, CustomExample)
+        VALUES (@collectionId, @customWord, @customMeaning, @customExample) RETURNING *
       `);
     return result.recordset[0];
   }

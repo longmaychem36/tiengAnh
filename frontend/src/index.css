@@ -5,6 +5,8 @@
    ================================================ */
 
 :root {
+  --app-density-scale: 0.9;
+
   /* Colors - bright language-learning palette */
   --color-primary: #1cb0f6;
   --color-primary-hover: #1592d1;
@@ -101,9 +103,9 @@
   --transition-slow: 350ms ease;
 
   /* Layout */
-  --sidebar-width: 254px;
-  --navbar-height: 64px;
-  --container-max: 1200px;
+  --sidebar-width: 15.875rem;
+  --navbar-height: 4rem;
+  --container-max: 75rem;
 
   /* Z-index */
   --z-sidebar: 40;
@@ -142,10 +144,17 @@
 }
 
 html {
-  font-size: 16px;
+  font-size: calc(16px * var(--app-density-scale));
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 16px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

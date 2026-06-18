@@ -208,59 +208,12 @@ const AdminSpeaking = () => {
     setQOrder(0);
   };
 
-  const renderQuestionForm = () => (
-    <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-4)', background: 'white' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-3)' }}>
-        <div style={{ gridColumn: 'span 2' }}>
-          <span className="form-label">Câu hỏi (English)</span>
-          <input aria-label="Trường nhập" className="form-input" value={questionText} onChange={e => setQuestionText(e.target.value)} />
-        </div>
-        <div style={{ gridColumn: 'span 2' }}>
-          <span className="form-label">Dịch (Tiếng Việt)</span>
-          <input aria-label="Trường nhập" className="form-input" value={questionTrans} onChange={e => setQuestionTrans(e.target.value)} />
-        </div>
-        <div>
-          <span className="form-label">Option 1 (EN)</span>
-          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt1} onChange={e => setOpt1(e.target.value)} />
-        </div>
-        <div>
-          <span className="form-label">Dịch Option 1 (VI)</span>
-          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt1vi} onChange={e => setOpt1vi(e.target.value)} />
-        </div>
-        <div>
-          <span className="form-label">Option 2 (EN)</span>
-          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt2} onChange={e => setOpt2(e.target.value)} />
-        </div>
-        <div>
-          <span className="form-label">Dịch Option 2 (VI)</span>
-          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt2vi} onChange={e => setOpt2vi(e.target.value)} />
-        </div>
-        <div>
-          <span className="form-label">Option 3 (EN)</span>
-          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt3} onChange={e => setOpt3(e.target.value)} />
-        </div>
-        <div>
-          <span className="form-label">Dịch Option 3 (VI)</span>
-          <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt3vi} onChange={e => setOpt3vi(e.target.value)} />
-        </div>
-        <div>
-          <span className="form-label">Thứ tự</span>
-          <input aria-label="Trường nhập" className="form-input form-input-sm" type="number" value={qOrder} onChange={e => setQOrder(e.target.value)} />
-        </div>
-      </div>
-      <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-        <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveQuestion}><FiSave /> Lưu</button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={closeQuestionForm}><FiX /> Hủy</button>
-      </div>
-    </div>
-  );
-
   if (loading) return <div className="p-8">Đang tải...</div>;
 
   return (
-    <div className="fade-in" style={{ padding: 'var(--space-6)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
-        <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>Quản lý Speaking Practice</h1>
+    <div className="admin-receptive-page" style={{ '--admin-skill-color': '#f59e0b' }}>
+      <div className="admin-receptive-header">
+        <h1>Quản lý Speaking</h1>
         <button type="button" className="btn btn-primary" onClick={openNewLessonForm}>
           <FiPlus /> Thêm bài học
         </button>
@@ -268,27 +221,27 @@ const AdminSpeaking = () => {
 
       {/* Lesson Form */}
       {showLessonForm && (
-        <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-6)' }}>
-          <h3 style={{ marginBottom: 'var(--space-4)' }}>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-            <div>
-              <span className="form-label">Tiêu đề</span>
+        <div className="admin-receptive-form">
+          <h3>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
+          <div className="admin-form-grid">
+            <span>
+              <span>Tiêu đề</span>
               <input aria-label="Trường nhập" className="form-input" value={lessonTitle} onChange={e => setLessonTitle(e.target.value)} placeholder="VD: Chào hỏi cơ bản" />
-            </div>
-            <div>
-              <span className="form-label">Thứ tự</span>
+            </span>
+            <span>
+              <span>Thứ tự</span>
               <input aria-label="Trường nhập" className="form-input" type="number" value={lessonOrder} onChange={e => setLessonOrder(e.target.value)} />
-            </div>
-            <label className="admin-check-row" style={{ gridColumn: 'span 2' }}>
+            </span>
+            <label className="admin-check-row">
               <input type="checkbox" checked={lessonFoundation} onChange={e => setLessonFoundation(e.target.checked)} />
               <span>Bài nền tảng</span>
             </label>
-            <div style={{ gridColumn: 'span 2' }}>
-              <span className="form-label">Mô tả</span>
+            <span className="is-wide">
+              <span>Mô tả</span>
               <textarea aria-label="Nội dung" className="form-input" value={lessonDesc} onChange={e => setLessonDesc(e.target.value)} rows={2} />
-            </div>
+            </span>
           </div>
-          <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-2)' }}>
+          <div className="admin-form-actions">
             <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
             <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
           </div>
@@ -296,23 +249,20 @@ const AdminSpeaking = () => {
       )}
 
       {/* Lesson List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      <div className="admin-receptive-list">
         {lessons.map((lesson, index) => (
-          <div key={lesson.Id} className="card" style={{ 
-            border: selectedLesson?.Id === lesson.Id ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-            background: selectedLesson?.Id === lesson.Id ? 'rgba(99,102,241,0.02)' : 'var(--color-surface)'
-          }}>
-            <div style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }} onClick={() => handleSelectLesson(lesson)}>
-                {selectedLesson?.Id === lesson.Id ? <FiChevronDown /> : <FiChevronRight />}
+          <div key={lesson.Id} className={`admin-receptive-card ${selectedLesson?.Id === lesson.Id ? 'is-active' : ''}`}>
+            <div className="admin-receptive-card-head">
+              <button type="button" className="admin-receptive-title" onClick={() => handleSelectLesson(lesson)}>
+                <span className="admin-expand-label">{selectedLesson?.Id === lesson.Id ? 'Đóng' : 'Mở'}</span>
                 <div>
-                  <div style={{ fontWeight: 600 }}>{lesson.Title}</div>
-                  <div className="admin-order-badge">STT {lesson.OrderIndex || index + 1}</div>
+                  <strong>{lesson.Title}</strong>
+                  <span>STT {lesson.OrderIndex || index + 1}{lesson.IsFoundation ? ' · Nền tảng' : ''}</span>
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => handleMoveLesson(lesson.Id, -1)} title="Đưa lên"><FiArrowUp size={14} /></button>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={index === lessons.length - 1} onClick={() => handleMoveLesson(lesson.Id, 1)} title="Đưa xuống"><FiArrowDown size={14} /></button>
+              </button>
+              <div className="admin-inline-actions">
+                <button type="button" className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => handleMoveLesson(lesson.Id, -1)}>Lên</button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={index === lessons.length - 1} onClick={() => handleMoveLesson(lesson.Id, 1)}>Xuống</button>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
                   setEditingLesson(lesson);
                   setLessonTitle(lesson.Title);
@@ -320,95 +270,71 @@ const AdminSpeaking = () => {
                   setLessonFoundation(Boolean(lesson.IsFoundation));
                   setLessonOrder(lesson.OrderIndex);
                   setShowLessonForm(true);
-                }}><FiEdit2 size={14} /></button>
-                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteLesson(lesson.Id)}><FiTrash2 size={14} /></button>
+                }}>Sửa</button>
+                <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => handleDeleteLesson(lesson.Id)}>Xóa</button>
               </div>
             </div>
 
             {/* Questions Section */}
             {selectedLesson?.Id === lesson.Id && (
-              <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.01)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
-                  <h4 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Danh sách câu hỏi</h4>
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => { closeQuestionForm(); setShowQuestionForm(true); }}><FiPlus /> Thêm câu hỏi</button>
-                </div>
-
-                {showQuestionForm && !editingQuestion && (
-                  <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-4)', background: 'white' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-3)' }}>
-                      <div style={{ gridColumn: 'span 2' }}>
-                        <span className="form-label">Câu hỏi (English)</span>
-                        <input aria-label="Trường nhập" className="form-input" value={questionText} onChange={e => setQuestionText(e.target.value)} />
-                      </div>
-                      <div style={{ gridColumn: 'span 2' }}>
-                        <span className="form-label">Dịch (Tiếng Việt)</span>
-                        <input aria-label="Trường nhập" className="form-input" value={questionTrans} onChange={e => setQuestionTrans(e.target.value)} />
-                      </div>
-                      
-                      {/* Options */}
-                      <div>
-                        <span className="form-label">Option 1 (EN)</span>
-                        <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt1} onChange={e => setOpt1(e.target.value)} />
-                      </div>
-                      <div>
-                        <span className="form-label">Dịch Option 1 (VI)</span>
-                        <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt1vi} onChange={e => setOpt1vi(e.target.value)} />
-                      </div>
-                      <div>
-                        <span className="form-label">Option 2 (EN)</span>
-                        <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt2} onChange={e => setOpt2(e.target.value)} />
-                      </div>
-                      <div>
-                        <span className="form-label">Dịch Option 2 (VI)</span>
-                        <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt2vi} onChange={e => setOpt2vi(e.target.value)} />
-                      </div>
-                      <div>
-                        <span className="form-label">Option 3 (EN)</span>
-                        <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt3} onChange={e => setOpt3(e.target.value)} />
-                      </div>
-                      <div>
-                        <span className="form-label">Dịch Option 3 (VI)</span>
-                        <input aria-label="Trường nhập" className="form-input form-input-sm" value={opt3vi} onChange={e => setOpt3vi(e.target.value)} />
-                      </div>
-                      <div>
-                        <span className="form-label">Thứ tự</span>
-                        <input aria-label="Trường nhập" className="form-input form-input-sm" type="number" value={qOrder} onChange={e => setQOrder(e.target.value)} />
-                      </div>
-                    </div>
-                    <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-                      <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveQuestion}><FiSave /> Lưu</button>
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={closeQuestionForm}><FiX /> Hủy</button>
-                    </div>
+              <div className="admin-receptive-detail">
+                <div className="admin-subpanel">
+                  <div className="admin-subpanel-head">
+                    <h3>Câu hỏi</h3>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { closeQuestionForm(); setShowQuestionForm(true); }}><FiPlus /> Thêm</button>
                   </div>
-                )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                  {questions.map(q => (
-                    <React.Fragment key={q.Id}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', background: 'white', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', minWidth: 20 }}>{q.OrderIndex}.</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 500 }}>{q.Question}</div>
-                        <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>{q.Translation}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-                        <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
-                          setEditingQuestion(q);
-                          setQuestionText(q.Question);
-                          setQuestionTrans(q.Translation);
-                          setOpt1(q.Option1); setOpt1vi(q.Option1VI || '');
-                          setOpt2(q.Option2); setOpt2vi(q.Option2VI || '');
-                          setOpt3(q.Option3); setOpt3vi(q.Option3VI || '');
-                          setQOrder(q.OrderIndex);
-                          setShowQuestionForm(true);
-                        }}><FiEdit2 size={12} /></button>
-                        <button type="button" className="btn btn-ghost btn-xs" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteQuestion(q.Id)}><FiTrash2 size={12} /></button>
-                      </div>
-                    </div>
-                    {showQuestionForm && editingQuestion?.Id === q.Id && renderQuestionForm()}
-                    </React.Fragment>
-                  ))}
-                  {questions.length === 0 && !showQuestionForm && <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>Chưa có câu hỏi nào.</div>}
+                  {showQuestionForm && !editingQuestion && (
+                    <QuestionFormBlock
+                      questionText={questionText} setQuestionText={setQuestionText}
+                      questionTrans={questionTrans} setQuestionTrans={setQuestionTrans}
+                      opt1={opt1} setOpt1={setOpt1} opt1vi={opt1vi} setOpt1vi={setOpt1vi}
+                      opt2={opt2} setOpt2={setOpt2} opt2vi={opt2vi} setOpt2vi={setOpt2vi}
+                      opt3={opt3} setOpt3={setOpt3} opt3vi={opt3vi} setOpt3vi={setOpt3vi}
+                      qOrder={qOrder} setQOrder={setQOrder}
+                      onSave={handleSaveQuestion} onCancel={closeQuestionForm}
+                    />
+                  )}
+
+                  <div className="admin-item-list">
+                    {questions.map(q => (
+                      <React.Fragment key={q.Id}>
+                        <div className="admin-list-item">
+                          <div>
+                            <strong>{q.Question}</strong>
+                            <p>{q.Translation}</p>
+                          </div>
+                          <div style={{ display: 'flex', gap: '2px' }}>
+                            <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
+                              setEditingQuestion(q);
+                              setQuestionText(q.Question);
+                              setQuestionTrans(q.Translation);
+                              setOpt1(q.Option1); setOpt1vi(q.Option1VI || '');
+                              setOpt2(q.Option2); setOpt2vi(q.Option2VI || '');
+                              setOpt3(q.Option3); setOpt3vi(q.Option3VI || '');
+                              setQOrder(q.OrderIndex);
+                              setShowQuestionForm(true);
+                            }}>Sửa</button>
+                            <button type="button" className="btn btn-ghost btn-xs is-danger" onClick={() => handleDeleteQuestion(q.Id)}>Xóa</button>
+                          </div>
+                        </div>
+                        {showQuestionForm && editingQuestion?.Id === q.Id && (
+                          <QuestionFormBlock
+                            questionText={questionText} setQuestionText={setQuestionText}
+                            questionTrans={questionTrans} setQuestionTrans={setQuestionTrans}
+                            opt1={opt1} setOpt1={setOpt1} opt1vi={opt1vi} setOpt1vi={setOpt1vi}
+                            opt2={opt2} setOpt2={setOpt2} opt2vi={opt2vi} setOpt2vi={setOpt2vi}
+                            opt3={opt3} setOpt3={setOpt3} opt3vi={opt3vi} setOpt3vi={setOpt3vi}
+                            qOrder={qOrder} setQOrder={setQOrder}
+                            onSave={handleSaveQuestion} onCancel={closeQuestionForm}
+                          />
+                        )}
+                      </React.Fragment>
+                    ))}
+                    {questions.length === 0 && !showQuestionForm && (
+                      <div className="admin-empty-inline">Chưa có câu hỏi nào.</div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -418,5 +344,33 @@ const AdminSpeaking = () => {
     </div>
   );
 };
+
+function QuestionFormBlock({ questionText, setQuestionText, questionTrans, setQuestionTrans, opt1, setOpt1, opt1vi, setOpt1vi, opt2, setOpt2, opt2vi, setOpt2vi, opt3, setOpt3, opt3vi, setOpt3vi, qOrder, setQOrder, onSave, onCancel }) {
+  return (
+    <div className="admin-nested-form">
+      <div className="admin-form-grid">
+        <span className="is-wide">
+          <span>Câu hỏi (English)</span>
+          <input aria-label="Trường nhập" className="form-input" value={questionText} onChange={e => setQuestionText(e.target.value)} />
+        </span>
+        <span className="is-wide">
+          <span>Dịch (Tiếng Việt)</span>
+          <input aria-label="Trường nhập" className="form-input" value={questionTrans} onChange={e => setQuestionTrans(e.target.value)} />
+        </span>
+        <span><span>Option 1 (EN)</span><input aria-label="Trường nhập" className="form-input" value={opt1} onChange={e => setOpt1(e.target.value)} /></span>
+        <span><span>Option 1 (VI)</span><input aria-label="Trường nhập" className="form-input" value={opt1vi} onChange={e => setOpt1vi(e.target.value)} /></span>
+        <span><span>Option 2 (EN)</span><input aria-label="Trường nhập" className="form-input" value={opt2} onChange={e => setOpt2(e.target.value)} /></span>
+        <span><span>Option 2 (VI)</span><input aria-label="Trường nhập" className="form-input" value={opt2vi} onChange={e => setOpt2vi(e.target.value)} /></span>
+        <span><span>Option 3 (EN)</span><input aria-label="Trường nhập" className="form-input" value={opt3} onChange={e => setOpt3(e.target.value)} /></span>
+        <span><span>Option 3 (VI)</span><input aria-label="Trường nhập" className="form-input" value={opt3vi} onChange={e => setOpt3vi(e.target.value)} /></span>
+        <span><span>Thứ tự</span><input aria-label="Trường nhập" className="form-input" type="number" value={qOrder} onChange={e => setQOrder(e.target.value)} /></span>
+      </div>
+      <div className="admin-form-actions">
+        <button type="button" className="btn btn-primary btn-sm" onClick={onSave}><FiSave /> Lưu</button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}><FiX /> Hủy</button>
+      </div>
+    </div>
+  );
+}
 
 export default AdminSpeaking;
