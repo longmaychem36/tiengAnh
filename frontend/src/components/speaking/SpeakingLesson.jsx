@@ -410,6 +410,7 @@ const SpeakingLesson = () => {
             duration={`${recordDuration}s/câu`}
             backLabel="Thoát"
             onBack={() => navigate(isPersonalized ? '/speaking/options' : '/speaking/lessons')}
+            confirmOnBack
             actions={(
               <SecondaryButton onClick={() => setShowSettings(true)}>
                 <FiSettings /> Cài đặt

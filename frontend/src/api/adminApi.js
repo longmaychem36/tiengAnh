@@ -4,16 +4,6 @@ export const adminApi = {
   // Dashboard
   getDashboardStats: () => axiosClient.get('/admin/dashboard/stats'),
 
-  // Placement tests
-  getPlacementTests: () => axiosClient.get('/admin/placement/tests'),
-  createPlacementTest: (data) => axiosClient.post('/admin/placement/tests', data),
-  updatePlacementTest: (id, data) => axiosClient.put(`/admin/placement/tests/${id}`, data),
-  deletePlacementTest: (id) => axiosClient.delete(`/admin/placement/tests/${id}`),
-  getPlacementQuestions: (testId) => axiosClient.get(`/admin/placement/tests/${testId}/questions`),
-  createPlacementQuestion: (data) => axiosClient.post('/admin/placement/questions', data),
-  updatePlacementQuestion: (id, data) => axiosClient.put(`/admin/placement/questions/${id}`, data),
-  deletePlacementQuestion: (id) => axiosClient.delete(`/admin/placement/questions/${id}`),
-
   // Game Levels
   getLevels: () => axiosClient.get('/admin/games/levels'),
   createLevel: (data) => axiosClient.post('/admin/games/levels', data),
@@ -26,10 +16,16 @@ export const adminApi = {
   updateQuestion: (id, data) => axiosClient.put(`/admin/games/questions/${id}`, data),
   deleteQuestion: (id) => axiosClient.delete(`/admin/games/questions/${id}`),
 
-  // Users (SuperAdmin)
+  // Placement test questions
+  getPlacementMiniGameQuestions: () => axiosClient.get('/admin/placement/minigame-questions'),
+  createPlacementMiniGameQuestion: (data) => axiosClient.post('/admin/placement/minigame-questions', data),
+  updatePlacementMiniGameQuestion: (id, data) => axiosClient.put(`/admin/placement/minigame-questions/${id}`, data),
+  deletePlacementMiniGameQuestion: (id) => axiosClient.delete(`/admin/placement/minigame-questions/${id}`),
+
+  // Users
+  createUser: (data) => axiosClient.post('/admin/users', data),
   getUsers: (params) => axiosClient.get('/admin/users', { params }),
   getUserStats: () => axiosClient.get('/admin/users/stats'),
-  updateUserRole: (id, role) => axiosClient.put(`/admin/users/${id}/role`, { role }),
   toggleUserActive: (id) => axiosClient.put(`/admin/users/${id}/toggle-active`),
 
   // Vocabulary public collections

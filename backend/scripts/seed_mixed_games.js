@@ -6,7 +6,7 @@ const levels = [
     levelNumber: 1,
     name: 'Warm up',
     difficulty: 'easy',
-    timeLimit: 120,
+    timeLimit: 140,
     passScore: 60,
     questions: [
       ['matching', 'Apple', 'Qua tao', 'Apple', []],
@@ -17,13 +17,15 @@ const levels = [
       ['listenbuild', 'We eat lunch', 'Chung toi an trua', 'We eat lunch', ['We', 'eat', 'lunch']],
       ['truefalse', 'Hello', 'Xin chao', 'true', []],
       ['truefalse', 'Cat', 'Con cho', 'false', []],
+      ['speakrepeat', 'A cat and a dog', 'Mot con meo va mot con cho', 'A cat and a dog', { passScore: 70 }],
+      ['speakrepeat', 'I drink water every day', 'Toi uong nuoc moi ngay', 'I drink water every day', { passScore: 70 }],
     ],
   },
   {
     levelNumber: 2,
     name: 'Practice',
     difficulty: 'medium',
-    timeLimit: 100,
+    timeLimit: 140,
     passScore: 70,
     questions: [
       ['matching', 'Beautiful', 'Dep', 'Beautiful', []],
@@ -34,13 +36,15 @@ const levels = [
       ['listenbuild', 'I like reading books', 'Toi thich doc sach', 'I like reading books', ['I', 'like', 'reading', 'books']],
       ['truefalse', 'The sun rises in the east', 'Mat troi moc o huong dong', 'true', []],
       ['truefalse', 'Dogs can fly', 'Cho co the bay', 'false', []],
+      ['speakrepeat', 'She goes to school by bus', 'Co ay di hoc bang xe buyt', 'She goes to school by bus', { passScore: 70 }],
+      ['speakrepeat', 'We are making weekend plans', 'Chung toi dang len ke hoach cuoi tuan', 'We are making weekend plans', { passScore: 70 }],
     ],
   },
   {
     levelNumber: 3,
     name: 'Challenge',
     difficulty: 'hard',
-    timeLimit: 80,
+    timeLimit: 140,
     passScore: 80,
     questions: [
       ['matching', 'Responsible', 'Co trach nhiem', 'Responsible', []],
@@ -51,6 +55,8 @@ const levels = [
       ['listenbuild', 'The movie was really interesting', 'Bo phim that su rat thu vi', 'The movie was really interesting', ['The', 'movie', 'was', 'really', 'interesting']],
       ['truefalse', 'Vietnam is in Southeast Asia', 'Viet Nam o Dong Nam A', 'true', []],
       ['truefalse', 'Paris is the capital of Germany', 'Paris la thu do cua Duc', 'false', []],
+      ['speakrepeat', 'Please speak slowly', 'Vui long noi cham lai', 'Please speak slowly', { passScore: 70 }],
+      ['speakrepeat', 'I would like some orange juice', 'Toi muon mot it nuoc cam', 'I would like some orange juice', { passScore: 70 }],
     ],
   },
 ];

@@ -1,65 +1,64 @@
 import { NavLink } from 'react-router-dom';
+import {
+  FiBookOpen,
+  FiCommand,
+  FiEdit3,
+  FiGrid,
+  FiHeadphones,
+  FiLayers,
+  FiLogOut,
+  FiMic,
+  FiPlay,
+  FiUsers,
+} from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 
 const adminItems = [
-  { to: '/admin', label: 'Tổng quan', exact: true },
-  { to: '/admin/listening', label: 'Listening' },
-  { to: '/admin/reading', label: 'Reading' },
-  { to: '/admin/speaking', label: 'Speaking' },
-  { to: '/admin/writing', label: 'Writing' },
-  { to: '/admin/grammar', label: 'Grammar' },
-  { to: '/admin/vocabulary', label: 'Vocabulary' },
-  { to: '/admin/placement-tests', label: 'Placement tests' },
-  { to: '/admin/games', label: 'Mini games' },
+  { to: '/admin', label: 'Dashboard', icon: FiCommand, exact: true },
+  { to: '/admin/listening', label: 'Listening', icon: FiHeadphones },
+  { to: '/admin/reading', label: 'Reading', icon: FiBookOpen },
+  { to: '/admin/speaking', label: 'Speaking', icon: FiMic },
+  { to: '/admin/writing', label: 'Writing', icon: FiEdit3 },
+  { to: '/admin/grammar', label: 'Grammar', icon: FiLayers },
+  { to: '/admin/vocabulary', label: 'Vocabulary', icon: FiGrid },
+  { to: '/admin/games', label: 'Mini games', icon: FiPlay },
+  { to: '/admin/users', label: 'Accounts', icon: FiUsers },
 ];
 
-const superAdminItems = [
-  { to: '/admin/users', label: 'Người dùng' },
-];
-
-function NavItem({ to, label, exact }) {
+function NavItem({ to, label, icon: Icon, exact }) {
   return (
     <NavLink
       to={to}
       end={exact}
       className={({ isActive }) => `admin-sidebar-link ${isActive ? 'is-active' : ''}`}
     >
+      <span className="admin-nav-icon" aria-hidden="true">
+        <Icon />
+      </span>
       <span>{label}</span>
     </NavLink>
   );
 }
 
 function AdminSidebar() {
-  const { user, logout } = useAuth();
-  const isSuperAdmin = user?.role === 'superadmin';
+  const { logout } = useAuth();
 
   return (
-    <aside className="admin-sidebar">
-      <div className="admin-sidebar-logo">
-        <div>
-          <div className="admin-brand-title">EngLearn</div>
-          <div className="admin-brand-subtitle">Admin</div>
-        </div>
-      </div>
-
+    <aside className="admin-sidebar" aria-label="Admin navigation">
       <nav className="admin-sidebar-nav">
-        <div className="admin-sidebar-section-label">Nội dung</div>
-        {adminItems.map(item => <NavItem key={item.to} {...item} />)}
+        {adminItems.map((item) => <NavItem key={item.to} {...item} />)}
 
-        {isSuperAdmin && (
-          <>
-            <div className="admin-sidebar-section-label">Super Admin</div>
-            {superAdminItems.map(item => <NavItem key={item.to} {...item} />)}
-          </>
-        )}
       </nav>
 
       <div className="admin-sidebar-bottom">
-        <div className="admin-role-badge">
-          <span>{isSuperAdmin ? 'Super Admin' : 'Admin'}</span>
-        </div>
-
+        <a className="admin-sidebar-mini-link" href="https://themesberg.com" target="_blank" rel="noreferrer">
+          Read tutorial
+        </a>
+        <span className="admin-sidebar-badge">Volt Dashboard</span>
         <button type="button" onClick={logout} className="admin-logout-button">
+          <span className="admin-nav-icon" aria-hidden="true">
+            <FiLogOut />
+          </span>
           <span>Đăng xuất</span>
         </button>
       </div>

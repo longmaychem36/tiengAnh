@@ -155,7 +155,7 @@ const AdminWriting = () => {
       fetchLessons();
       if (selectedLesson?.Id === id) setSelectedLesson(null);
     } catch (err) {
-      toast.error('Lỗi xóa bài học (Yêu cầu quyền SuperAdmin)');
+      toast.error('Lỗi xóa bài học');
     }
   };
 

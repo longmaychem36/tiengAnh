@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fi';
 
 import { hasSpeechSupport, speakText, stopAllPlayback } from '../../utils/audioControl';
+import { confirmUnsavedProgressExit } from '../../utils/confirmExit';
 
 const normalize = (value) => String(value || '')
   .trim()
@@ -45,6 +46,7 @@ const VocabularyGate = ({
   gateKey,
   onPassed,
   onExit,
+  confirmOnExit = false,
   allowStudy = true,
   passMessage = 'Đã mở khóa bài học.',
   continueLabel = 'Vào làm bài'
@@ -112,9 +114,14 @@ const VocabularyGate = ({
     onPassed?.();
   };
 
+  const handleExit = async () => {
+    if (confirmOnExit && !(await confirmUnsavedProgressExit())) return;
+    onExit?.();
+  };
+
   return (
     <div className="vocab-gate-page fade-in">
-      <button type="button" className="btn btn-ghost btn-sm vocab-gate-back" onClick={onExit}>
+      <button type="button" className="btn btn-ghost btn-sm vocab-gate-back" onClick={handleExit}>
         <FiArrowLeft /> Quay lại
       </button>
 

@@ -1,10 +1,9 @@
 // ============================================
-// Role-Based Authorization Middleware (Hierarchical)
+// Role-Based Authorization Middleware
 // ============================================
 
-// Role hierarchy: superadmin > admin > member
+// The application has one administrative role: admin.
 const ROLE_HIERARCHY = {
-  superadmin: 3,
   admin: 2,
   user: 1
 };
@@ -18,7 +17,6 @@ function hasMinRole(userRole, requiredRole) {
 
 /**
  * Middleware: require user role to be in the allowed list
- * SuperAdmin automatically passes all role checks
  */
 function authorize(...roles) {
   return (req, res, next) => {
@@ -26,13 +24,8 @@ function authorize(...roles) {
       return res.status(401).json({ success: false, message: 'Authentication required.' });
     }
 
-    const userRole = req.user.role;
-
-    // SuperAdmin passes everything
-    if (userRole === 'superadmin') return next();
-
     // Check if user's role is in the allowed list
-    if (!roles.includes(userRole)) {
+    if (!roles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Access denied. Insufficient permissions.' });
     }
 
@@ -42,7 +35,7 @@ function authorize(...roles) {
 
 /**
  * Middleware: require minimum role level
- * e.g. requireRole('admin') allows admin + superadmin
+ * e.g. requireRole('admin') allows administrators.
  */
 function requireRole(minRole) {
   return (req, res, next) => {
@@ -58,20 +51,13 @@ function requireRole(minRole) {
   };
 }
 
-/**
- * Middleware: only superadmin
- */
-function superAdminOnly() {
-  return requireRole('superadmin');
-}
-
 function learnerOnly() {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Authentication required.' });
     }
 
-    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+    if (req.user.role === 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Admin accounts are for content management only.'
@@ -82,4 +68,4 @@ function learnerOnly() {
   };
 }
 
-module.exports = { authorize, requireRole, superAdminOnly, learnerOnly };
+module.exports = { authorize, requireRole, learnerOnly };

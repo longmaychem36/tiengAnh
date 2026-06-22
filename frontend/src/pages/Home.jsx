@@ -74,7 +74,7 @@ const proofItems = [
 function Home() {
   const { user } = useAuth();
   const reduceMotion = useReducedMotion();
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin';
   const primaryPath = user ? (isAdmin ? '/admin' : '/dashboard') : '/register';
   const primaryText = user ? (isAdmin ? 'Vào trang quản trị' : 'Vào bảng học tập') : 'Bắt đầu miễn phí';
   const heroCopyMotion = reduceMotion

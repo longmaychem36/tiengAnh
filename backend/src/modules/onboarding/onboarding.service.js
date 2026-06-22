@@ -1,3 +1,4 @@
+﻿const crypto = require('crypto');
 const { getPool } = require('../../config/database');
 const { ensureOnboardingSchema } = require('./onboarding.schema');
 
@@ -10,6 +11,7 @@ const SPEAKING_PASS_SCORE = 60;
 const WRITING_PASS_SCORE = 80;
 const SKILL_ORDER = ['listening', 'speaking', 'reading', 'writing'];
 const SOURCE_TYPES = ['foundation', 'main'];
+const PLACEMENT_TOKEN_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
 const RECEPTIVE_CONFIG = {
   listening: {
@@ -65,47 +67,55 @@ function mapUserPlacement(row = {}) {
   };
 }
 
-function mapTest(row = {}) {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description || '',
-    isActive: Boolean(row.isactive),
-    orderIndex: Number(row.orderindex || 0),
-    questionCount: Number(row.questioncount || 0),
-    createdAt: row.createdat,
-    updatedAt: row.updatedat
-  };
+function parseOptions(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'object') return value;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : parsed;
+  } catch (err) {
+    return [];
+  }
 }
 
 function mapQuestion(row = {}, includeAnswer = false) {
+  const options = Array.isArray(row.options || row.Options)
+    ? (row.options || row.Options)
+    : [row.optiona || row.optionA, row.optionb || row.optionB, row.optionc || row.optionC, row.optiond || row.optionD].filter(Boolean);
+
   const question = {
     id: row.id,
-    testId: row.testid,
-    questionType: row.questiontype || 'multiple_choice',
-    skill: row.skill || 'general',
+    testId: row.testid || row.testId,
+    questionType: row.questiontype || row.questionType || 'multiple_choice',
+    skill: row.skill || 'minigame',
     difficulty: row.difficulty || 'easy',
-    weight: Number(row.weight || DEFAULT_QUESTION_WEIGHT),
-    contextText: row.contexttext || '',
+    weight: Number(row.weight || row.pointratio || row.pointRatio || DEFAULT_QUESTION_WEIGHT),
+    pointRatio: Number(row.pointratio || row.pointRatio || row.weight || DEFAULT_QUESTION_WEIGHT),
+    contextText: row.contexttext || row.contextText || row.contenten || row.contentEN || row.ContentEN || '',
     prompt: row.prompt || '',
-    options: [row.optiona, row.optionb, row.optionc, row.optiond].filter(Boolean),
-    optionA: row.optiona || '',
-    optionB: row.optionb || '',
-    optionC: row.optionc || '',
-    optionD: row.optiond || '',
+    contentEN: row.contenten || row.contentEN || row.ContentEN || '',
+    contentVI: row.contentvi || row.contentVI || row.ContentVI || '',
+    audioUrl: row.audiourl || row.audioUrl || row.AudioUrl || '',
+    imageUrl: row.imageurl || row.imageUrl || row.ImageUrl || '',
+    options,
+    optionA: row.optiona || row.optionA || options[0] || '',
+    optionB: row.optionb || row.optionB || options[1] || '',
+    optionC: row.optionc || row.optionC || options[2] || '',
+    optionD: row.optiond || row.optionD || options[3] || '',
     explanation: row.explanation || '',
-    sourceSkill: row.sourceskill || '',
-    sourceQuestionId: row.sourcequestionid || '',
-    sourceLessonId: row.sourcelessonid || '',
-    sourceLessonTitle: row.sourcelessontitle || '',
-    sourceLessonType: row.sourcelessontype || '',
-    payload: parseQuestionPayload(row.questionpayload),
-    orderIndex: Number(row.orderindex || 0)
+    sourceSkill: row.sourceskill || row.sourceSkill || 'minigame-placement',
+    sourceQuestionId: row.sourcequestionid || row.sourceQuestionId || row.id || '',
+    sourceLessonId: row.sourcelessonid || row.sourceLessonId || 'placement-minigame',
+    sourceLessonTitle: row.sourcelessontitle || row.sourceLessonTitle || 'Bài test đầu vào',
+    sourceLessonType: row.sourcelessontype || row.sourceLessonType || 'placement-minigame',
+    payload: parseQuestionPayload(row.questionpayload || row.questionPayload || row.payload),
+    orderIndex: Number(row.orderindex || row.orderIndex || 0)
   };
 
   if (includeAnswer) {
-    question.correctAnswer = row.correctanswer || '';
-    question.acceptedAnswers = row.acceptedanswers || '';
+    question.correctAnswer = row.correctanswer || row.correctAnswer || '';
+    question.acceptedAnswers = row.acceptedanswers || row.acceptedAnswers || '';
   }
 
   return question;
@@ -113,20 +123,24 @@ function mapQuestion(row = {}, includeAnswer = false) {
 
 function correctAnswersFor(question) {
   const answers = [
-    question.correctanswer,
-    ...splitAcceptedAnswers(question.acceptedanswers)
+    question.correctanswer || question.correctAnswer,
+    ...splitAcceptedAnswers(question.acceptedanswers || question.acceptedAnswers)
   ].filter(Boolean);
 
-  const key = normalizeText(question.correctanswer);
+  const key = normalizeText(question.correctanswer || question.correctAnswer);
   const optionByKey = {
-    a: question.optiona,
-    b: question.optionb,
-    c: question.optionc,
-    d: question.optiond
+    a: question.optiona || question.optionA,
+    b: question.optionb || question.optionB,
+    c: question.optionc || question.optionC,
+    d: question.optiond || question.optionD
   };
 
   if (optionByKey[key]) answers.push(optionByKey[key]);
   return [...new Set(answers.map(normalizeText).filter(Boolean))];
+}
+
+function normalizeSentence(value) {
+  return normalizeText(value).replace(/[.,!?]/g, '');
 }
 
 function getNumericScoreAnswer(answer) {
@@ -147,28 +161,39 @@ function getNumericScoreAnswer(answer) {
 }
 
 function getPassScore(question) {
-  const payload = parseQuestionPayload(question.questionpayload);
+  const payload = parseQuestionPayload(question.questionpayload || question.questionPayload || question.payload);
   const configured = Number(payload.passScore);
   if (Number.isFinite(configured)) return configured;
-  if (question.questiontype === 'writing_check') return WRITING_PASS_SCORE;
-  if (question.questiontype === 'speaking_record') return SPEAKING_PASS_SCORE;
+  const questionType = question.questiontype || question.questionType;
+  if (questionType === 'writing_check') return WRITING_PASS_SCORE;
+  if (questionType === 'speaking_record') return SPEAKING_PASS_SCORE;
+  if (questionType === 'speakrepeat') return 70;
   return PASS_SCORE;
 }
 
 function isAnswerCorrect(question, answer) {
-  if (question.questiontype === 'speaking_record' || question.questiontype === 'writing_check') {
+  const questionType = question.questiontype || question.questionType;
+  if (questionType === 'speaking_record' || questionType === 'writing_check' || questionType === 'speakrepeat') {
     const score = getNumericScoreAnswer(answer);
     return score !== null && score >= getPassScore(question);
   }
 
   const normalizedAnswer = normalizeText(answer);
   if (!normalizedAnswer) return false;
-  return correctAnswersFor(question).includes(normalizedAnswer);
-}
 
-function serializeAnswer(answer) {
-  if (answer && typeof answer === 'object') return JSON.stringify(answer);
-  return String(answer ?? '');
+  if (questionType === 'matching') {
+    return normalizedAnswer === normalizeText(question.contentvi || question.contentVI || question.ContentVI);
+  }
+
+  if (questionType === 'listenbuild') {
+    return normalizeSentence(answer) === normalizeSentence(question.correctanswer || question.correctAnswer || question.contenten || question.contentEN || question.ContentEN);
+  }
+
+  if (questionType === 'listening' || questionType === 'truefalse') {
+    return normalizedAnswer === normalizeText(question.correctanswer || question.correctAnswer);
+  }
+
+  return correctAnswersFor(question).includes(normalizedAnswer);
 }
 
 function getWeightForSourceType(sourceType) {
@@ -180,26 +205,72 @@ function getDifficultyForSourceType(sourceType) {
 }
 
 function getSourceLabel(sourceType) {
-  return sourceType === 'main' ? 'lo trinh chinh' : 'nen tang';
+  return sourceType === 'main' ? 'lộ trình chính' : 'nền tảng';
 }
 
-function buildPlacementOrderSql() {
-  return `
-    CASE Skill
-      WHEN 'listening' THEN 1
-      WHEN 'speaking' THEN 2
-      WHEN 'reading' THEN 3
-      WHEN 'writing' THEN 4
-      ELSE 5
-    END,
-    CASE SourceLessonType
-      WHEN 'foundation' THEN 1
-      WHEN 'main' THEN 2
-      ELSE 3
-    END,
-    OrderIndex ASC,
-    CreatedAt ASC
-  `;
+function getPlacementTokenSecret() {
+  return process.env.JWT_SECRET || process.env.JWT_ACCESS_SECRET || process.env.SESSION_SECRET || 'placement-dev-secret';
+}
+
+function getPlacementTokenKey() {
+  return crypto.createHash('sha256').update(getPlacementTokenSecret()).digest();
+}
+
+function signPlacementPayload(payload) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', getPlacementTokenKey(), iv);
+  const encrypted = Buffer.concat([
+    cipher.update(JSON.stringify(payload), 'utf8'),
+    cipher.final()
+  ]);
+  const authTag = cipher.getAuthTag();
+  return [
+    iv.toString('base64url'),
+    authTag.toString('base64url'),
+    encrypted.toString('base64url')
+  ].join('.');
+}
+
+function readPlacementPayload(token, userId) {
+  const [ivText, authTagText, encryptedText] = String(token || '').split('.');
+  if (!ivText || !authTagText || !encryptedText) {
+    const err = new Error('Placement attempt is invalid');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  let payload;
+  try {
+    const decipher = crypto.createDecipheriv(
+      'aes-256-gcm',
+      getPlacementTokenKey(),
+      Buffer.from(ivText, 'base64url')
+    );
+    decipher.setAuthTag(Buffer.from(authTagText, 'base64url'));
+    const decrypted = Buffer.concat([
+      decipher.update(Buffer.from(encryptedText, 'base64url')),
+      decipher.final()
+    ]);
+    payload = JSON.parse(decrypted.toString('utf8'));
+  } catch (error) {
+    const err = new Error('Placement attempt is invalid');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (String(payload.userId) !== String(userId)) {
+    const err = new Error('Placement attempt does not belong to this user');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  if (Date.now() - Number(payload.issuedAt || 0) > PLACEMENT_TOKEN_MAX_AGE_MS) {
+    const err = new Error('Placement attempt has expired');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return payload;
 }
 
 function buildQuestion({
@@ -371,15 +442,17 @@ async function hasLessonsForSource(pool, skill, sourceType) {
   return result.rowCount > 0;
 }
 
-async function hasPlacementSourceLessons(pool) {
-  const checks = [];
-  for (const skill of SKILL_ORDER) {
-    for (const sourceType of SOURCE_TYPES) {
-      checks.push(hasLessonsForSource(pool, skill, sourceType));
-    }
-  }
-  const results = await Promise.all(checks);
-  return results.every(Boolean);
+async function getPlacementTestSummary(pool) {
+  const result = await pool.query(`
+    SELECT COUNT(*)::int AS ActiveQuestionCount
+    FROM PlacementMiniGameQuestions
+    WHERE COALESCE(IsActive, true) = true
+  `);
+  const activeQuestionCount = Number(result.rows[0]?.activequestioncount || 0);
+  return {
+    hasActiveTests: activeQuestionCount > 0,
+    activeQuestionCount
+  };
 }
 
 async function pickSourceLesson(pool, skill, sourceType) {
@@ -400,7 +473,7 @@ async function pickSourceLesson(pool, skill, sourceType) {
 
   const lesson = result.rows[0];
   if (!lesson) {
-    const err = new Error(`Khong du du lieu de boc 1 bai ${getSourceLabel(sourceType)} cho ky nang ${skill}.`);
+    const err = new Error(`Không đủ dữ liệu để chọn một bài ${getSourceLabel(sourceType)} cho kỹ năng ${skill}.`);
     err.statusCode = 404;
     throw err;
   }
@@ -474,73 +547,78 @@ async function buildWritingPlacementPart(pool, sourceType) {
   return questionResult.rows.map((row, index) => mapWritingQuestion(sourceType, lesson, row, index));
 }
 
-async function buildPlacementQuestions(pool) {
-  const questions = [];
-  let orderIndex = 1;
-
-  for (const skill of SKILL_ORDER) {
-    for (const sourceType of SOURCE_TYPES) {
-      let partQuestions = [];
-      if (skill === 'listening' || skill === 'reading') {
-        partQuestions = await buildReceptivePlacementPart(pool, skill, sourceType);
-      } else if (skill === 'speaking') {
-        partQuestions = await buildSpeakingPlacementPart(pool, sourceType);
-      } else if (skill === 'writing') {
-        partQuestions = await buildWritingPlacementPart(pool, sourceType);
-      }
-
-      for (const question of partQuestions) {
-        questions.push({ ...question, orderIndex });
-        orderIndex += 1;
-      }
-    }
-  }
-
-  return questions;
+function getPromptForMiniGame(row) {
+  const type = row.questiontype || row.QuestionType;
+  if (type === 'matching') return `Chọn nghĩa tiếng Việt đúng cho: ${row.contenten || row.contentEN || row.ContentEN || ''}`;
+  if (type === 'listening') return 'Nghe và chọn đáp án đúng';
+  if (type === 'listenbuild') return 'Nghe và xếp các từ thành câu hoàn chỉnh';
+  if (type === 'truefalse') return 'Bản dịch này có chính xác không?';
+  if (type === 'speakrepeat') return 'Đọc câu này';
+  return 'Chọn đáp án đúng';
+}
+function getSkillForMiniGameType(questionType) {
+  if (questionType === 'listening' || questionType === 'listenbuild') return 'listening';
+  if (questionType === 'speakrepeat') return 'speaking';
+  return 'minigame';
 }
 
-async function insertPlacementQuestion(pool, testId, question) {
-  await pool.query(`
-    INSERT INTO PlacementTestQuestions
-      (TestId, QuestionType, Skill, Difficulty, Weight, ContextText, Prompt, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, AcceptedAnswers, Explanation, SourceSkill, SourceQuestionId, SourceLessonId, SourceLessonTitle, SourceLessonType, QuestionPayload, OrderIndex, UpdatedAt)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20::jsonb, $21, NOW())
-  `, [
-    testId,
-    question.questionType,
-    question.skill,
-    question.difficulty,
-    question.weight,
-    question.contextText,
-    question.prompt,
-    question.optionA,
-    question.optionB,
-    question.optionC,
-    question.optionD,
-    question.correctAnswer,
-    question.acceptedAnswers,
-    question.explanation,
-    question.sourceSkill,
-    question.sourceQuestionId,
-    question.sourceLessonId,
-    question.sourceLessonTitle,
-    question.sourceLessonType,
-    JSON.stringify(question.questionPayload || {}),
-    question.orderIndex
-  ]);
+async function buildPlacementQuestions(pool) {
+  const result = await pool.query(`
+    SELECT Id, QuestionType, ContentEN, ContentVI, AudioUrl, ImageUrl, CorrectAnswer, Options,
+           Difficulty, PointRatio, OrderIndex
+    FROM PlacementMiniGameQuestions
+    WHERE COALESCE(IsActive, true) = true
+    ORDER BY QuestionType ASC, Difficulty ASC, OrderIndex ASC, CreatedAt ASC
+  `);
+
+  return result.rows.map((row, index) => {
+    const options = parseOptions(row.options);
+    const questionType = row.questiontype || 'matching';
+    const targetText = row.correctanswer || row.contenten || '';
+    return {
+      id: row.id,
+      questionType,
+      skill: getSkillForMiniGameType(questionType),
+      difficulty: row.difficulty || 'easy',
+      weight: Number(row.pointratio || DEFAULT_QUESTION_WEIGHT),
+      pointRatio: Number(row.pointratio || DEFAULT_QUESTION_WEIGHT),
+      contextText: row.contenten || '',
+      prompt: getPromptForMiniGame(row),
+      contentEN: row.contenten || '',
+      contentVI: row.contentvi || '',
+      audioUrl: row.audiourl || '',
+      imageUrl: row.imageurl || '',
+      options,
+      correctAnswer: row.correctanswer || '',
+      acceptedAnswers: row.correctanswer || '',
+      explanation: '',
+      sourceSkill: 'minigame-placement',
+      sourceQuestionId: row.id,
+      sourceLessonId: 'placement-minigame',
+      sourceLessonTitle: 'Bài test đầu vào',
+      sourceLessonType: 'placement-minigame',
+      questionPayload: {
+        targetText,
+        passScore: questionType === 'speakrepeat' ? 70 : PASS_SCORE,
+        miniGameType: questionType
+      },
+      orderIndex: index + 1
+    };
+  });
 }
 
 const onboardingService = {
   async getStatus(userId) {
     await ensureOnboardingSchema();
     const pool = getPool();
-    const [placement, sourceAvailable] = await Promise.all([
+    const [placement, testSummary] = await Promise.all([
       getUserPlacement(pool, userId),
-      hasPlacementSourceLessons(pool)
+      getPlacementTestSummary(pool)
     ]);
 
     return {
       ...placement,
-      hasActiveTests: sourceAvailable
+      ...testSummary
     };
   },
 
@@ -569,7 +647,10 @@ const onboardingService = {
   async startPlacementTest(userId) {
     await ensureOnboardingSchema();
     const pool = getPool();
-    const generatedQuestions = await buildPlacementQuestions(pool);
+    const generatedQuestions = (await buildPlacementQuestions(pool)).map((question) => ({
+      ...question,
+      id: crypto.randomUUID()
+    }));
 
     if (generatedQuestions.length === 0) {
       const err = new Error('No placement source questions are available');
@@ -577,71 +658,53 @@ const onboardingService = {
       throw err;
     }
 
-    const testResult = await pool.query(`
-      INSERT INTO PlacementTests (Title, Description, IsActive, OrderIndex, UpdatedAt)
-      VALUES ($1, $2, false, 0, NOW())
-      RETURNING *
-    `, [
-      'Danh gia dau vao 4 ky nang',
-      'Bai danh gia duoc boc ngau nhien tu 1 bai nen tang va 1 bai lo trinh chinh cua moi ky nang.'
-    ]);
-    const test = testResult.rows[0];
-
-    const attemptResult = await pool.query(`
-      INSERT INTO PlacementAttempts (UserId, TestId, Status, StartedAt)
-      VALUES ($1, $2, 'in_progress', NOW())
-      RETURNING *
-    `, [userId, test.id]);
-
-    for (const question of generatedQuestions) {
-      await insertPlacementQuestion(pool, test.id, question);
-    }
-
-    const questionResult = await pool.query(`
-      SELECT *
-      FROM PlacementTestQuestions
-      WHERE TestId = $1
-      ORDER BY ${buildPlacementOrderSql()}
-    `, [test.id]);
+    const attemptId = crypto.randomUUID();
+    const attemptToken = signPlacementPayload({
+      attemptId,
+      userId,
+      issuedAt: Date.now(),
+      questions: generatedQuestions
+    });
 
     return {
-      attemptId: attemptResult.rows[0].id,
-      test: mapTest({ ...test, questioncount: questionResult.rows.length }),
-      questions: questionResult.rows.map((row) => mapQuestion(row, false))
+      attemptId,
+      attemptToken,
+      test: {
+        id: attemptId,
+        title: 'Bài test đầu vào',
+        description: 'Bài test sử dụng bộ câu hỏi riêng theo các dạng mini game.',
+        questionMode: 'minigame',
+        isActive: true,
+        orderIndex: 0,
+        questionCount: generatedQuestions.length
+      },
+      questions: generatedQuestions.map((question) => mapQuestion(question, false))
     };
   },
 
-  async submitPlacementTest(userId, attemptId, answers = []) {
+  async checkPlacementAnswer(userId, attemptToken, questionId, answer) {
     await ensureOnboardingSchema();
-    const pool = getPool();
+    const attempt = readPlacementPayload(attemptToken, userId);
+    const question = (Array.isArray(attempt.questions) ? attempt.questions : [])
+      .find((item) => String(item.id) === String(questionId || ''));
 
-    const attemptResult = await pool.query(`
-      SELECT *
-      FROM PlacementAttempts
-      WHERE Id = $1 AND UserId = $2
-      LIMIT 1
-    `, [attemptId, userId]);
-
-    const attempt = attemptResult.rows[0];
-    if (!attempt) {
-      const err = new Error('Placement attempt not found');
+    if (!question) {
+      const err = new Error('Không tìm thấy câu hỏi trong lượt làm bài này');
       err.statusCode = 404;
       throw err;
     }
 
-    if (attempt.status === 'completed') {
-      const err = new Error('Placement attempt has already been submitted');
-      err.statusCode = 400;
-      throw err;
-    }
+    return {
+      questionId: String(question.id),
+      correct: isAnswerCorrect(question, answer)
+    };
+  },
 
-    const questionResult = await pool.query(`
-      SELECT *
-      FROM PlacementTestQuestions
-      WHERE TestId = $1
-      ORDER BY ${buildPlacementOrderSql()}
-    `, [attempt.testid]);
-    const questions = questionResult.rows;
+  async submitPlacementTest(userId, attemptToken, answers = []) {
+    await ensureOnboardingSchema();
+    const pool = getPool();
+    const attempt = readPlacementPayload(attemptToken, userId);
+    const questions = Array.isArray(attempt.questions) ? attempt.questions : [];
     const answerMap = new Map((Array.isArray(answers) ? answers : []).map((item) => [
       String(item.questionId || item.QuestionId || ''),
       item.answer ?? item.Answer ?? ''
@@ -652,7 +715,7 @@ const onboardingService = {
     let earnedWeight = 0;
     const skillStats = {};
 
-    const answerRows = questions.map((question) => {
+    questions.forEach((question) => {
       const questionId = String(question.id);
       const answer = answerMap.has(questionId) ? answerMap.get(questionId) : '';
       const correct = isAnswerCorrect(question, answer);
@@ -678,29 +741,10 @@ const onboardingService = {
       skillStats[skill].totalWeight += weight;
       skillStats[skill].earnedWeight += earned;
       if (correct) skillStats[skill].correctCount += 1;
-
-      return { questionId: question.id, answer: serializeAnswer(answer), correct, weight, earnedWeight: earned };
     });
 
     const score = Math.round((earnedWeight / Math.max(totalWeight, 1)) * 100);
     const resultLevel = score >= PASS_SCORE ? 'basic' : 'new';
-
-    await pool.query(`DELETE FROM PlacementAttemptAnswers WHERE AttemptId = $1`, [attemptId]);
-    for (const row of answerRows) {
-      await pool.query(`
-        INSERT INTO PlacementAttemptAnswers (AttemptId, QuestionId, Answer, IsCorrect, Weight, EarnedWeight)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `, [attemptId, row.questionId, row.answer, row.correct, row.weight, row.earnedWeight]);
-    }
-
-    await pool.query(`
-      UPDATE PlacementAttempts
-      SET Status = 'completed',
-          Score = $1,
-          ResultLevel = $2,
-          SubmittedAt = NOW()
-      WHERE Id = $3
-    `, [score, resultLevel, attemptId]);
 
     const placement = await updatePlacement(pool, userId, resultLevel, 'test');
 

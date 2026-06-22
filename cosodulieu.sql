@@ -437,7 +437,7 @@ CREATE TABLE public.users (
     levelid integer,
     isactive boolean DEFAULT true,
     createdat timestamp without time zone DEFAULT now(),
-    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'user'::character varying, 'superadmin'::character varying])::text[])))
+    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'user'::character varying])::text[])))
 );
 
 
@@ -1056,7 +1056,7 @@ COPY public.userprogress (id, userid, lessonid, status, score) FROM stdin;
 COPY public.users (id, username, email, passwordhash, role, levelid, isactive, createdat) FROM stdin;
 f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	philong	culitete@gmail.com	$2a$10$.OrVNcBONA8Mjn1a8FCY7./wRZmtcuCybNDkUBcWNbL4Js3bodlRm	user	\N	t	2026-05-11 10:37:31.936624
 22227f57-0aa9-4da0-b6ac-cfd00110b514	testuser_gemini	testuser_gemini@example.com	$2a$10$C7hAmcq0OG.anoJycEN2P.V9kiVN9lmQxcElLZfLz0EqQpzSS2ouu	user	\N	t	2026-05-11 10:57:55.45399
-63067d89-05de-4a11-9fe9-1fba5b52ea9e	superadmin	superadmin@system.com	$2a$10$ky8AGBo.xvidPAN79So9GOWk5ne6z3BhSOnm5TUomsKDmDUrwQPN.	superadmin	\N	t	2026-05-11 18:40:55.960678
+63067d89-05de-4a11-9fe9-1fba5b52ea9e	admin	superadmin@system.com	$2a$10$ky8AGBo.xvidPAN79So9GOWk5ne6z3BhSOnm5TUomsKDmDUrwQPN.	admin	\N	t	2026-05-11 18:40:55.960678
 \.
 
 

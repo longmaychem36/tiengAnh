@@ -5,6 +5,75 @@
 
 const normalizeDirection = (direction) => (direction === 'vi-en' ? 'vi-en' : 'en-vi');
 
+const DATAMUSE_PARTS_OF_SPEECH = {
+  adj: 'tính từ',
+  adv: 'trạng từ',
+  n: 'danh từ',
+  v: 'động từ'
+};
+
+const PART_OF_SPEECH_VI = {
+  noun: 'danh từ',
+  verb: 'động từ',
+  adjective: 'tính từ',
+  adverb: 'trạng từ',
+  pronoun: 'đại từ',
+  preposition: 'giới từ',
+  conjunction: 'liên từ',
+  interjection: 'thán từ',
+  determiner: 'từ hạn định',
+  article: 'mạo từ',
+  numeral: 'số từ',
+  auxiliary: 'trợ động từ'
+};
+
+const localizePartOfSpeech = (value = '') => PART_OF_SPEECH_VI[String(value).toLowerCase()] || value;
+
+const getDatamuseFrequency = (tags = []) => {
+  const frequencyTag = tags.find((tag) => String(tag).startsWith('f:'));
+  return frequencyTag ? Number(String(frequencyTag).slice(2)) || 0 : 0;
+};
+
+const getDatamusePartOfSpeech = (tags = []) => tags
+  .map((tag) => DATAMUSE_PARTS_OF_SPEECH[tag])
+  .filter(Boolean)
+  .join(', ');
+
+const AUTOCOMPLETE_MIN_FREQUENCY = 1;
+const MAX_DEFINITIONS = 4;
+const MAX_DEFINITIONS_PER_PART_OF_SPEECH = 1;
+
+const rankAutocompleteCandidates = (items = [], query = '', limit = 8) => {
+  const normalizedQuery = String(query || '').trim().toLowerCase();
+  const seen = new Set();
+
+  const ranked = items
+    .filter((item) => {
+      const word = String(item?.word || '').trim().toLowerCase();
+      if (!word || !word.startsWith(normalizedQuery) || seen.has(word)) return false;
+      seen.add(word);
+      return true;
+    })
+    .map((item) => ({
+      ...item,
+      exactMatch: String(item.word).toLowerCase() === normalizedQuery,
+      lengthDelta: Math.max(0, String(item.word).length - normalizedQuery.length),
+      frequency: getDatamuseFrequency(item.tags)
+    }))
+    .sort((a, b) => (
+      Number(b.exactMatch) - Number(a.exactMatch)
+      || b.frequency - a.frequency
+      || Number(b.score || 0) - Number(a.score || 0)
+      || a.lengthDelta - b.lengthDelta
+      || String(a.word).localeCompare(String(b.word))
+    ));
+
+  const common = ranked.filter((item) => item.exactMatch || item.frequency >= AUTOCOMPLETE_MIN_FREQUENCY);
+  return (common.length > 0 ? common : ranked.slice(0, 1)).slice(0, limit);
+};
+
+const isSpecializedDefinition = (definition = '') => /\([^)]*\)|\b(?:Amerind|First Nations|electromagnetic spectrum|color charge|heraldry|taxonomy|snooker|billiards|political party|revolutionary socialist|Communist|Bolshevik|obsolete|archaic)\b|To (?:govern, protect|discuss, deliberate)\.?$/i.test(definition);
+
 const safeFetch = async (url, timeoutMs = 6000) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -38,12 +107,22 @@ const parseExternalId = (id) => {
   }
 };
 
-const getUniqueTranslations = (matches = [], originalWord = '') => {
+const getUniqueTranslations = (matches = [], originalWord = '', primaryTranslation = '') => {
   const original = String(originalWord || '').trim().toLowerCase();
-  return [...new Set(matches.map((item) => item.translation).filter(Boolean))]
-    .map((item) => item.trim())
-    .filter((item) => item && item.toLowerCase() !== original)
-    .slice(0, 6);
+  const ranked = [...matches].sort((a, b) => (
+    Number(b['usage-count'] || 0) - Number(a['usage-count'] || 0)
+    || Number(b.match || 0) - Number(a.match || 0)
+    || Number(b.quality || 0) - Number(a.quality || 0)
+  ));
+  const candidates = [primaryTranslation, ...ranked.map((item) => item.translation)];
+  const seen = new Set();
+
+  return candidates.map((item) => String(item || '').trim()).filter((item) => {
+    const key = item.toLowerCase();
+    if (!item || key === original || seen.has(key) || item.length > 60) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 3);
 };
 
 const translateWord = async (text, langpair) => {
@@ -57,19 +136,50 @@ const translateWord = async (text, langpair) => {
 };
 
 const parseDictionaryApiEntry = async ({ apiEntry, originalQuery, direction }) => {
-  const allMeanings = [];
+  const meaningCandidates = [];
+  const meaningKeys = new Set();
   const synonyms = new Set();
 
   apiEntry.meanings?.forEach((meaning) => {
     meaning.definitions?.forEach((definition) => {
-      allMeanings.push({
-        partOfSpeech: meaning.partOfSpeech || '',
+      const partOfSpeech = localizePartOfSpeech(meaning.partOfSpeech || '');
+      const key = `${partOfSpeech}|${definition.definition || ''}|${definition.example || ''}`.toLowerCase();
+      if (meaningKeys.has(key)) return;
+      meaningKeys.add(key);
+      meaningCandidates.push({
+        partOfSpeech,
         definition: definition.definition || '',
         example: definition.example || ''
       });
     });
     meaning.synonyms?.forEach((synonym) => synonyms.add(synonym));
   });
+
+  const commonCandidates = meaningCandidates.filter((item) => (
+    !isSpecializedDefinition(item.definition)
+    && !(item.partOfSpeech === 'động từ' && !item.example && item.definition.length < 24)
+  ));
+  const partOfSpeechStats = commonCandidates.reduce((stats, item) => {
+    const key = item.partOfSpeech || 'khác';
+    const current = stats.get(key) || { count: 0, hasExample: false };
+    current.count += 1;
+    current.hasExample ||= Boolean(item.example);
+    stats.set(key, current);
+    return stats;
+  }, new Map());
+  const frequentPartOfSpeech = new Set([...partOfSpeechStats.entries()]
+    .filter(([, stats]) => stats.count >= 4)
+    .map(([partOfSpeech]) => partOfSpeech));
+  const frequentCandidates = commonCandidates.filter((item) => frequentPartOfSpeech.has(item.partOfSpeech || 'khác'));
+  const definitionPool = frequentCandidates.length > 0 ? frequentCandidates : (commonCandidates.length > 0 ? commonCandidates.slice(0, 1) : meaningCandidates.slice(0, 1));
+  const definitionsPerPartOfSpeech = new Map();
+  const allMeanings = definitionPool.filter((item) => {
+    const key = item.partOfSpeech || 'khác';
+    const count = definitionsPerPartOfSpeech.get(key) || 0;
+    if (count >= MAX_DEFINITIONS_PER_PART_OF_SPEECH) return false;
+    definitionsPerPartOfSpeech.set(key, count + 1);
+    return true;
+  }).slice(0, MAX_DEFINITIONS);
 
   let phonetic = apiEntry.phonetic || '';
   const audios = { uk: '', us: '' };
@@ -88,7 +198,7 @@ const parseDictionaryApiEntry = async ({ apiEntry, originalQuery, direction }) =
   );
   if (transRes && transRes.ok) {
     const transData = await transRes.json();
-    const filtered = getUniqueTranslations(transData.matches || [], apiEntry.word).join('; ');
+    const filtered = getUniqueTranslations(transData.matches || [], apiEntry.word, transData.responseData?.translatedText).join('; ');
     meaningVI = filtered || transData.responseData?.translatedText || meaningVI;
   }
 
@@ -96,7 +206,7 @@ const parseDictionaryApiEntry = async ({ apiEntry, originalQuery, direction }) =
     Id: makeExternalId('dictionaryapi', apiEntry.word),
     Word: apiEntry.word?.toLowerCase() || originalQuery.toLowerCase(),
     Phonetic: phonetic.replaceAll('/', ''),
-    PartOfSpeech: apiEntry.meanings?.[0]?.partOfSpeech || '',
+    PartOfSpeech: [...new Set(allMeanings.map((meaning) => meaning.partOfSpeech).filter(Boolean))].join(', '),
     MeaningEN: JSON.stringify(allMeanings),
     MeaningVI: meaningVI || 'No Vietnamese translation available',
     Example: allMeanings.find((item) => item.example)?.example || '',
@@ -104,9 +214,35 @@ const parseDictionaryApiEntry = async ({ apiEntry, originalQuery, direction }) =
     LevelId: null,
     LevelCode: null,
     LevelName: null,
-    synonyms: [...synonyms].slice(0, 8),
+    synonyms: [...synonyms].slice(0, 5),
     Source: 'dictionaryapi'
   };
+};
+
+const mergeDictionaryApiEntries = (items = []) => {
+  const merged = new Map();
+
+  items.forEach((item) => {
+    const key = String(item?.word || '').trim().toLowerCase();
+    if (!key) return;
+
+    if (!merged.has(key)) {
+      merged.set(key, {
+        ...item,
+        word: key,
+        meanings: [...(item.meanings || [])],
+        phonetics: [...(item.phonetics || [])]
+      });
+      return;
+    }
+
+    const target = merged.get(key);
+    target.meanings.push(...(item.meanings || []));
+    target.phonetics.push(...(item.phonetics || []));
+    if (!target.phonetic && item.phonetic) target.phonetic = item.phonetic;
+  });
+
+  return [...merged.values()];
 };
 
 const dictionaryService = {
@@ -133,7 +269,7 @@ const dictionaryService = {
 
     if (extRes && extRes.ok) {
       const data = await extRes.json();
-      for (const item of data.slice(0, resultLimit)) {
+      for (const item of mergeDictionaryApiEntries(data).slice(0, resultLimit)) {
         entries.push(await parseDictionaryApiEntry({
           apiEntry: item,
           originalQuery: normalizedQuery,
@@ -206,10 +342,16 @@ const dictionaryService = {
   async getById(id) {
     const parsed = parseExternalId(id);
     if (!parsed?.value) return null;
-    const word = parsed.source === 'translation'
-      ? parsed.value.split(':').slice(1).join(':') || parsed.value
-      : parsed.value;
-    const result = await this.search({ query: word, limit: 1, direction: 'en-vi' });
+
+    let direction = 'en-vi';
+    let word = parsed.value;
+    if (parsed.source === 'translation') {
+      const [storedDirection, ...queryParts] = parsed.value.split(':');
+      direction = normalizeDirection(storedDirection);
+      word = queryParts.join(':') || parsed.value;
+    }
+
+    const result = await this.search({ query: word, limit: 1, direction });
     return result.entries[0] || null;
   },
 
@@ -231,6 +373,7 @@ const dictionaryService = {
     const normalizedQuery = String(query || '').trim();
     if (!normalizedQuery) return [];
 
+    const resultLimit = Math.min(5, Math.max(1, Number.parseInt(limit, 10) || 5));
     const safeDirection = normalizeDirection(direction);
     if (safeDirection === 'vi-en') {
       const translated = await translateWord(normalizedQuery, 'vi|en');
@@ -242,15 +385,24 @@ const dictionaryService = {
       }];
     }
 
-    const res = await safeFetch(
-      `https://api.datamuse.com/sug?s=${encodeURIComponent(normalizedQuery)}&max=${Number.parseInt(limit, 10) || 8}`,
-      3000
+    const candidateLimit = Math.min(100, Math.max(50, resultLimit * 10));
+    let res = await safeFetch(
+      `https://api.datamuse.com/words?sp=${encodeURIComponent(normalizedQuery)}*&max=${candidateLimit}&md=pf`,
+      3500
     );
+
+    if (!res || !res.ok) {
+      res = await safeFetch(
+        `https://api.datamuse.com/sug?s=${encodeURIComponent(normalizedQuery)}&max=${candidateLimit}`,
+        3000
+      );
+    }
     if (!res || !res.ok) return [];
+
     const data = await res.json();
-    return data.map((item) => ({
+    return rankAutocompleteCandidates(data, normalizedQuery, resultLimit).map((item) => ({
       Word: item.word,
-      PartOfSpeech: null,
+      PartOfSpeech: getDatamusePartOfSpeech(item.tags) || null,
       MeaningVI: null
     }));
   },

@@ -7,7 +7,7 @@ const emptyDeck = { Name: '', Description: '' };
 const emptyWord = { CustomWord: '', CustomMeaning: '', CustomExample: '' };
 const getData = (res, fallback) => res?.data ?? fallback;
 const getErrorMessage = (err, fallback) => err?.response?.data?.message || err?.message || fallback;
-const isAdminCreatedDeck = (deck) => ['admin', 'superadmin'].includes(String(deck?.CreatorRole || '').toLowerCase());
+const isAdminCreatedDeck = (deck) => String(deck?.CreatorRole || '').toLowerCase() === 'admin';
 
 function AdminVocabulary() {
   const [status, setStatus] = useState('pending');

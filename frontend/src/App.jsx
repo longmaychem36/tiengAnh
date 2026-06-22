@@ -45,12 +45,11 @@ import AdminWriting from './pages/admin/AdminWriting';
 import AdminGrammar from './pages/admin/AdminGrammar';
 import AdminReceptive from './pages/admin/AdminReceptive';
 import AdminVocabulary from './pages/admin/AdminVocabulary';
-import AdminPlacementTests from './pages/admin/AdminPlacementTests';
 
 function App() {
   const { user } = useAuth();
   const { pathname } = useLocation();
-  const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     stopAllPlayback();
@@ -121,7 +120,6 @@ function App() {
         <Route path="/admin/reading" element={<AdminReceptive skill="reading" />} />
         <Route path="/admin/grammar" element={<AdminGrammar />} />
         <Route path="/admin/vocabulary" element={<AdminVocabulary />} />
-        <Route path="/admin/placement-tests" element={<AdminPlacementTests />} />
         <Route path="/admin/games" element={<AdminGames />} />
         <Route path="/admin/users" element={<AdminUsers />} />
       </Route>

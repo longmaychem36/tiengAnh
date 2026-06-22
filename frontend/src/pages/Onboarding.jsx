@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -13,10 +13,12 @@ import {
   FiRefreshCw,
   FiSend,
   FiVolume2,
+  FiX,
   FiXCircle
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import QuestionNavigator from '../components/common/QuestionNavigator';
+import CharacterSvg from '../components/common/CharacterSvg';
 import Recorder from '../components/speaking/Recorder';
 import {
   LearningLayout,
@@ -49,7 +51,7 @@ const surveyOptions = [
     value: 'unsure',
     icon: '/nav-icons/admin-placement.svg',
     title: 'Tôi không chắc',
-    text: 'Làm bài đánh giá 4 kỹ năng để hệ thống xếp lộ trình phù hợp.'
+    text: 'Làm bài test đầu vào bằng các dạng mini game.'
   }
 ];
 
@@ -85,6 +87,14 @@ const sourceOrder = { foundation: 1, main: 2 };
 const textQuestionTypes = new Set(['fill_blank', 'short_answer']);
 const DEFAULT_SPEAKING_PASS_SCORE = 60;
 const DEFAULT_WRITING_PASS_SCORE = 80;
+const miniQuestionTypes = new Set(['matching', 'listening', 'listenbuild', 'truefalse', 'speakrepeat']);
+const placementMiniTypeLabels = {
+  matching: 'Nối từ',
+  listening: 'Nghe chọn',
+  listenbuild: 'Nghe xếp câu',
+  truefalse: 'Đúng/Sai',
+  speakrepeat: 'Đọc câu'
+};
 
 const getRecordDuration = (text = '') => {
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
@@ -113,6 +123,10 @@ function isAnswered(value) {
 
 function getQuestionPayload(question) {
   return question?.payload && typeof question.payload === 'object' ? question.payload : {};
+}
+
+function getTargetText(question) {
+  return String(getQuestionPayload(question).targetText || question?.contentEN || '');
 }
 
 function getSpeakingOptions(question) {
@@ -149,6 +163,15 @@ function sourceShortLabel(sourceType) {
 
 function skillLabel(skill) {
   return skillMeta[skill]?.label || 'Tổng hợp';
+}
+
+function shuffleItems(items = []) {
+  const list = [...items];
+  for (let index = list.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [list[index], list[swapIndex]] = [list[swapIndex], list[index]];
+  }
+  return list;
 }
 
 function splitContext(contextText = '') {
@@ -200,6 +223,8 @@ function Onboarding() {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [placementStatus, setPlacementStatus] = useState(null);
+  const [statusLoading, setStatusLoading] = useState(true);
   const [attempt, setAttempt] = useState(null);
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
@@ -210,8 +235,35 @@ function Onboarding() {
   const [writingDrafts, setWritingDrafts] = useState({});
   const [analyzingQuestionId, setAnalyzingQuestionId] = useState(null);
   const [checkingQuestionId, setCheckingQuestionId] = useState(null);
+  const [miniWordBank, setMiniWordBank] = useState([]);
+  const [miniBuiltWords, setMiniBuiltWords] = useState([]);
+  const [miniAudioPlaying, setMiniAudioPlaying] = useState(false);
+  const [miniAnalyzingQuestionId, setMiniAnalyzingQuestionId] = useState(null);
+  const [answerResults, setAnswerResults] = useState({});
+  const [checkingMiniAnswerId, setCheckingMiniAnswerId] = useState(null);
 
   useEffect(() => () => stopAllPlayback(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPlacementStatus = async () => {
+      setStatusLoading(true);
+      try {
+        const res = await onboardingApi.getStatus();
+        if (!cancelled) setPlacementStatus(res.data || null);
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(err.message || 'Không thể tải thông tin bài test đầu vào.');
+        }
+      } finally {
+        if (!cancelled) setStatusLoading(false);
+      }
+    };
+
+    loadPlacementStatus();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     setActivePartIndex(0);
@@ -221,7 +273,9 @@ function Onboarding() {
     setWritingDrafts({});
     setAnalyzingQuestionId(null);
     setCheckingQuestionId(null);
-  }, [attempt?.attemptId]);
+    setAnswerResults({});
+    setCheckingMiniAnswerId(null);
+  }, [attempt?.attemptToken]);
 
   useEffect(() => {
     setActiveQuestionIndex(0);
@@ -242,6 +296,47 @@ function Onboarding() {
   const partComplete = currentQuestions.length > 0 && partAnsweredCount === currentQuestions.length;
   const allAnswered = totalQuestions > 0 && answeredCount === totalQuestions;
   const progressPercent = totalQuestions ? (answeredCount / totalQuestions) * 100 : 0;
+  const miniQuestions = attempt?.questions || [];
+  const miniCurrentQuestion = miniQuestions[activeQuestionIndex] || null;
+
+  const playMiniTTS = (text) => {
+    if (!text) return;
+    if (!hasSpeechSupport()) {
+      toast.error('Trình duyệt chưa hỗ trợ đọc audio.');
+      return;
+    }
+    setMiniAudioPlaying(true);
+    const utterance = speakText(text, {
+      lang: 'en-US',
+      onend: () => setMiniAudioPlaying(false),
+      onerror: () => setMiniAudioPlaying(false)
+    });
+    if (!utterance) setMiniAudioPlaying(false);
+  };
+
+  useEffect(() => {
+    if (!attempt || !miniCurrentQuestion) return;
+    stopAllPlayback();
+    setMiniBuiltWords([]);
+    setMiniAudioPlaying(false);
+    setMiniAnalyzingQuestionId(null);
+
+    const type = miniCurrentQuestion.questionType;
+    if (type === 'matching') {
+      setMiniWordBank(shuffleItems(miniCurrentQuestion.options || [miniCurrentQuestion.contentVI]).filter(Boolean));
+      return;
+    }
+    if (type === 'listenbuild') {
+      const words = (miniCurrentQuestion.options?.length ? miniCurrentQuestion.options : getTargetText(miniCurrentQuestion).split(/\s+/)).filter(Boolean);
+      setMiniWordBank(shuffleItems(words));
+      setTimeout(() => playMiniTTS(getTargetText(miniCurrentQuestion)), 250);
+      return;
+    }
+    setMiniWordBank([]);
+    if (type === 'listening' || type === 'speakrepeat') {
+      setTimeout(() => playMiniTTS(getTargetText(miniCurrentQuestion)), 250);
+    }
+  }, [attempt?.attemptToken, miniCurrentQuestion?.id]);
 
   const finishWithPlacement = (payload) => {
     updateUser(mergePlacement(user, payload));
@@ -278,6 +373,22 @@ function Onboarding() {
       delete next[questionId];
       return next;
     });
+  };
+
+  const checkMiniAnswer = async (question, answer) => {
+    if (!attempt?.attemptToken || checkingMiniAnswerId || typeof answerResults[question.id] === 'boolean') return;
+
+    handleAnswer(question.id, answer);
+    setCheckingMiniAnswerId(question.id);
+    try {
+      const res = await onboardingApi.checkAnswer(attempt.attemptToken, question.id, answer);
+      setAnswerResults((current) => ({ ...current, [question.id]: Boolean(res.data?.correct) }));
+    } catch (err) {
+      clearAnswer(question.id);
+      toast.error(err.message || 'Không thể kiểm tra câu trả lời.');
+    } finally {
+      setCheckingMiniAnswerId(null);
+    }
   };
 
   const handleSpeakingOptionSelect = (questionId, optionIndex) => {
@@ -395,7 +506,7 @@ function Onboarding() {
     setLoading(true);
     try {
       const payload = Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer }));
-      const res = await onboardingApi.submitTest(attempt.attemptId, payload);
+      const res = await onboardingApi.submitTest(attempt.attemptToken, payload);
       setResult(res.data);
       finishWithPlacement(res.data);
       stopAllPlayback();
@@ -478,6 +589,8 @@ function Onboarding() {
     setWritingDrafts({});
     setAnalyzingQuestionId(null);
     setCheckingQuestionId(null);
+    setAnswerResults({});
+    setCheckingMiniAnswerId(null);
     stopAllPlayback();
   };
 
@@ -801,6 +914,247 @@ function Onboarding() {
     );
   };
 
+  const handleMiniBuiltWordAdd = (word, index) => {
+    setMiniBuiltWords((current) => [...current, word]);
+    setMiniWordBank((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const handleMiniBuiltWordRemove = (index) => {
+    const word = miniBuiltWords[index];
+    setMiniBuiltWords((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setMiniWordBank((current) => [...current, word]);
+  };
+
+  const handleMiniSpeakingComplete = async (question, audioBlob) => {
+    const targetText = getTargetText(question);
+    if (!targetText) {
+      toast.error('Câu đọc này chưa có nội dung mẫu.');
+      return;
+    }
+
+    setMiniAnalyzingQuestionId(question.id);
+    try {
+      const res = await speakingApi.transcribeAndAnalyze(audioBlob, [targetText], {
+        lessonId: question.sourceLessonId || '',
+        questionId: question.sourceQuestionId || question.id,
+        targetText,
+        prompt: question.prompt,
+        passThreshold: getPassScore(question)
+      });
+      const data = res.data || {};
+      await checkMiniAnswer(question, {
+        kind: 'speaking',
+        score: Number(data.score || 0),
+        transcript: data.transcript || '',
+        feedback: data.feedback || '',
+        targetText
+      });
+      if (!data.transcript) toast.error('Không nhận diện được giọng nói. Bạn có thể thử lại.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Không thể chấm phần đọc.');
+    } finally {
+      setMiniAnalyzingQuestionId(null);
+    }
+  };
+
+  const renderMiniQuestionBody = (question) => {
+    const answer = answers[question.id];
+    const type = question.questionType;
+    const answerResult = answerResults[question.id];
+    const hasResult = typeof answerResult === 'boolean';
+    const isCheckingAnswer = checkingMiniAnswerId === question.id;
+    const getMiniOptionClass = (option) => {
+      if (answer !== option || !hasResult) return answer === option ? 'is-selected' : '';
+      return answerResult ? 'is-correct' : 'is-wrong';
+    };
+
+    if (type === 'matching') {
+      return (
+        <div className="placement-minigame-card game-placement-body">
+          <p className="game-question-prompt">Chọn nghĩa tiếng Việt đúng</p>
+          <h2 className="game-question-word">{question.contentEN}</h2>
+          <div className="game-answer-grid">
+            {miniWordBank.map((option, index) => (
+              <button key={`${option}-${index}`} type="button" className={`game-answer-btn ${getMiniOptionClass(option)}`} onClick={() => checkMiniAnswer(question, option)} disabled={hasResult || isCheckingAnswer}>
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'listening') {
+      return (
+        <div className="placement-minigame-card game-placement-body">
+          <p className="game-question-prompt">Nghe và chọn đáp án đúng</p>
+          <button type="button" className={`game-sound-button ${miniAudioPlaying ? 'is-playing' : ''}`} onClick={() => playMiniTTS(getTargetText(question))} disabled={miniAudioPlaying}>
+            <FiVolume2 />
+          </button>
+          <div className="game-answer-grid">
+            {(question.options || []).map((option, index) => (
+              <button key={`${option}-${index}`} type="button" className={`game-answer-btn ${getMiniOptionClass(option)}`} onClick={() => checkMiniAnswer(question, option)} disabled={hasResult || isCheckingAnswer}>
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'listenbuild') {
+      const hasBuilt = miniBuiltWords.length > 0;
+      const isComplete = hasBuilt && miniWordBank.length === 0;
+      return (
+        <div className="placement-minigame-card game-placement-body">
+          <p className="game-question-prompt">Nghe và xếp câu hoàn chỉnh</p>
+          {question.contentVI && <p className="game-question-hint">({question.contentVI})</p>}
+          <button type="button" className={`game-sound-button is-small ${miniAudioPlaying ? 'is-playing' : ''}`} onClick={() => playMiniTTS(getTargetText(question))} disabled={miniAudioPlaying}>
+            <FiVolume2 />
+          </button>
+          <div className="game-sentence-board">
+            {miniBuiltWords.length === 0 && <span>Chọn các từ bên dưới...</span>}
+            {miniBuiltWords.map((word, index) => (
+              <button key={`${word}-${index}`} type="button" onClick={() => handleMiniBuiltWordRemove(index)} disabled={hasResult || isCheckingAnswer}>{word}</button>
+            ))}
+          </div>
+          <div className="game-word-bank">
+            {miniWordBank.map((word, index) => (
+              <button key={`${word}-${index}`} type="button" onClick={() => handleMiniBuiltWordAdd(word, index)} disabled={hasResult || isCheckingAnswer}>{word}</button>
+            ))}
+          </div>
+          <PrimaryButton onClick={() => checkMiniAnswer(question, miniBuiltWords.join(' '))} disabled={!isComplete || hasResult || isCheckingAnswer}>Chọn câu này</PrimaryButton>
+        </div>
+      );
+    }
+
+    if (type === 'truefalse') {
+      return (
+        <div className="placement-minigame-card game-placement-body">
+          <p className="game-question-prompt">Bản dịch này có chính xác không?</p>
+          <div className="game-translation-card">
+            <strong>{question.contentEN}</strong>
+            <span>= "{question.contentVI}"</span>
+          </div>
+          <div className="game-truefalse-grid">
+            <button type="button" className={`game-answer-btn ${getMiniOptionClass('true')}`} onClick={() => checkMiniAnswer(question, 'true')} disabled={hasResult || isCheckingAnswer}>Đúng</button>
+            <button type="button" className={`game-answer-btn ${getMiniOptionClass('false')}`} onClick={() => checkMiniAnswer(question, 'false')} disabled={hasResult || isCheckingAnswer}>Sai</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'speakrepeat') {
+      const targetText = getTargetText(question);
+      const isAnalyzing = miniAnalyzingQuestionId === question.id;
+      return (
+        <div className="placement-minigame-card game-placement-body game-speaking-card">
+          <p className="game-question-prompt">Đọc câu này</p>
+          <div className="game-speak-target">
+            <button type="button" className="game-speak-audio" onClick={() => playMiniTTS(targetText)} disabled={miniAudioPlaying || isAnalyzing}>
+              <FiVolume2 />
+            </button>
+            <strong>{targetText}</strong>
+          </div>
+          {!answer ? (
+            <>
+              <Recorder onRecordingComplete={(audioBlob) => handleMiniSpeakingComplete(question, audioBlob)} isAnalyzing={isAnalyzing} maxDuration={getRecordDuration(targetText)} />
+              <button type="button" className="game-skip-speaking" onClick={() => checkMiniAnswer(question, { kind: 'speaking', score: 0, transcript: '', targetText })} disabled={isAnalyzing || hasResult || isCheckingAnswer}>
+                Tạm thời không nói được
+              </button>
+            </>
+          ) : (
+            <div className="game-speaking-result">
+              <strong>Đã ghi nhận câu trả lời</strong>
+              <span>{answer.transcript ? `Bạn đọc: ${answer.transcript}` : 'Chưa có bản ghi đọc.'}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return <div className="game-empty">Loại câu hỏi này chưa được hỗ trợ.</div>;
+  };
+
+  const renderMiniGamePlacementSession = () => {
+    if (!miniCurrentQuestion) return null;
+    const answer = answers[miniCurrentQuestion.id];
+    const answerResult = answerResults[miniCurrentQuestion.id];
+    const isCheckingAnswer = checkingMiniAnswerId === miniCurrentQuestion.id;
+    const canGoPrevious = activeQuestionIndex > 0;
+    const isLastQuestion = activeQuestionIndex + 1 >= miniQuestions.length;
+    const canContinue = isAnswered(answer) && typeof answerResult === 'boolean';
+    const progressForQuestion = ((activeQuestionIndex + (canContinue ? 1 : 0)) / Math.max(miniQuestions.length, 1)) * 100;
+
+    const goMiniNext = () => {
+      if (!canContinue) {
+        toast.error('Hãy trả lời câu này trước khi tiếp tục.');
+        return;
+      }
+      if (isLastQuestion) {
+        handleSubmitTest();
+        return;
+      }
+      setActiveQuestionIndex((index) => index + 1);
+    };
+
+    return (
+      <div className="game-play-shell placement-game-shell fade-in">
+        <div className="game-hud-card placement-game-hud">
+          <button type="button" className="game-exit-button" onClick={resetToSurvey} aria-label="Thoát">
+            <FiX />
+          </button>
+          <div className="game-hud-timer">
+            <div className="game-time-track">
+              <motion.div
+                className="game-time-fill"
+                animate={{ width: `${progressForQuestion}%` }}
+                transition={{ duration: 0.25 }}
+              />
+            </div>
+          </div>
+          <div className="game-progress-label">
+            <strong>{activeQuestionIndex + 1}/{miniQuestions.length}</strong>
+            <span>{placementMiniTypeLabels[miniCurrentQuestion.questionType] || miniCurrentQuestion.questionType}</span>
+          </div>
+        </div>
+
+        <motion.section
+          key={miniCurrentQuestion.id}
+          initial={{ opacity: 0, x: 28 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="game-question-card placement-game-question"
+        >
+          <CharacterSvg className={`is-${miniCurrentQuestion.questionType}`} width={96} aria-hidden="true" focusable="false" />
+          {renderMiniQuestionBody(miniCurrentQuestion)}
+          {isCheckingAnswer && (
+            <div className="placement-answer-feedback is-checking" role="status">
+              <FiLoader className="spin" />
+              <div><strong>Đang kiểm tra</strong><span>Vui lòng chờ trong giây lát.</span></div>
+            </div>
+          )}
+          {typeof answerResult === 'boolean' && (
+            <motion.div className={`placement-answer-feedback ${answerResult ? 'is-correct' : 'is-wrong'}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} role="status">
+              {answerResult ? <FiCheckCircle /> : <FiXCircle />}
+              <div>
+                <strong>{answerResult ? 'Chính xác' : 'Chưa chính xác'}</strong>
+                <span>{answerResult ? 'Bạn đã trả lời đúng câu này.' : 'Câu trả lời của bạn chưa đúng.'}</span>
+              </div>
+            </motion.div>
+          )}
+        </motion.section>
+
+        <div className="placement-game-actions">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setActiveQuestionIndex((index) => Math.max(0, index - 1))} disabled={!canGoPrevious || loading || isCheckingAnswer}>
+            <FiArrowLeft /> Trước
+          </button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={goMiniNext} disabled={loading || !canContinue || isCheckingAnswer}>
+            {isLastQuestion ? 'Nộp bài' : 'Tiếp'} {loading ? <FiLoader className="spin" /> : <FiArrowRight />}
+          </button>
+        </div>
+      </div>
+    );
+  };
   const renderPlacementSession = () => {
     if (!currentPart || !currentQuestion) return null;
 
@@ -875,6 +1229,7 @@ function Onboarding() {
             duration="Đầu vào"
             backLabel="Khảo sát"
             onBack={resetToSurvey}
+            confirmOnBack
           />
         )}
         leftPanel={renderSourcePanel()}
@@ -912,38 +1267,25 @@ function Onboarding() {
                   type="button"
                   className="onboarding-choice"
                   onClick={() => handleSurvey(option.value)}
-                  disabled={loading}
+                  disabled={loading || (option.value === 'unsure' && (statusLoading || placementStatus?.hasActiveTests === false))}
                 >
                   <span><img src={option.icon} alt="" aria-hidden="true" /></span>
                   <strong>{option.title}</strong>
-                  <small>{option.text}</small>
+                  <small>{option.value === 'unsure' && statusLoading ? 'Đang tải thông tin bài test...' : option.value === 'unsure' && placementStatus?.hasActiveTests === false ? 'Chưa có câu hỏi bài test đang hoạt động.' : option.value === 'unsure' && placementStatus?.activeQuestionCount ? `${option.text} ${placementStatus.activeQuestionCount} câu hỏi.` : option.text}</small>
                 </button>
               ))}
             </div>
           </>
         )}
 
-        {attempt && !result && renderPlacementSession()}
+        {attempt && !result && renderMiniGamePlacementSession()}
 
         {result && (
           <section className="onboarding-result">
             <FiCheckCircle />
-            <span>Kết quả: {result.score}%</span>
-            <h1>{result.resultLevel === 'basic' ? 'Bạn có thể bắt đầu từ lộ trình chính' : 'Bạn sẽ bắt đầu từ bài nền tảng'}</h1>
-            <p>
-              {result.correctCount}/{result.totalQuestions} câu đúng · {result.earnedWeight}/{result.totalWeight} điểm trọng số
-            </p>
-            {result.skillScores?.length > 0 && (
-              <div className="placement-result-grid">
-                {result.skillScores.map((item) => (
-                  <div key={item.skill}>
-                    <span>{skillLabel(item.skill)}</span>
-                    <strong>{item.score}%</strong>
-                    <small>{item.correctCount}/{item.totalQuestions} câu</small>
-                  </div>
-                ))}
-              </div>
-            )}
+            <span>Xếp loại đầu vào</span>
+            <h1>{result.resultLevel === 'basic' ? 'Lộ trình chính' : 'Bài nền tảng'}</h1>
+            <p>{result.resultLevel === 'basic' ? 'Bạn đã sẵn sàng học theo lộ trình chính.' : 'Bạn sẽ bắt đầu với các bài học nền tảng.'}</p>
             <button type="button" className="btn btn-primary btn-lg" onClick={goDashboard}>
               Vào tổng quan <FiArrowRight />
             </button>

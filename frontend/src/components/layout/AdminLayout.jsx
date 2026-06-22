@@ -1,15 +1,15 @@
 import { Outlet, Navigate } from 'react-router-dom';
+import { FiChevronDown, FiSearch, FiStar } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import AdminSidebar from './AdminSidebar';
 import Loading from '../common/Loading';
-import '../../styles/admin.css';
 
 function AdminLayout() {
   const { user, loading } = useAuth();
 
   if (loading) return <Loading />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin' && user.role !== 'superadmin') {
+  if (user.role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -18,10 +18,25 @@ function AdminLayout() {
       <AdminSidebar />
       <div className="admin-main">
         <nav className="admin-navbar">
-          <span className="admin-navbar-title">Admin</span>
+          <div className="admin-navbar-heading">
+            <span className="admin-navbar-title">Simple Dashboard</span>
+          </div>
+
+          <label className="admin-navbar-search">
+            <FiSearch />
+            <input aria-label="Search admin" placeholder="Search" />
+          </label>
+
           <div className="admin-user-summary">
-            <span>{user?.username || 'Admin'}</span>
-            <small>{user?.role}</small>
+            <span className="admin-star-button">
+              <FiStar />
+              Star
+              <b>1</b>
+            </span>
+            <button type="button" className="admin-user-button">
+              Hello, {user?.username || 'Admin'}
+              <FiChevronDown />
+            </button>
           </div>
         </nav>
 

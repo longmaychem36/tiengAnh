@@ -23,7 +23,8 @@ function authMiddleware(req, res, next) {
     req.user = {
       id: decoded.id,
       username: decoded.username,
-      role: decoded.role
+      // Keep already-issued legacy tokens usable while roles are migrated.
+      role: decoded.role === 'superadmin' ? 'admin' : decoded.role
     };
 
     next();

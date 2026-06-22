@@ -1,23 +1,12 @@
 // ============================================
 // Profile Page
 // ============================================
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  FiBookOpen,
-  FiCamera,
-  FiClock,
-  FiPlay,
-  FiSave,
-  FiStar,
-  FiTarget,
-  FiTrendingUp
-} from 'react-icons/fi';
-import { HiOutlineFire } from 'react-icons/hi';
+import { FiCamera, FiSave } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import { userApi } from '../api/userApi';
 import { billingApi } from '../api/billingApi';
-import { gamificationApi } from '../api/progressApi';
 import toast from 'react-hot-toast';
 
 const VND_FORMATTER = new Intl.NumberFormat('vi-VN', {
@@ -25,17 +14,11 @@ const VND_FORMATTER = new Intl.NumberFormat('vi-VN', {
   currency: 'VND'
 });
 
-function number(value) {
-  return Number(value || 0);
-}
-
 function Profile() {
   const { user, updateUser } = useAuth();
   const cropPreviewSize = 320;
   const [username, setUsername] = useState(user?.username || '');
   const [saving, setSaving] = useState(false);
-  const [gameStats, setGameStats] = useState(null);
-  const [loadingStats, setLoadingStats] = useState(true);
   const [billingInfo, setBillingInfo] = useState(null);
   const [plusOrder, setPlusOrder] = useState(null);
   const [loadingBilling, setLoadingBilling] = useState(false);
@@ -47,43 +30,6 @@ function Profile() {
   const [cropDragging, setCropDragging] = useState(null);
 
   const formatVnd = (amount) => VND_FORMATTER.format(amount || 0);
-
-  useEffect(() => {
-    let active = true;
-
-    gamificationApi.getStats()
-      .then((res) => {
-        if (active) setGameStats(res.data);
-      })
-      .catch(() => {
-        if (active) setGameStats(null);
-      })
-      .finally(() => {
-        if (active) setLoadingStats(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const progressStats = useMemo(() => {
-    const fallbackStats = user?.stats || {};
-    const exp = number(gameStats?.Exp ?? fallbackStats.exp);
-    const level = number(gameStats?.Level ?? fallbackStats.gameLevel) || 1;
-    const streak = number(gameStats?.StreakDays ?? fallbackStats.streakDays);
-    const levelProgress = Math.max(0, Math.min(100, number(gameStats?.levelProgress)));
-
-    return {
-      exp,
-      level,
-      streak,
-      levelProgress,
-      currentLevelExp: number(gameStats?.currentLevelExp),
-      requiredLevelExp: number(gameStats?.requiredLevelExp),
-      expToNextLevel: number(gameStats?.expToNextLevel)
-    };
-  }, [gameStats, user]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -282,32 +228,10 @@ function Profile() {
   };
 
   const cropImageBox = avatarCrop ? getCropImageBox() : { width: cropPreviewSize, height: cropPreviewSize };
-  const statsPlaceholder = loadingStats ? '...' : null;
-  const summaryCards = [
-    {
-      icon: <FiStar />,
-      label: 'Tổng EXP',
-      value: statsPlaceholder ?? progressStats.exp,
-      progress: progressStats.levelProgress
-    },
-    {
-      icon: <FiTarget />,
-      label: 'Cấp độ hiện tại',
-      value: statsPlaceholder ?? `Lv.${progressStats.level}`,
-      progress: null
-    },
-    {
-      icon: <HiOutlineFire />,
-      label: 'Chuỗi ngày học',
-      value: statsPlaceholder ?? progressStats.streak,
-      progress: null
-    }
-  ];
-
   return (
     <div className="profile-page">
       <div className="page-header">
-        <h1>Hồ sơ & tiến độ</h1>
+        <h1>Hồ sơ</h1>
       </div>
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="card" style={{ marginBottom: 'var(--space-6)', border: user?.isPlus ? '1px solid #34d399' : '1px solid #fde68a' }}>
@@ -456,86 +380,6 @@ function Profile() {
         </form>
       </motion.div>
 
-      <motion.section initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="progress-hero profile-progress-hero">
-        <div>
-          <span className="progress-eyebrow">Tiến độ học tập</span>
-          <h1>Theo dõi hành trình học của bạn</h1>
-        </div>
-
-        <div className="progress-level-card">
-          <div className="progress-level-top">
-            <span>Cấp độ hiện tại</span>
-            <strong>{loadingStats ? '...' : `Lv.${progressStats.level}`}</strong>
-          </div>
-          <div className="progress-level-ring" style={{ '--level-progress': `${progressStats.levelProgress}%` }}>
-            <span>{loadingStats ? '...' : `${progressStats.levelProgress}%`}</span>
-          </div>
-          <div className="progress-exp-row">
-            <span>{progressStats.currentLevelExp}/{progressStats.requiredLevelExp} EXP</span>
-            <span>Còn {progressStats.expToNextLevel} EXP</span>
-          </div>
-        </div>
-      </motion.section>
-
-      <section className="progress-focus-grid">
-        <div className="progress-focus-card">
-          <FiTrendingUp />
-          <span>Chuỗi ngày</span>
-          <strong>{loadingStats ? '...' : `${progressStats.streak} ngày`}</strong>
-        </div>
-        <div className="progress-focus-card">
-          <FiStar />
-          <span>Tổng EXP</span>
-          <strong>{loadingStats ? '...' : progressStats.exp}</strong>
-        </div>
-        <div className="progress-focus-card">
-          <FiTarget />
-          <span>Cấp độ</span>
-          <strong>{loadingStats ? '...' : `Lv.${progressStats.level}`}</strong>
-        </div>
-      </section>
-
-      <section className="progress-section">
-        <div className="progress-section-title">
-          <h2>Tổng quan luyện tập</h2>
-        </div>
-
-        <div className="progress-summary-grid">
-          {summaryCards.map((item, index) => (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.06 }}
-              className="progress-summary-card"
-            >
-              <div className="progress-summary-icon">{item.icon}</div>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-              {item.helper && <small>{item.helper}</small>}
-              {item.progress !== null && (
-                <div className="progress-warm-bar">
-                  <span style={{ width: `${Math.max(0, Math.min(100, item.progress))}%` }} />
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      <section className="progress-section profile-next-section">
-        <div className="progress-panel">
-          <div className="progress-section-title is-compact">
-            <h2>Tiếp theo</h2>
-          </div>
-
-          <div className="progress-next-list">
-            <NextItem icon={<FiBookOpen />} title="Hoàn thành thêm bài kỹ năng" />
-            <NextItem icon={<FiPlay />} title="Chơi mini game ngắn" />
-            <NextItem icon={<FiClock />} title="Giữ chuỗi ngày học" />
-          </div>
-        </div>
-      </section>
 
       {avatarCrop && (
         <div
@@ -623,16 +467,5 @@ function Profile() {
   );
 }
 
-function NextItem({ icon, title, text }) {
-  return (
-    <div className="progress-next-item">
-      <span>{icon}</span>
-      <div>
-        <strong>{title}</strong>
-        {text && <p>{text}</p>}
-      </div>
-    </div>
-  );
-}
 
 export default Profile;

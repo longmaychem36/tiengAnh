@@ -30,6 +30,56 @@ function calculateGameExp({ difficulty, scorePercent, totalQuestions, alreadyCom
   return Math.max(5, Math.round(firstClearExp * EXP_REWARDS.GAME_REPLAY_FACTOR));
 }
 
+function normalizeText(value) {
+  return String(value || '').toLowerCase().trim();
+}
+
+function normalizeSentence(value) {
+  return normalizeText(value).replace(/[.,!?]/g, '');
+}
+
+function getSpeakingPassScore(options) {
+  const configured = Number(options?.passScore);
+  return Number.isFinite(configured) ? configured : 70;
+}
+
+function getAnswerText(answerValue) {
+  if (answerValue && typeof answerValue === 'object') {
+    return answerValue.transcript || answerValue.text || '';
+  }
+  return answerValue || '';
+}
+
+function getAnswerScore(answerValue) {
+  if (!answerValue || typeof answerValue !== 'object') return 0;
+  const score = Number(answerValue.score);
+  return Number.isFinite(score) ? score : 0;
+}
+
+function parseOptions(value) {
+  if (!value) return null;
+  if (Array.isArray(value) || typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function shapeQuestionRow(q) {
+  return {
+    Id: q.id,
+    QuestionType: q.questiontype,
+    ContentEN: q.contenten,
+    ContentVI: q.contentvi,
+    AudioUrl: q.audiourl,
+    ImageUrl: q.imageurl,
+    CorrectAnswer: q.correctanswer,
+    Options: parseOptions(q.options),
+    OrderIndex: q.orderindex
+  };
+}
+
 const gameService = {
   // ==================
   // GET all mini-game levels directly
@@ -65,7 +115,7 @@ const gameService = {
   },
 
   // ==================
-  // GET questions for a level (shuffle, limit 10)
+  // GET every question configured for a level
   // ==================
   async getQuestions(levelId) {
     const pool = getPool();
@@ -84,26 +134,15 @@ const gameService = {
       IsLocked: row.islocked, GameType: 'mixed', SetName: 'Mini game'
     };
 
-    // Get questions — shuffle via random(), limit 10
+    // Return every question configured for this level.
     const questionsRes = await pool.query(`
       SELECT Id, QuestionType, ContentEN, ContentVI, AudioUrl, ImageUrl, CorrectAnswer, Options, OrderIndex
       FROM MiniGameQuestions
       WHERE LevelId = $1
       ORDER BY RANDOM()
-      LIMIT 10
     `, [levelId]);
 
-    const questions = questionsRes.rows.map(q => ({
-      Id: q.id,
-      QuestionType: q.questiontype,
-      ContentEN: q.contenten,
-      ContentVI: q.contentvi,
-      AudioUrl: q.audiourl,
-      ImageUrl: q.imageurl,
-      CorrectAnswer: q.correctanswer,
-      Options: q.options ? JSON.parse(q.options) : null,
-      OrderIndex: q.orderindex
-    }));
+    const questions = questionsRes.rows.map(shapeQuestionRow);
 
     return { level, questions };
   },
@@ -133,7 +172,7 @@ const gameService = {
         ContentEN: q.contenten,
         ContentVI: q.contentvi,
         CorrectAnswer: q.correctanswer,
-        Options: q.options ? JSON.parse(q.options) : null
+        Options: parseOptions(q.options)
       }));
 
     let correctCount = 0;
@@ -144,18 +183,20 @@ const gameService = {
       if (!userAnswer) continue;
 
       let isCorrect = false;
-      const ua = (userAnswer.answer || '').toLowerCase().trim();
-      const ca = (q.CorrectAnswer || '').toLowerCase().trim();
+      const ua = normalizeText(getAnswerText(userAnswer.answer));
+      const ca = normalizeText(q.CorrectAnswer);
 
       if (q.QuestionType === 'matching') {
-        isCorrect = ua === (q.ContentVI || '').toLowerCase().trim();
+        isCorrect = ua === normalizeText(q.ContentVI);
       } else if (q.QuestionType === 'listening') {
         isCorrect = ua === ca;
       } else if (q.QuestionType === 'listenbuild') {
         // Compare word by word, trim punctuation
-        isCorrect = ua.replace(/[.,!?]/g, '') === ca.replace(/[.,!?]/g, '');
+        isCorrect = normalizeSentence(ua) === normalizeSentence(ca);
       } else if (q.QuestionType === 'truefalse') {
         isCorrect = ua === ca;
+      } else if (q.QuestionType === 'speakrepeat') {
+        isCorrect = getAnswerScore(userAnswer.answer) >= getSpeakingPassScore(q.Options);
       } else {
         isCorrect = ua === ca;
       }
@@ -166,7 +207,8 @@ const gameService = {
         questionType: q.QuestionType,
         correct: isCorrect,
         correctAnswer: q.CorrectAnswer,
-        userAnswer: userAnswer.answer
+        userAnswer: getAnswerText(userAnswer.answer),
+        score: q.QuestionType === 'speakrepeat' ? getAnswerScore(userAnswer.answer) : undefined
       });
     }
 

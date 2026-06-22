@@ -11,7 +11,7 @@ function ProtectedRoute({ children, learnerOnly = false }) {
 
   if (loading) return <Loading />;
   if (!user) return <Navigate to="/login" replace />;
-  if (learnerOnly && (user.role === 'admin' || user.role === 'superadmin')) {
+  if (learnerOnly && user.role === 'admin') {
     return <Navigate to="/admin" replace />;
   }
   if (learnerOnly && user.onboardingCompleted === false && pathname !== '/onboarding') {

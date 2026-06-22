@@ -132,7 +132,7 @@ const AdminSpeaking = () => {
       fetchLessons();
       if (selectedLesson?.Id === id) setSelectedLesson(null);
     } catch (err) {
-      toast.error('Lỗi xóa bài học (Yêu cầu quyền SuperAdmin)');
+      toast.error('Lỗi xóa bài học');
     }
   };
 
@@ -211,7 +211,7 @@ const AdminSpeaking = () => {
   if (loading) return <div className="p-8">Đang tải...</div>;
 
   return (
-    <div className="admin-receptive-page" style={{ '--admin-skill-color': '#f59e0b' }}>
+    <div className="admin-receptive-page">
       <div className="admin-receptive-header">
         <h1>Quản lý Speaking</h1>
         <button type="button" className="btn btn-primary" onClick={openNewLessonForm}>

@@ -1,6 +1,6 @@
 // ============================================
-// Promote a user to SuperAdmin
-// Usage: node promote_superadmin.js <email>
+// Promote a user to Admin
+// Usage: node promote_admin.js <email>
 // ============================================
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const { connectDB, getPool, sql } = require('../src/config/database');
@@ -8,8 +8,8 @@ const { connectDB, getPool, sql } = require('../src/config/database');
 async function promote() {
   const email = process.argv[2];
   if (!email) {
-    console.log('Usage: node promote_superadmin.js <email>');
-    console.log('Example: node promote_superadmin.js admin@test.com');
+    console.log('Usage: node promote_admin.js <email>');
+    console.log('Example: node promote_admin.js admin@test.com');
     process.exit(1);
   }
 
@@ -38,9 +38,9 @@ async function promote() {
   // Promote
   await pool.request()
     .input('id', sql.UniqueIdentifier, u.Id)
-    .query("UPDATE Users SET Role = 'superadmin' WHERE Id = @id");
+    .query("UPDATE Users SET Role = 'admin' WHERE Id = @id");
 
-  console.log(`   ✅ Promoted to: superadmin 👑`);
+  console.log(`   ✅ Promoted to: admin 👑`);
   console.log('\n🎉 Done! Login again to see the changes.');
   process.exit(0);
 }

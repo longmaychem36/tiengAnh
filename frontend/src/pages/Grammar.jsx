@@ -8,6 +8,7 @@ import { FiChevronRight, FiCheck, FiX, FiArrowLeft, FiBookOpen, FiAward, FiLock 
 import DOMPurify from 'dompurify';
 import { grammarApi } from '../api/grammarApi';
 import Loading from '../components/common/Loading';
+import { confirmUnsavedProgressExit } from '../utils/confirmExit';
 
 const GRAMMAR_HTML_TAGS = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'h2', 'h3', 'h4', 'blockquote'];
 const asArray = (value) => (Array.isArray(value) ? value : []);
@@ -152,8 +153,9 @@ function Grammar() {
     }
   };
 
-  const goBack = () => {
+  const goBack = async () => {
     if (quizStarted) {
+      if (!quizFinished && !(await confirmUnsavedProgressExit())) return;
       setQuizStarted(false);
       setQuizFinished(false);
     } else if (activeTopic) {

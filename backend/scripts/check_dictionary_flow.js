@@ -1,9 +1,12 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const assert = require('node:assert/strict');
 const dictionaryService = require('../src/modules/dictionary/dictionary.service');
 
 async function run() {
-  const [apple, greetingVi, autocomplete, sentence] = await Promise.all([
+  const [apple, marry, red, greetingVi, autocomplete, sentence] = await Promise.all([
     dictionaryService.search({ query: 'apple', direction: 'en-vi', limit: 5 }),
+    dictionaryService.search({ query: 'marry', direction: 'en-vi', limit: 20 }),
+    dictionaryService.search({ query: 'red', direction: 'en-vi', limit: 5 }),
     dictionaryService.search({ query: 'loi chao', direction: 'vi-en', limit: 5 }),
     dictionaryService.autocomplete('app', 5, 'en-vi'),
     dictionaryService.translateSentence('I have an appointment today.', 'en-vi')
@@ -11,8 +14,32 @@ async function run() {
 
   const firstApple = apple.entries[0] || null;
   const byId = firstApple ? await dictionaryService.getById(firstApple.Id) : null;
+  const firstGreeting = greetingVi.entries[0] || null;
+  const greetingById = firstGreeting ? await dictionaryService.getById(firstGreeting.Id) : null;
+
+  assert.ok(firstApple, 'English lookup should return apple');
+  assert.equal(firstApple.Word, 'apple');
+  assert.ok(firstApple.MeaningVI, 'Apple should include a Vietnamese meaning');
+  assert.equal(marry.entries.filter((entry) => entry.Word === 'marry').length, 1, 'Duplicate dictionary entries should be merged');
+  assert.match(marry.entries[0]?.PartOfSpeech || '', /động từ/, 'Part-of-speech labels should be localized');
+  assert.doesNotMatch(marry.entries[0]?.PartOfSpeech || '', /noun|verb|adjective|adverb|interjection/i);
+  const redDefinitions = JSON.parse(red.entries[0]?.MeaningEN || '[]');
+  assert.ok(redDefinitions.length <= 4, 'Lookup should only return a concise set of definitions');
+  assert.ok(redDefinitions.every((item) => !/^\s*\(/.test(item.definition)), 'Specialized parenthetical definitions should be removed');
+  assert.doesNotMatch(redDefinitions.map((item) => item.definition).join(' '), /Bolshevik|color charge|govern, protect|discuss, deliberate/i);
+  assert.doesNotMatch(red.entries[0]?.PartOfSpeech || '', /động từ/, 'Rare parts of speech should not be displayed');
+  assert.ok((red.entries[0]?.MeaningVI || '').split(';').length <= 3, 'Vietnamese translations should be concise');
+  assert.ok(autocomplete.length <= 5, 'Autocomplete should only return the most useful candidates');
+  assert.ok(firstGreeting, 'Vietnamese lookup should return an English entry');
+  assert.ok(autocomplete.length > 0, 'Autocomplete should return candidates');
+  assert.ok(autocomplete.every((item) => item.Word.startsWith('app')), 'Autocomplete must preserve the typed prefix');
+  assert.ok(autocomplete.some((item) => item.PartOfSpeech), 'Autocomplete should include part-of-speech metadata');
+  assert.ok(sentence.translated && sentence.translated !== sentence.source, 'Sentence translation should return translated text');
+  assert.equal(byId?.Word, 'apple', 'Lookup by external dictionary ID should preserve the word');
+  assert.ok(greetingById, 'Lookup by Vietnamese translation ID should preserve its direction');
 
   console.log(JSON.stringify({
+    passed: true,
     source: 'api-only',
     apple: {
       total: apple.total,
@@ -22,6 +49,16 @@ async function run() {
         source: firstApple.Source,
         meaningVI: firstApple.MeaningVI
       }
+    },
+    marry: marry.entries.map((entry) => ({
+      word: entry.Word,
+      partOfSpeech: entry.PartOfSpeech,
+      definitions: JSON.parse(entry.MeaningEN || '[]').length
+    })),
+    red: {
+      meaningVI: red.entries[0]?.MeaningVI,
+      partOfSpeech: red.entries[0]?.PartOfSpeech,
+      definitions: redDefinitions
     },
     greetingVi: {
       total: greetingVi.total,
@@ -37,6 +74,11 @@ async function run() {
       id: byId.Id,
       word: byId.Word,
       source: byId.Source
+    },
+    greetingById: greetingById && {
+      id: greetingById.Id,
+      word: greetingById.Word,
+      source: greetingById.Source
     }
   }, null, 2));
 }

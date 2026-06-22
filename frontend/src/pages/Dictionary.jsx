@@ -24,6 +24,27 @@ const pickValue = (item, ...keys) => {
 };
 const getWord = (item) => pickValue(item, 'Word', 'word') || '';
 const getMeaningVI = (item) => pickValue(item, 'MeaningVI', 'meaningVI', 'meaningvi') || '';
+const getPartOfSpeech = (item) => pickValue(item, 'PartOfSpeech', 'partOfSpeech', 'partofspeech') || '';
+
+const PART_OF_SPEECH_LABELS = {
+  noun: 'danh từ',
+  verb: 'động từ',
+  adjective: 'tính từ',
+  adverb: 'trạng từ',
+  pronoun: 'đại từ',
+  preposition: 'giới từ',
+  conjunction: 'liên từ',
+  interjection: 'thán từ',
+  determiner: 'từ hạn định',
+  article: 'mạo từ',
+  numeral: 'số từ',
+  auxiliary: 'trợ động từ'
+};
+
+const formatPartOfSpeech = (value = '') => String(value).split(',').map((part) => part.trim())
+  .filter(Boolean)
+  .map((part) => PART_OF_SPEECH_LABELS[part.toLowerCase()] || part)
+  .join(', ');
 
 const parseJson = (value, fallback) => {
   if (!value || typeof value !== 'string') return fallback;
@@ -47,16 +68,24 @@ function Dictionary() {
   const [sentenceResult, setSentenceResult] = useState(null);
   const [sentenceLoading, setSentenceLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const [retryToken, setRetryToken] = useState(0);
 
-  const debouncedQuery = useDebounce(query, 550);
-  const autocompleteQuery = useDebounce(query, 220);
+  const debouncedQuery = useDebounce(query, 380);
+  const autocompleteQuery = useDebounce(query, 160);
   const autocompleteRef = useRef(null);
   const requestIdRef = useRef(0);
+  const autocompleteRequestIdRef = useRef(0);
+  const searchInputRef = useRef(null);
+  const selectedAutocompleteQueryRef = useRef('');
 
   const langFrom = direction === 'en-vi' ? 'English' : 'Tiếng Việt';
   const langTo = direction === 'en-vi' ? 'Tiếng Việt' : 'English';
   const trimmedQuery = query.trim();
   const sentenceMode = isSentence(trimmedQuery);
+  const starterQueries = direction === 'en-vi'
+    ? ['apple', 'appointment', 'How are you today?']
+    : ['quả táo', 'cuộc hẹn', 'Hôm nay bạn thế nào?'];
 
   const meanings = useMemo(() => {
     if (!selectedWord) return [];
@@ -93,17 +122,36 @@ function Dictionary() {
 
   useEffect(() => {
     const q = autocompleteQuery.trim();
-    if (q.length < 1 || isSentence(q)) {
+    if (selectedAutocompleteQueryRef.current === q) {
       setAutocomplete([]);
+      setShowAutocomplete(false);
+      setActiveSuggestionIndex(-1);
       return;
     }
 
-    dictionaryApi.autocomplete({ q, limit: 8, direction })
+    const requestId = autocompleteRequestIdRef.current + 1;
+    autocompleteRequestIdRef.current = requestId;
+
+    if (q.length < 1 || isSentence(q)) {
+      setAutocomplete([]);
+      setShowAutocomplete(false);
+      setActiveSuggestionIndex(-1);
+      return;
+    }
+
+    dictionaryApi.autocomplete({ q, limit: 5, direction })
       .then((res) => {
-        setAutocomplete(res.data || []);
-        setShowAutocomplete(true);
+        if (autocompleteRequestIdRef.current !== requestId) return;
+        const entries = res.data || [];
+        setAutocomplete(entries);
+        setShowAutocomplete(entries.length > 0);
+        setActiveSuggestionIndex(-1);
       })
-      .catch(() => setAutocomplete([]));
+      .catch(() => {
+        if (autocompleteRequestIdRef.current !== requestId) return;
+        setAutocomplete([]);
+        setShowAutocomplete(false);
+      });
   }, [autocompleteQuery, direction]);
 
   useEffect(() => {
@@ -157,12 +205,7 @@ function Dictionary() {
         setSuggestions(res.suggestions || []);
 
         const exactMatch = entries.find((entry) => getWord(entry).toLowerCase() === q.toLowerCase());
-        if (!exactMatch) {
-          setSelectedWord(null);
-          return;
-        }
-
-        setSelectedWord(exactMatch);
+        setSelectedWord(exactMatch || entries[0] || null);
       })
       .catch((err) => {
         if (requestIdRef.current !== requestId) return;
@@ -174,11 +217,89 @@ function Dictionary() {
       .finally(() => {
         if (requestIdRef.current === requestId) setLoading(false);
       });
-  }, [debouncedQuery, direction]);
+  }, [debouncedQuery, direction, retryToken]);
 
   const selectQuery = (word) => {
-    setQuery(word);
+    const nextQuery = String(word || '').trim();
+    if (!nextQuery) return;
+    selectedAutocompleteQueryRef.current = nextQuery;
+    autocompleteRequestIdRef.current += 1;
+    setAutocomplete([]);
+    setQuery(nextQuery);
     setShowAutocomplete(false);
+    setActiveSuggestionIndex(-1);
+
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    setSentenceResult(null);
+    setLoading(true);
+    setError('');
+    setSuggestions([]);
+
+    dictionaryApi.search({ q: nextQuery, limit: 20, direction })
+      .then((res) => {
+        if (requestIdRef.current !== requestId) return;
+        const entries = res.data || [];
+        setResults(entries);
+        setSuggestions(res.suggestions || []);
+        const exactMatch = entries.find((entry) => getWord(entry).toLowerCase() === nextQuery.toLowerCase());
+        setSelectedWord(exactMatch || entries[0] || null);
+      })
+      .catch((err) => {
+        if (requestIdRef.current !== requestId) return;
+        setResults([]);
+        setSelectedWord(null);
+        setSuggestions([]);
+        setError(getErrorMessage(err, 'Không thể tra từ lúc này.'));
+      })
+      .finally(() => {
+        if (requestIdRef.current === requestId) setLoading(false);
+      });
+  };
+
+  const clearSearch = () => {
+    requestIdRef.current += 1;
+    autocompleteRequestIdRef.current += 1;
+    selectedAutocompleteQueryRef.current = '';
+    setQuery('');
+    setResults([]);
+    setSelectedWord(null);
+    setSuggestions([]);
+    setAutocomplete([]);
+    setShowAutocomplete(false);
+    setSentenceResult(null);
+    setError('');
+    setLoading(false);
+    setSentenceLoading(false);
+    setActiveSuggestionIndex(-1);
+    searchInputRef.current?.focus();
+  };
+
+  const handleSearchKeyDown = (event) => {
+    if (!showAutocomplete || autocomplete.length === 0) {
+      if (event.key === 'Escape') setShowAutocomplete(false);
+      return;
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      setActiveSuggestionIndex((current) => (current + step + autocomplete.length) % autocomplete.length);
+      return;
+    }
+
+    if (event.key === 'Enter' && activeSuggestionIndex >= 0) {
+      event.preventDefault();
+      const item = autocomplete[activeSuggestionIndex];
+      selectQuery(direction === 'vi-en' ? getMeaningVI(item) || getWord(item) : getWord(item));
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setShowAutocomplete(false);
+      setActiveSuggestionIndex(-1);
+    }
   };
 
   const toggleDirection = () => {
@@ -188,9 +309,14 @@ function Dictionary() {
     setSuggestions([]);
     setSentenceResult(null);
     setError('');
+    setAutocomplete([]);
+    setShowAutocomplete(false);
+    setActiveSuggestionIndex(-1);
+    autocompleteRequestIdRef.current += 1;
+    selectedAutocompleteQueryRef.current = '';
   };
 
-  const viewWordDetail = async (entry) => {
+  const viewWordDetail = (entry) => {
     setSelectedWord(entry);
   };
 
@@ -236,32 +362,54 @@ function Dictionary() {
       <section className="dictionary-search-shell" ref={autocompleteRef}>
         <FiSearch className="dictionary-search-icon" />
         <input aria-label="Trường nhập"
+          ref={searchInputRef}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls="dictionary-autocomplete-list"
+          aria-activedescendant={activeSuggestionIndex >= 0 ? `dictionary-suggestion-${activeSuggestionIndex}` : undefined}
+          aria-expanded={showAutocomplete && autocomplete.length > 0}
+          autoComplete="off"
+          spellCheck={false}
           className="dictionary-search-input"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            selectedAutocompleteQueryRef.current = '';
+            setQuery(event.target.value);
+          }}
           onFocus={() => autocomplete.length > 0 && !sentenceMode && setShowAutocomplete(true)}
+          onKeyDown={handleSearchKeyDown}
           placeholder={direction === 'en-vi' ? 'Nhập từ hoặc câu tiếng Anh...' : 'Nhập từ hoặc câu tiếng Việt...'}
 
         />
         {query && (
-          <button className="dictionary-clear" type="button" onClick={() => setQuery('')} aria-label="Xóa tìm kiếm">
+          <button className="dictionary-clear" type="button" onClick={clearSearch} aria-label="Xóa tìm kiếm">
             <FiX />
           </button>
         )}
 
         {showAutocomplete && autocomplete.length > 0 && !sentenceMode && (
-          <div className="dictionary-autocomplete">
-            {autocomplete.map((item) => (
-              <button key={`${getWord(item)}-${getMeaningVI(item)}`} type="button" onClick={() => selectQuery(direction === 'vi-en' ? getMeaningVI(item) || getWord(item) : getWord(item))}>
+          <div id="dictionary-autocomplete-list" className="dictionary-autocomplete" role="listbox">
+            {autocomplete.map((item, index) => (
+              <button id={`dictionary-suggestion-${index}`} key={`${getWord(item)}-${getMeaningVI(item)}`} type="button" role="option" aria-selected={activeSuggestionIndex === index} className={activeSuggestionIndex === index ? 'is-active' : ''} onMouseEnter={() => setActiveSuggestionIndex(index)} onClick={() => selectQuery(direction === 'vi-en' ? getMeaningVI(item) || getWord(item) : getWord(item))}>
                 <strong>{direction === 'vi-en' ? getMeaningVI(item) || getWord(item) : getWord(item)}</strong>
-                <span>{direction === 'vi-en' ? getWord(item) : getMeaningVI(item)}</span>
+                <span>{direction === 'vi-en' ? `→ ${getWord(item)}` : getMeaningVI(item) || getPartOfSpeech(item) || 'Gợi ý từ vựng'}</span>
               </button>
             ))}
           </div>
         )}
       </section>
 
-      {error && <div className="dictionary-error">{error}</div>}
+      <div className="dictionary-mode-hint" aria-live="polite">
+        <strong>{sentenceMode ? 'Dịch câu' : 'Tra từ'}</strong>
+        <span>{sentenceMode ? 'Nhận diện câu tự động và dịch toàn bộ nội dung.' : 'Hiển thị nghĩa, loại từ, ví dụ và phát âm.'}</span>
+      </div>
+
+      {error && (
+        <div className="dictionary-error" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => setRetryToken((value) => value + 1)}>Thử lại</button>
+        </div>
+      )}
 
       {(sentenceLoading || sentenceResult) && (
         <motion.section className="dictionary-translation" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -280,6 +428,7 @@ function Dictionary() {
                   </button>
                 </div>
               </div>
+              <small className="dictionary-translation-source">{sentenceResult.source}</small>
               <p>{sentenceResult.translated}</p>
             </>
           ) : (
@@ -302,28 +451,39 @@ function Dictionary() {
       {!sentenceMode && (
         <section className={`dictionary-workspace ${selectedWord ? 'has-detail' : ''}`}>
           <div className="dictionary-results">
-            {loading && <div className="dictionary-loading">Đang tìm kiếm...</div>}
+            {loading && (
+              <div className="dictionary-result-skeletons" aria-label="Đang tìm kiếm" role="status">
+                {[0, 1, 2].map((item) => <span key={item} />)}
+              </div>
+            )}
             {!loading && trimmedQuery.length >= 2 && results.length === 0 && suggestions.length === 0 && !error && (
               <div className="dictionary-empty">Không tìm thấy kết quả cho "{trimmedQuery}".</div>
             )}
             {!loading && trimmedQuery.length < 2 && (
-              <div className="dictionary-empty">Nhập ít nhất 2 ký tự để bắt đầu tra cứu.</div>
+              <div className="dictionary-starter">
+                <strong>Bắt đầu bằng một từ hoặc một câu</strong>
+                <span>Chọn gợi ý hoặc nhập nội dung vào ô tìm kiếm.</span>
+                <div>
+                  {starterQueries.map((item) => <button key={item} type="button" onClick={() => selectQuery(item)}>{item}</button>)}
+                </div>
+              </div>
             )}
 
             <AnimatePresence>
               {results.map((entry) => (
                 <motion.button
-                  key={entry.Id}
+                  key={entry.Id || entry.Word}
                   type="button"
                   className={`dictionary-result ${selectedWord?.Id === entry.Id ? 'is-active' : ''}`}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   onClick={() => viewWordDetail(entry)}
+                  aria-pressed={selectedWord?.Id === entry.Id}
                 >
                   <span>
                     <strong>{entry.Word}</strong>
-                    {entry.PartOfSpeech && <em>{entry.PartOfSpeech}</em>}
+                    {entry.PartOfSpeech && <em>{formatPartOfSpeech(entry.PartOfSpeech)}</em>}
                   </span>
                   <small>{entry.MeaningVI || entry.MeaningEN}</small>
                 </motion.button>
@@ -356,7 +516,7 @@ function Dictionary() {
               <div className="dictionary-definitions">
                 {meanings.map((meaning, index) => (
                   <div key={`${meaning.definition}-${index}`} className="dictionary-definition">
-                    {meaning.partOfSpeech && <span>{meaning.partOfSpeech}</span>}
+                    {meaning.partOfSpeech && <span>{formatPartOfSpeech(meaning.partOfSpeech)}</span>}
                     <p>{meaning.definition}</p>
                     {meaning.example && <blockquote>{meaning.example}</blockquote>}
                   </div>

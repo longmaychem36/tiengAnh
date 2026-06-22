@@ -50,7 +50,7 @@ function createAdminError(message, statusCode = 400) {
 }
 
 function isAdminCreator(role) {
-  return ['admin', 'superadmin'].includes(String(role || '').toLowerCase());
+  return String(role || '').toLowerCase() === 'admin';
 }
 
 async function assertAdminOwnedVocabularyCollection(pool, collectionId) {

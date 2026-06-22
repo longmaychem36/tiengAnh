@@ -12,7 +12,7 @@ const navItems = [
   { to: '/grammar', label: 'Ngữ pháp', icon: 'grammar' },
   { to: '/dictionary', label: 'Từ điển', icon: 'dictionary' },
   { to: '/vocabulary', label: 'Từ vựng', icon: 'vocabulary' },
-  { to: '/profile', label: 'Hồ sơ & tiến độ', icon: 'profile' }
+  { to: '/profile', label: 'Hồ sơ', icon: 'profile' }
 ];
 
 function NavItem({ to, label, icon, isAdminLink, activePaths = [] }) {
@@ -32,8 +32,7 @@ function NavItem({ to, label, icon, isAdminLink, activePaths = [] }) {
 
 function Sidebar() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
-  const isSuperAdmin = user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin';
 
   return (
     <aside className="lingo-sidebar">
@@ -58,8 +57,8 @@ function Sidebar() {
       </nav>
 
       {isAdmin && (
-        <div className={`lingo-role-card ${isSuperAdmin ? 'is-super' : ''}`}>
-          {isSuperAdmin ? 'Super Admin' : 'Admin'}
+        <div className="lingo-role-card">
+          Admin
         </div>
       )}
     </aside>

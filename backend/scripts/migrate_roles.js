@@ -12,7 +12,13 @@ async function migrate() {
     `);
 
     await pool.query(`
-      DO $$
+      UPDATE Users
+      SET Role = 'admin'
+      WHERE Role = 'superadmin'
+    `);
+
+    await pool.query(`
+      DO $
       DECLARE constraint_name text;
       BEGIN
         SELECT con.conname INTO constraint_name
@@ -30,13 +36,13 @@ async function migrate() {
 
         ALTER TABLE Users
         ADD CONSTRAINT ck_users_role
-        CHECK (Role IN ('user', 'admin', 'superadmin'));
+        CHECK (Role IN ('user', 'admin'));
       EXCEPTION
         WHEN duplicate_object THEN NULL;
       END $$;
     `);
 
-    console.log('Roles migration completed.');
+    console.log('Roles migration completed: user/admin only.');
   } catch (err) {
     console.error('Migration failed:', err);
     process.exitCode = 1;

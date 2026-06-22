@@ -82,7 +82,7 @@ async function findCreator(pool) {
     SELECT Id, Username, Email, Role
     FROM Users
     ORDER BY
-      CASE WHEN Role IN ('superadmin', 'admin') THEN 0 ELSE 1 END,
+      CASE WHEN Role = 'admin' THEN 0 ELSE 1 END,
       CreatedAt ASC
     LIMIT 1
   `);
@@ -110,7 +110,7 @@ async function upsertDeck(pool, creator, deck) {
           ReviewedBy = COALESCE(ReviewedBy, $3),
           UpdatedAt = NOW()
       WHERE Id = $1
-    `, [id, deck.description, creator.role === 'admin' || creator.role === 'superadmin' ? creator.id : null]);
+    `, [id, deck.description, creator.role === 'admin' ? creator.id : null]);
     return id;
   }
 
@@ -124,7 +124,7 @@ async function upsertDeck(pool, creator, deck) {
     creator.id,
     deck.name,
     deck.description,
-    creator.role === 'admin' || creator.role === 'superadmin' ? creator.id : null
+    creator.role === 'admin' ? creator.id : null
   ]);
 
   return inserted.rows[0].id;

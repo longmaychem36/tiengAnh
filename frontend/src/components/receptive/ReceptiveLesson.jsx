@@ -265,6 +265,7 @@ const ReceptiveLesson = ({ skill }) => {
         gateKey={vocabularyGateKey}
         onPassed={() => setVocabPassed(true)}
         onExit={() => navigate(meta.listPath)}
+        confirmOnExit
       />
     );
   }
@@ -625,6 +626,7 @@ const ReceptiveLesson = ({ skill }) => {
           duration={lesson.duration || '--'}
           backLabel={meta.backLabel}
           onBack={() => navigate(meta.listPath)}
+          confirmOnBack
         />
       )}
       leftPanel={sourcePanel}

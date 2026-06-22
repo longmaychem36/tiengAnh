@@ -1,11 +1,31 @@
 // ============================================
-// Admin User Management — SuperAdmin Only
+// Admin User Management - Admin
 // ============================================
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { FiUsers, FiShield, FiLock, FiUnlock, FiSearch, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { useEffect, useMemo, useState } from 'react';
+import { FiChevronLeft, FiChevronRight, FiLock, FiSearch, FiUnlock, FiUserPlus } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { adminApi } from '../../api/adminApi';
+
+const initialAccountForm = {
+  username: '',
+  email: '',
+  password: '',
+  role: 'user',
+};
+
+const roleLabels = {
+  user: 'Learner',
+  admin: 'Admin',
+};
+
+const roleColors = {
+  user: { bg: '#f1f5f9', color: '#475569' },
+  admin: { bg: '#dbeafe', color: '#1d4ed8' },
+};
+
+function getErrorMessage(err, fallback) {
+  return err?.message || err?.errors?.[0]?.msg || fallback;
+}
 
 function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -14,8 +34,20 @@ function AdminUsers() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [accountForm, setAccountForm] = useState(initialAccountForm);
 
-  useEffect(() => { loadUsers(); loadStats(); }, [page]);
+  const statCards = useMemo(() => ([
+    { label: 'Tổng account', value: stats?.totalUsers || 0, color: '#171717' },
+    { label: 'Learners', value: stats?.members || 0, color: '#0f766e' },
+    { label: 'Admins', value: stats?.admins || 0, color: '#2563eb' },
+    { label: 'Bị khóa', value: stats?.locked || 0, color: '#a13b4b' },
+  ]), [stats]);
+
+  useEffect(() => {
+    loadUsers();
+    loadStats();
+  }, [page]);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -23,145 +55,258 @@ function AdminUsers() {
       const res = await adminApi.getUsers({ page, limit: 15, search });
       setUsers(res.data.users || []);
       setTotalPages(res.data.totalPages || 1);
-    } catch { toast.error('Lỗi tải danh sách'); }
-    setLoading(false);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Không tải được danh sách account'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadStats = async () => {
-    try { const res = await adminApi.getUserStats(); setStats(res.data); } catch {}
+    try {
+      const res = await adminApi.getUserStats();
+      setStats(res.data);
+    } catch {}
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
+    if (page === 1) {
+      loadUsers();
+      return;
+    }
     setPage(1);
-    loadUsers();
   };
 
-  const changeRole = async (userId, role) => {
+  const updateAccountForm = (field, value) => {
+    setAccountForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const createAccount = async (e) => {
+    e.preventDefault();
+    setCreating(true);
     try {
-      await adminApi.updateUserRole(userId, role);
-      toast.success(`Đã đổi role thành ${role}`);
-      loadUsers(); loadStats();
-    } catch (err) { toast.error(err.response?.data?.message || 'Lá»—i'); }
+      await adminApi.createUser({
+        username: accountForm.username.trim(),
+        email: accountForm.email.trim(),
+        password: accountForm.password,
+        role: accountForm.role,
+      });
+      toast.success('Đã tạo account');
+      setAccountForm(initialAccountForm);
+      if (page !== 1) {
+        setPage(1);
+        await loadStats();
+      } else {
+        await Promise.all([loadUsers(), loadStats()]);
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Không tạo được account'));
+    } finally {
+      setCreating(false);
+    }
   };
 
   const toggleActive = async (userId) => {
     try {
       await adminApi.toggleUserActive(userId);
-      toast.success('Đã thay đổi trạng thái');
-      loadUsers(); loadStats();
-    } catch (err) { toast.error(err.response?.data?.message || 'Lá»—i'); }
-  };
-
-  const roleColors = {
-    superadmin: { bg: '#fef3c7', color: '#d97706', label: 'SuperAdmin' },
-    admin: { bg: '#dbeafe', color: '#2563eb', label: 'Admin' },
-    member: { bg: '#f1f5f9', color: '#64748b', label: 'Member' }
+      toast.success('Đã cập nhật trạng thái account');
+      loadUsers();
+      loadStats();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Không cập nhật được trạng thái'));
+    }
   };
 
   return (
-    <div>
+    <div className="admin-users-page">
       <div className="admin-receptive-header">
-        <h1>Quản lý người dùng</h1>
+        <div>
+          <h1>Quản lý account</h1>
+          <p>Admin tạo account mới tại đây. Role của user hiện có không chỉnh trực tiếp trong danh sách.</p>
+        </div>
       </div>
-      <p style={{ color: '#a1a1aa', fontSize: '0.8125rem', marginBottom: '16px' }}>Phân quyền, khóa/mở tài khoản (Chỉ SuperAdmin)</p>
 
-      {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-4" style={{ gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
-          {[
-            { label: 'Tổng', value: stats.totalUsers, color: '#6366f1' },
-            { label: 'Members', value: stats.members, color: '#10b981' },
-            { label: 'Admins', value: stats.admins, color: '#3b82f6' },
-            { label: 'Bị khóa', value: stats.locked, color: '#ef4444' }
-          ].map((s, i) => (
-            <div key={i} className="admin-stat-card" style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: '0.6875rem', color: '#a1a1aa', marginTop: '4px' }}>{s.label}</div>
-            </div>
+        <section className="admin-user-stat-grid" aria-label="Thống kê account">
+          {statCards.map((item) => (
+            <article key={item.label} className="admin-stat-card admin-user-stat-card">
+              <strong style={{ color: item.color }}>{item.value}</strong>
+              <span>{item.label}</span>
+            </article>
           ))}
-        </div>
+        </section>
       )}
 
-      {/* Search */}
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <input aria-label="Trường nhập" className="form-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên hoặc email..." />
+      <section className="admin-content-card admin-create-account-panel">
+        <div className="admin-subpanel-head">
+          <div>
+            <h3>Tạo account</h3>
+            <p>Chọn role ngay khi tạo. Nếu cần đổi role sau này, hãy tạo account đúng role thay vì sửa user đang tồn tại.</p>
+          </div>
+          <FiUserPlus />
         </div>
-        <button className="btn btn-primary" type="submit">Tìm</button>
-      </form>
 
-      {/* User Table */}
-      <div style={{ background: 'white', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'var(--color-bg-secondary)' }}>
-              <th style={thStyle}>Tên</th>
-              <th style={thStyle}>Email</th>
-              <th style={thStyle}>Role</th>
-              <th style={thStyle}>Level</th>
-              <th style={thStyle}>EXP</th>
-              <th style={thStyle}>Trạng thái</th>
-              <th style={thStyle}>Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(u => {
-              const rc = roleColors[u.Role] || roleColors.member;
-              return (
-                <tr key={u.Id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <td style={tdStyle}><b>{u.FullName}</b></td>
-                  <td style={tdStyle}><span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>{u.Email}</span></td>
-                  <td style={tdStyle}>
-                    <span style={{ padding: '3px 10px', borderRadius: 'var(--radius-full)', background: rc.bg, color: rc.color, fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>{rc.label}</span>
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{u.Level || 1}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{u.Exp || 0}</td>
-                  <td style={tdStyle}>
-                    {u.IsActive !== false ? (
-                      <span style={{ color: '#10b981', fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>✅ Active</span>
-                    ) : (
-                      <span style={{ color: '#ef4444', fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>🔒 Locked</span>
-                    )}
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {/* Role change dropdown */}
-                      <select aria-label="Lựa chọn" value={u.Role} onChange={e => changeRole(u.Id, e.target.value)}
-                        style={{ padding: '4px 8px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', fontSize: 'var(--font-size-xs)', cursor: 'pointer' }}>
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                        <option value="superadmin">SuperAdmin</option>
-                      </select>
-                      {/* Lock/Unlock */}
-                      <button type="button" onClick={() => toggleActive(u.Id)} title={u.IsActive !== false ? 'Khóa' : 'Mở khóa'}
-                        style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '4px 8px', cursor: 'pointer', color: u.IsActive !== false ? '#ef4444' : '#10b981' }}>
-                        {u.IsActive !== false ? 'Khóa' : 'Mở khóa'}
+        <form className="admin-form-grid" onSubmit={createAccount}>
+          <label>
+            <span>Username</span>
+            <input
+              className="form-input"
+              value={accountForm.username}
+              onChange={(e) => updateAccountForm('username', e.target.value)}
+              placeholder="teacher01"
+              required
+            />
+          </label>
+
+          <label>
+            <span>Email</span>
+            <input
+              className="form-input"
+              type="email"
+              value={accountForm.email}
+              onChange={(e) => updateAccountForm('email', e.target.value)}
+              placeholder="teacher01@example.com"
+              required
+            />
+          </label>
+
+          <label>
+            <span>Mật khẩu tạm thời</span>
+            <input
+              className="form-input"
+              type="password"
+              value={accountForm.password}
+              onChange={(e) => updateAccountForm('password', e.target.value)}
+              minLength={6}
+              placeholder="Ít nhất 6 ký tự"
+              required
+            />
+          </label>
+
+          <label>
+            <span>Role</span>
+            <select
+              className="form-input"
+              value={accountForm.role}
+              onChange={(e) => updateAccountForm('role', e.target.value)}
+            >
+              <option value="user">Learner</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+
+          <div className="admin-form-actions is-wide">
+            <button className="btn btn-primary" type="submit" disabled={creating}>
+              <FiUserPlus />
+              {creating ? 'Đang tạo...' : 'Tạo account'}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="admin-content-card admin-users-list-panel">
+        <div className="admin-subpanel-head">
+          <div>
+            <h3>Danh sách account</h3>
+            <p>Tìm account và khóa/mở khi cần. Role chỉ hiển thị để kiểm tra.</p>
+          </div>
+        </div>
+
+        <form className="admin-user-search" onSubmit={handleSearch}>
+          <div className="admin-user-search-input">
+            <FiSearch />
+            <input
+              aria-label="Tìm account"
+              className="form-input"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm theo username hoặc email..."
+            />
+          </div>
+          <button className="btn btn-primary" type="submit">Tìm</button>
+        </form>
+
+        <div className="admin-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tên</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Level</th>
+                <th>EXP</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => {
+                const role = user.Role || 'user';
+                const colors = roleColors[role] || roleColors.user;
+                const isActive = user.IsActive !== false;
+
+                return (
+                  <tr key={user.Id}>
+                    <td>
+                      <strong>{user.Username || 'Chưa có tên'}</strong>
+                    </td>
+                    <td>
+                      <span>{user.Email}</span>
+                    </td>
+                    <td>
+                      <span className="admin-role-chip" style={{ background: colors.bg, color: colors.color }}>
+                        {roleLabels[role] || role}
+                      </span>
+                    </td>
+                    <td>{user.Level || 1}</td>
+                    <td>{user.Exp || 0}</td>
+                    <td>
+                      <span className={`admin-status-chip ${isActive ? 'is-active' : 'is-locked'}`}>
+                        {isActive ? 'Active' : 'Locked'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${isActive ? 'btn-secondary' : 'btn-primary'}`}
+                        onClick={() => toggleActive(user.Id)}
+                      >
+                        {isActive ? <FiLock /> : <FiUnlock />}
+                        {isActive ? 'Khóa' : 'Mở khóa'}
                       </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
 
-        {users.length === 0 && <div style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--color-text-muted)' }}>Không tìm thấy người dùng</div>}
-      </div>
+          {!loading && users.length === 0 && (
+            <div className="admin-empty-inline">Không tìm thấy account.</div>
+          )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
-          <button type="button" className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><FiChevronLeft /> Trước</button>
-          <span style={{ padding: '8px 16px', color: 'var(--color-text-muted)' }}>Trang {page}/{totalPages}</span>
-          <button type="button" className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Sau <FiChevronRight /></button>
+          {loading && (
+            <div className="admin-empty-inline">Đang tải danh sách account...</div>
+          )}
         </div>
-      )}
+
+        {totalPages > 1 && (
+          <div className="admin-pagination">
+            <button type="button" className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
+              <FiChevronLeft />
+              Trước
+            </button>
+            <span>Trang {page}/{totalPages}</span>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)}>
+              Sau
+              <FiChevronRight />
+            </button>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
-
-const thStyle = { padding: '12px 16px', textAlign: 'left', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' };
-const tdStyle = { padding: '12px 16px', fontSize: 'var(--font-size-sm)' };
 
 export default AdminUsers;

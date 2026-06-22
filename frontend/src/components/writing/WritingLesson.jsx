@@ -387,6 +387,7 @@ const WritingLesson = () => {
         gateKey={vocabularyGateKey}
         onPassed={() => setVocabPassed(true)}
         onExit={() => navigate('/writing/lessons')}
+        confirmOnExit
       />
     );
   }
@@ -432,6 +433,7 @@ const WritingLesson = () => {
           duration={lessonData?.duration || '--'}
           backLabel="Về khóa viết"
           onBack={() => navigate('/writing/lessons')}
+          confirmOnBack
         />
       )}
       leftPanel={(

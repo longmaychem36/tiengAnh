@@ -6,6 +6,7 @@ import {
   FiHash,
   FiTarget
 } from 'react-icons/fi';
+import { confirmUnsavedProgressExit } from '../../../utils/confirmExit';
 
 const clampPercent = (value) => {
   const numeric = Number(value || 0);
@@ -43,15 +44,20 @@ export const LessonHeader = ({
   duration = '--',
   backLabel = 'Về khóa học',
   onBack,
+  confirmOnBack = false,
   actions
 }) => {
   const safeProgress = clampPercent(progress);
+  const handleBack = async () => {
+    if (confirmOnBack && !(await confirmUnsavedProgressExit())) return;
+    onBack?.();
+  };
 
   return (
     <header className="lesson-header">
       <div className="lesson-header-top">
         {onBack && (
-          <button type="button" className="lesson-back-button" onClick={onBack}>
+          <button type="button" className="lesson-back-button" onClick={handleBack}>
             <FiArrowLeft />
             <span>{backLabel}</span>
           </button>

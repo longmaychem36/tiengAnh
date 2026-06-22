@@ -38,11 +38,27 @@ const onboardingController = {
     }
   },
 
+  async checkPlacementAnswer(req, res, next) {
+    try {
+      const data = await onboardingService.checkPlacementAnswer(
+        req.user.id,
+        req.body.attemptToken,
+        req.body.questionId,
+        req.body.answer
+      );
+      return success(res, data, 'Placement answer checked');
+    } catch (err) {
+      const known = handleKnownError(res, err);
+      if (known) return known;
+      next(err);
+    }
+  },
+
   async submitPlacementTest(req, res, next) {
     try {
       const data = await onboardingService.submitPlacementTest(
         req.user.id,
-        req.params.attemptId,
+        req.body.attemptToken,
         req.body.answers
       );
       return success(res, data, 'Placement test submitted');

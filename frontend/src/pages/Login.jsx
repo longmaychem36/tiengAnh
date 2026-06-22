@@ -20,8 +20,7 @@ function Login() {
     try {
       const userData = await login(form);
       toast.success('Đăng nhập thành công.');
-      // Redirect admin/superadmin to admin dashboard
-      if (userData.role === 'admin' || userData.role === 'superadmin') {
+      if (userData.role === 'admin') {
         navigate('/admin');
       } else {
         navigate(userData.onboardingCompleted === false ? '/onboarding' : '/dashboard');

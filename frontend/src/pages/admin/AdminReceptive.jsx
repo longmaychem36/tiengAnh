@@ -531,7 +531,7 @@ function AdminReceptive({ skill }) {
   if (loading) return <div className="p-8">Đang tải...</div>;
 
   return (
-    <div className="fade-in admin-receptive-page" style={{ '--admin-skill-color': meta.accent }}>
+    <div className="fade-in admin-receptive-page">
       <div className="admin-receptive-header">
         <div>
           <h1>{meta.title}</h1>

@@ -3,76 +3,16 @@
 // ============================================
 const router = require('express').Router();
 const authMiddleware = require('../../middlewares/authMiddleware');
-const { requireRole, superAdminOnly } = require('../../middlewares/roleMiddleware');
+const { requireRole } = require('../../middlewares/roleMiddleware');
 const adminGameService = require('./admin.game.service');
 const adminUserService = require('./admin.user.service');
 const adminContentService = require('./admin.content.service');
-const adminPlacementService = require('./admin.placement.service');
-const { success, badRequest, notFound } = require('../../utils/responseHelper');
+const { success, badRequest } = require('../../utils/responseHelper');
 
 // All admin routes require at least admin role
 router.use(authMiddleware);
 
-// ========== PLACEMENT TEST MANAGEMENT (admin + superadmin) ==========
-router.get('/placement/tests', requireRole('admin'), async (req, res, next) => {
-  try {
-    const data = await adminPlacementService.getTests();
-    return success(res, data);
-  } catch (err) { next(err); }
-});
-
-router.post('/placement/tests', requireRole('admin'), async (req, res, next) => {
-  try {
-    const data = await adminPlacementService.createTest(req.body);
-    return success(res, data, 'Placement test created');
-  } catch (err) { next(err); }
-});
-
-router.put('/placement/tests/:id', requireRole('admin'), async (req, res, next) => {
-  try {
-    const data = await adminPlacementService.updateTest(req.params.id, req.body);
-    if (!data) return notFound(res, 'Placement test not found');
-    return success(res, data, 'Placement test updated');
-  } catch (err) { next(err); }
-});
-
-router.delete('/placement/tests/:id', requireRole('admin'), async (req, res, next) => {
-  try {
-    await adminPlacementService.deleteTest(req.params.id);
-    return success(res, null, 'Placement test deleted');
-  } catch (err) { next(err); }
-});
-
-router.get('/placement/tests/:id/questions', requireRole('admin'), async (req, res, next) => {
-  try {
-    const data = await adminPlacementService.getQuestions(req.params.id);
-    return success(res, data);
-  } catch (err) { next(err); }
-});
-
-router.post('/placement/questions', requireRole('admin'), async (req, res, next) => {
-  try {
-    const data = await adminPlacementService.createQuestion(req.body);
-    return success(res, data, 'Placement question created');
-  } catch (err) { next(err); }
-});
-
-router.put('/placement/questions/:id', requireRole('admin'), async (req, res, next) => {
-  try {
-    const data = await adminPlacementService.updateQuestion(req.params.id, req.body);
-    if (!data) return notFound(res, 'Placement question not found');
-    return success(res, data, 'Placement question updated');
-  } catch (err) { next(err); }
-});
-
-router.delete('/placement/questions/:id', requireRole('admin'), async (req, res, next) => {
-  try {
-    await adminPlacementService.deleteQuestion(req.params.id);
-    return success(res, null, 'Placement question deleted');
-  } catch (err) { next(err); }
-});
-
-// ========== SPEAKING MANAGEMENT (admin + superadmin) ==========
+// ========== SPEAKING MANAGEMENT ==========
 router.get('/speaking/lessons', requireRole('admin'), async (req, res, next) => {
   try {
     const data = await adminContentService.getSpeakingLessons();
@@ -94,7 +34,7 @@ router.put('/speaking/lessons/:id', requireRole('admin'), async (req, res, next)
   } catch (err) { next(err); }
 });
 
-router.delete('/speaking/lessons/:id', superAdminOnly(), async (req, res, next) => {
+router.delete('/speaking/lessons/:id', requireRole('admin'), async (req, res, next) => {
   try {
     await adminContentService.deleteSpeakingLesson(req.params.id);
     return success(res, null, 'Lesson deleted');
@@ -129,7 +69,7 @@ router.delete('/speaking/questions/:id', requireRole('admin'), async (req, res, 
   } catch (err) { next(err); }
 });
 
-// ========== WRITING MANAGEMENT (admin + superadmin) ==========
+// ========== WRITING MANAGEMENT ==========
 router.get('/writing/lessons', requireRole('admin'), async (req, res, next) => {
   try {
     const data = await adminContentService.getWritingLessons();
@@ -151,7 +91,7 @@ router.put('/writing/lessons/:id', requireRole('admin'), async (req, res, next) 
   } catch (err) { next(err); }
 });
 
-router.delete('/writing/lessons/:id', superAdminOnly(), async (req, res, next) => {
+router.delete('/writing/lessons/:id', requireRole('admin'), async (req, res, next) => {
   try {
     await adminContentService.deleteWritingLesson(req.params.id);
     return success(res, null, 'Lesson deleted');
@@ -351,11 +291,11 @@ function registerReceptiveAdminRoutes(skill, contentPath, itemName) {
   });
 }
 
-// ========== LISTENING / READING MANAGEMENT (admin + superadmin) ==========
+// ========== LISTENING / READING MANAGEMENT ==========
 registerReceptiveAdminRoutes('listening', 'segments', 'Segment');
 registerReceptiveAdminRoutes('reading', 'paragraphs', 'Paragraph');
 
-// ========== GRAMMAR MANAGEMENT (admin + superadmin) ==========
+// ========== GRAMMAR MANAGEMENT ==========
 router.get('/grammar/categories', requireRole('admin'), async (req, res, next) => {
   try {
     const data = await adminContentService.getGrammarCategories();
@@ -377,7 +317,7 @@ router.put('/grammar/categories/:id', requireRole('admin'), async (req, res, nex
   } catch (err) { next(err); }
 });
 
-router.delete('/grammar/categories/:id', superAdminOnly(), async (req, res, next) => {
+router.delete('/grammar/categories/:id', requireRole('admin'), async (req, res, next) => {
   try {
     await adminContentService.deleteGrammarCategory(req.params.id);
     return success(res, null, 'Category deleted');
@@ -440,7 +380,7 @@ router.delete('/grammar/quizzes/:id', requireRole('admin'), async (req, res, nex
   } catch (err) { next(err); }
 });
 
-// ========== VOCABULARY MANAGEMENT (admin + superadmin) ==========
+// ========== VOCABULARY MANAGEMENT ==========
 router.get('/vocabulary/collections', requireRole('admin'), async (req, res, next) => {
   try {
     const data = await adminContentService.getVocabularyCollections(req.query.status || 'all');
@@ -506,7 +446,7 @@ router.delete('/vocabulary/words/:wordId', requireRole('admin'), async (req, res
   } catch (err) { next(err); }
 });
 
-// ========== GAME MANAGEMENT (admin + superadmin) ==========
+// ========== GAME MANAGEMENT ==========
 
 // Levels CRUD
 router.get('/games/levels', requireRole('admin'), async (req, res, next) => {
@@ -530,7 +470,7 @@ router.put('/games/levels/:id', requireRole('admin'), async (req, res, next) => 
   } catch (err) { next(err); }
 });
 
-router.delete('/games/levels/:id', superAdminOnly(), async (req, res, next) => {
+router.delete('/games/levels/:id', requireRole('admin'), async (req, res, next) => {
   try {
     await adminGameService.deleteLevel(req.params.id);
     return success(res, null, 'Level deleted');
@@ -566,7 +506,35 @@ router.delete('/games/questions/:id', requireRole('admin'), async (req, res, nex
   } catch (err) { next(err); }
 });
 
-// ========== DASHBOARD STATS (admin + superadmin) ==========
+// Placement mini-game questions CRUD
+router.get('/placement/minigame-questions', requireRole('admin'), async (req, res, next) => {
+  try {
+    const questions = await adminGameService.getPlacementQuestions();
+    return success(res, questions);
+  } catch (err) { next(err); }
+});
+
+router.post('/placement/minigame-questions', requireRole('admin'), async (req, res, next) => {
+  try {
+    const q = await adminGameService.createPlacementQuestion(req.body);
+    return success(res, q, 'Placement question created');
+  } catch (err) { next(err); }
+});
+
+router.put('/placement/minigame-questions/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminGameService.updatePlacementQuestion(req.params.id, req.body);
+    return success(res, null, 'Placement question updated');
+  } catch (err) { next(err); }
+});
+
+router.delete('/placement/minigame-questions/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminGameService.deletePlacementQuestion(req.params.id);
+    return success(res, null, 'Placement question deleted');
+  } catch (err) { next(err); }
+});
+// ========== DASHBOARD STATS ==========
 router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
   try {
     const { getPool } = require('../../config/database');
@@ -617,9 +585,16 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ========== USER MANAGEMENT (superadmin only) ==========
+// ========== USER MANAGEMENT ==========
 
-router.get('/users', superAdminOnly(), async (req, res, next) => {
+router.post('/users', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminUserService.createUser(req.body);
+    return success(res, data, 'User account created', 201);
+  } catch (err) { next(err); }
+});
+
+router.get('/users', requireRole('admin'), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = '' } = req.query;
     const data = await adminUserService.getAllUsers(Number(page), Number(limit), search);
@@ -627,25 +602,14 @@ router.get('/users', superAdminOnly(), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.get('/users/stats', superAdminOnly(), async (req, res, next) => {
+router.get('/users/stats', requireRole('admin'), async (req, res, next) => {
   try {
     const stats = await adminUserService.getUserStats();
     return success(res, stats);
   } catch (err) { next(err); }
 });
 
-router.put('/users/:id/role', superAdminOnly(), async (req, res, next) => {
-  try {
-    const { role } = req.body;
-    if (!role) return badRequest(res, 'Role is required');
-    // Prevent demoting yourself
-    if (req.params.id === req.user.id) return badRequest(res, 'Cannot change your own role');
-    await adminUserService.updateUserRole(req.params.id, role);
-    return success(res, null, `Role updated to ${role}`);
-  } catch (err) { next(err); }
-});
-
-router.put('/users/:id/toggle-active', superAdminOnly(), async (req, res, next) => {
+router.put('/users/:id/toggle-active', requireRole('admin'), async (req, res, next) => {
   try {
     if (req.params.id === req.user.id) return badRequest(res, 'Cannot lock your own account');
     await adminUserService.toggleUserActive(req.params.id);

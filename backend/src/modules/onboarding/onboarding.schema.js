@@ -1,4 +1,4 @@
-const { getPool } = require('../../config/database');
+﻿const { getPool } = require('../../config/database');
 
 let onboardingSchemaReady = false;
 
@@ -25,85 +25,28 @@ async function ensureOnboardingSchema() {
   await pool.query(`ALTER TABLE WritingLessons ADD COLUMN IF NOT EXISTS IsFoundation boolean DEFAULT false`);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS PlacementTests (
+    CREATE TABLE IF NOT EXISTS PlacementMiniGameQuestions (
       Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      Title varchar(255) NOT NULL,
-      Description text,
-      IsActive boolean DEFAULT true,
-      OrderIndex integer DEFAULT 0,
-      CreatedAt timestamptz DEFAULT now(),
-      UpdatedAt timestamptz DEFAULT now()
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS PlacementTestQuestions (
-      Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      TestId uuid NOT NULL REFERENCES PlacementTests(Id) ON DELETE CASCADE,
-      QuestionType varchar(50) DEFAULT 'multiple_choice',
-      Skill varchar(40) DEFAULT 'general',
+      QuestionType varchar(50) NOT NULL,
+      ContentEN text DEFAULT '',
+      ContentVI text DEFAULT '',
+      AudioUrl text,
+      ImageUrl text,
+      CorrectAnswer text DEFAULT '',
+      Options jsonb,
       Difficulty varchar(20) DEFAULT 'easy',
-      Weight double precision DEFAULT 1,
-      ContextText text,
-      Prompt text NOT NULL,
-      OptionA text,
-      OptionB text,
-      OptionC text,
-      OptionD text,
-      CorrectAnswer text,
-      AcceptedAnswers text,
-      Explanation text,
-      SourceSkill varchar(40),
-      SourceQuestionId text,
-      SourceLessonId text,
-      SourceLessonTitle varchar(255),
-      SourceLessonType varchar(30),
-      QuestionPayload jsonb DEFAULT '{}'::jsonb,
-      OrderIndex integer DEFAULT 0,
-      CreatedAt timestamptz DEFAULT now(),
-      UpdatedAt timestamptz DEFAULT now()
+      PointRatio numeric(6,2) DEFAULT 1,
+      IsActive boolean DEFAULT true,
+      OrderIndex int DEFAULT 0,
+      CreatedAt timestamptz DEFAULT NOW(),
+      UpdatedAt timestamptz DEFAULT NOW()
     )
   `);
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS PlacementAttempts (
-      Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      UserId uuid NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
-      TestId uuid NOT NULL REFERENCES PlacementTests(Id) ON DELETE CASCADE,
-      Status varchar(30) DEFAULT 'in_progress',
-      Score double precision,
-      ResultLevel varchar(20),
-      StartedAt timestamptz DEFAULT now(),
-      SubmittedAt timestamptz
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS PlacementAttemptAnswers (
-      Id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      AttemptId uuid NOT NULL REFERENCES PlacementAttempts(Id) ON DELETE CASCADE,
-      QuestionId uuid NOT NULL REFERENCES PlacementTestQuestions(Id) ON DELETE CASCADE,
-      Answer text,
-      IsCorrect boolean DEFAULT false,
-      Weight double precision DEFAULT 1,
-      EarnedWeight double precision DEFAULT 0,
-      CreatedAt timestamptz DEFAULT now()
-    )
-  `);
-
-  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS Difficulty varchar(20) DEFAULT 'easy'`);
-  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS Weight double precision DEFAULT 1`);
-  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS ContextText text`);
-  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS SourceLessonId text`);
-  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS SourceLessonTitle varchar(255)`);
-  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS SourceLessonType varchar(30)`);
-  await pool.query(`ALTER TABLE PlacementTestQuestions ADD COLUMN IF NOT EXISTS QuestionPayload jsonb DEFAULT '{}'::jsonb`);
-  await pool.query(`ALTER TABLE PlacementAttemptAnswers ADD COLUMN IF NOT EXISTS Weight double precision DEFAULT 1`);
-  await pool.query(`ALTER TABLE PlacementAttemptAnswers ADD COLUMN IF NOT EXISTS EarnedWeight double precision DEFAULT 0`);
-
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_placement_tests_active ON PlacementTests(IsActive, OrderIndex)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_placement_questions_test ON PlacementTestQuestions(TestId, OrderIndex)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_placement_attempts_user ON PlacementAttempts(UserId, StartedAt DESC)`);
+  await pool.query(`ALTER TABLE PlacementMiniGameQuestions ADD COLUMN IF NOT EXISTS PointRatio numeric(6,2) DEFAULT 1`);
+  await pool.query(`ALTER TABLE PlacementMiniGameQuestions ADD COLUMN IF NOT EXISTS Difficulty varchar(20) DEFAULT 'easy'`);
+  await pool.query(`ALTER TABLE PlacementMiniGameQuestions ADD COLUMN IF NOT EXISTS IsActive boolean DEFAULT true`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_placement_minigame_active_type ON PlacementMiniGameQuestions(IsActive, QuestionType, Difficulty)`);
 
   onboardingSchemaReady = true;
 }

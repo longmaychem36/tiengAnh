@@ -53,7 +53,7 @@ const userController = {
    */
   async updateAvatar(req, res, next) {
     try {
-      if (req.user.id !== req.params.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      if (req.user.id !== req.params.id && req.user.role !== 'admin') {
         return badRequest(res, 'You can only update your own avatar');
       }
       const result = await userService.updateAvatar(req.params.id, req.file);

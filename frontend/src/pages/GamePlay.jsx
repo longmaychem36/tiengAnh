@@ -6,30 +6,40 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FiArrowLeft, FiCheck, FiClock, FiRefreshCw,
-  FiArrowRight, FiPlay, FiStar, FiVolume2, FiX, FiZap
+  FiArrowRight, FiAward, FiCheckSquare, FiHeadphones,
+  FiLink, FiMusic, FiPlay, FiStar, FiVolume2, FiX, FiZap
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { gameApi } from '../api/gameApi';
 import Loading from '../components/common/Loading';
 import ExpReward from '../components/common/ExpReward';
+import CharacterSvg from '../components/common/CharacterSvg';
+import Recorder from '../components/speaking/Recorder';
 import { speakText, stopAllPlayback } from '../utils/audioControl';
+import { confirmUnsavedProgressExit } from '../utils/confirmExit';
 
 const TYPE_LABELS = {
-  matching: { icon: '🔗', label: 'Nối từ', color: '#8a4b35' },
-  listening: { icon: '🎧', label: 'Nghe & Chọn', color: '#8a4b35' },
-  listenbuild: { icon: '🎵', label: 'Nghe xếp câu', color: '#8a4b35' },
-  truefalse: { icon: '✅', label: 'Đúng hay Sai', color: '#8a4b35' }
+  matching: { Icon: FiLink, label: 'Nối từ', color: '#2563eb' },
+  listening: { Icon: FiHeadphones, label: 'Nghe và chọn', color: '#0f766e' },
+  listenbuild: { Icon: FiMusic, label: 'Nghe xếp câu', color: '#7c3aed' },
+  truefalse: { Icon: FiCheckSquare, label: 'Đúng hay sai', color: '#dc2626' },
+  speakrepeat: { Icon: FiVolume2, label: 'Đọc câu', color: '#2563eb' }
 };
 
-function TimerBar({ type, timerColor, timerPct, timeLeft, currentQ, totalQuestions }) {
+const getSpeakingTarget = (question) => question?.CorrectAnswer || question?.ContentEN || '';
+const getSpeakingPassScore = (question) => Number(question?.Options?.passScore || 70);
+const getSpeakingMaxDuration = (question) => {
+  const wordCount = getSpeakingTarget(question).trim().split(/\s+/).filter(Boolean).length;
+  return Math.min(18, Math.max(8, Math.ceil(wordCount * 1.35)));
+};
+
+function TimerBar({ type, timerColor, timerPct, timeLeft, currentQ, totalQuestions, onExit }) {
   return (
-    <div className="game-hud-card">
-      <div className="game-hud-label">
-        <span style={{ '--type-color': type.color }}>{type.icon}</span>
-        <strong>{type.label}</strong>
-      </div>
+    <div className="game-hud-card" style={{ '--type-color': type.color }}>
+      <button type="button" className="game-exit-button" onClick={onExit} aria-label="Thoát">
+        <FiX />
+      </button>
       <div className="game-hud-timer">
-        <FiClock style={{ color: timerColor }} />
         <div className="game-time-track">
           <motion.div
             className="game-time-fill"
@@ -38,9 +48,12 @@ function TimerBar({ type, timerColor, timerPct, timeLeft, currentQ, totalQuestio
             transition={{ duration: 0.25 }}
           />
         </div>
-        <strong style={{ color: timerColor }}>{timeLeft}s</strong>
       </div>
-      <div className="game-progress-label">Câu {currentQ + 1}/{totalQuestions}</div>
+      <div className="game-progress-label">
+        <FiClock />
+        <strong>{timeLeft}s</strong>
+        <span>{currentQ + 1}/{totalQuestions}</span>
+      </div>
     </div>
   );
 }
@@ -108,6 +121,7 @@ function GamePlay() {
   const [buildChecked, setBuildChecked] = useState(false);
   const [buildCorrect, setBuildCorrect] = useState(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [analyzingQuestionId, setAnalyzingQuestionId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -210,6 +224,7 @@ function GamePlay() {
     setBuildChecked(false);
     setBuildCorrect(null);
     setBuiltWords([]);
+    setAnalyzingQuestionId(null);
 
     if (question.QuestionType === 'matching') {
       const matchingQuestions = levelData.questions.filter(item => item.QuestionType === 'matching');
@@ -217,7 +232,26 @@ function GamePlay() {
         .filter(item => item.Id !== question.Id)
         .slice(0, 3)
         .map(item => item.ContentVI);
-      setWordBank(shuffle([question.ContentVI, ...otherOptions]));
+      const configuredOptions = Array.isArray(question.Options) ? question.Options : [];
+      const seen = new Set();
+      const options = [];
+
+      const appendUniqueOption = (option) => {
+        const value = String(option || '').trim();
+        const key = value.toLocaleLowerCase('vi');
+        if (!value || seen.has(key)) return;
+        seen.add(key);
+        options.push(value);
+      };
+
+      // Respect the exact choices configured in Admin. Legacy questions without
+      // Options are supplemented from other matching questions in this level.
+      [question.ContentVI, ...configuredOptions].forEach(appendUniqueOption);
+      otherOptions.forEach((option) => {
+        if (options.length < 4) appendUniqueOption(option);
+      });
+
+      setWordBank(shuffle(options.slice(0, 4)));
     }
 
     if (question.QuestionType === 'listenbuild') {
@@ -227,6 +261,10 @@ function GamePlay() {
 
     if (question.QuestionType === 'listening') {
       setTimeout(() => playTTS(question.ContentEN || question.CorrectAnswer), 500);
+    }
+
+    if (question.QuestionType === 'speakrepeat') {
+      setTimeout(() => playTTS(getSpeakingTarget(question)), 500);
     }
   };
 
@@ -320,6 +358,66 @@ function GamePlay() {
     setShowFeedback(true);
   };
 
+  const handleSpeakingComplete = async (question, audioBlob) => {
+    const targetText = getSpeakingTarget(question);
+    if (!targetText) {
+      toast.error('Câu đọc này chưa có nội dung mẫu.');
+      return;
+    }
+
+    setAnalyzingQuestionId(question.Id);
+    try {
+      const res = await gameApi.transcribeAndAnalyze(audioBlob, [targetText], {
+        questionId: question.Id,
+        targetText,
+        prompt: 'Read this sentence aloud',
+        passThreshold: getSpeakingPassScore(question)
+      });
+      const data = res.data || {};
+      const score = Number(data.score || 0);
+      const answer = {
+        kind: 'speaking',
+        score,
+        transcript: data.transcript || '',
+        targetText,
+        feedback: data.feedback || '',
+        missingWords: data.missingWords || [],
+        extraWords: data.extraWords || []
+      };
+
+      recordAnswer(question.Id, answer);
+      setLastCorrect(score >= getSpeakingPassScore(question));
+      setShowFeedback(true);
+
+      if (!data.transcript) {
+        toast.error('Không nhận diện được giọng nói. Bạn có thể thử lại ở màn sau.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Không thể chấm phần đọc.');
+    } finally {
+      setAnalyzingQuestionId(null);
+    }
+  };
+
+  const skipSpeakingQuestion = (question) => {
+    recordAnswer(question.Id, {
+      kind: 'speaking',
+      score: 0,
+      transcript: '',
+      targetText: getSpeakingTarget(question)
+    });
+    setLastCorrect(false);
+    setShowFeedback(true);
+  };
+
+  const handleExitGame = async () => {
+    if (!(await confirmUnsavedProgressExit())) return;
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+    stopAllPlayback();
+    navigate('/games');
+  };
+
   if (loading) return <Loading />;
   if (!levelData) return <div className="game-empty">Không tìm thấy màn chơi</div>;
 
@@ -333,7 +431,7 @@ function GamePlay() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           className="game-result-card"
         >
-          <div className="game-result-icon">{result.score >= 90 ? '🏆' : result.score >= 70 ? '⭐' : result.score >= 50 ? '👍' : '💪'}</div>
+          <div className="game-result-icon"><FiAward /></div>
           <span className="game-kicker">Kết quả màn chơi</span>
           <h1>{result.passed ? 'Xuất sắc!' : 'Cố gắng thêm nhé!'}</h1>
 
@@ -381,7 +479,10 @@ function GamePlay() {
           animate={{ opacity: 1, y: 0 }}
           className="game-start-card"
         >
-          <div className="game-start-icon">🎮</div>
+          <button type="button" className="game-start-exit" onClick={() => navigate('/games')} aria-label="Thoát">
+            <FiX />
+          </button>
+          <div className="game-start-icon"><FiPlay /></div>
           <span className="game-kicker">Sẵn sàng vào màn</span>
           <h1>{level.Name}</h1>
 
@@ -418,6 +519,7 @@ function GamePlay() {
         timeLeft={timeLeft}
         currentQ={currentQ}
         totalQuestions={questions.length}
+        onExit={handleExitGame}
       />
       <GameProgressBar progressPct={progressPct} />
 
@@ -428,6 +530,7 @@ function GamePlay() {
         className="game-question-card"
         style={{ '--type-color': type.color }}
       >
+        <CharacterSvg className={`is-${question.QuestionType}`} width={96} aria-hidden="true" focusable="false" />
         {question.QuestionType === 'matching' && (
           <>
             <p className="game-question-prompt">Chọn nghĩa tiếng Việt đúng cho từ:</p>
@@ -550,7 +653,49 @@ function GamePlay() {
           </>
         )}
 
-        {!['matching', 'listening', 'listenbuild', 'truefalse'].includes(question.QuestionType) && (
+        {question.QuestionType === 'speakrepeat' && (
+          <div className="game-speaking-card">
+            <p className="game-question-prompt">Đọc câu này</p>
+            <div className="game-speak-target">
+              <button
+                type="button"
+                className="game-speak-audio"
+                onClick={() => playTTS(getSpeakingTarget(question))}
+                disabled={audioPlaying || showFeedback}
+              >
+                <FiVolume2 />
+              </button>
+              <strong>{getSpeakingTarget(question)}</strong>
+            </div>
+
+            {!showFeedback && (
+              <>
+                <Recorder
+                  onRecordingComplete={(audioBlob) => handleSpeakingComplete(question, audioBlob)}
+                  isAnalyzing={analyzingQuestionId === question.Id}
+                  maxDuration={getSpeakingMaxDuration(question)}
+                />
+                <button
+                  type="button"
+                  className="game-skip-speaking"
+                  onClick={() => skipSpeakingQuestion(question)}
+                  disabled={analyzingQuestionId === question.Id}
+                >
+                  Tạm thời không nói được
+                </button>
+              </>
+            )}
+
+            {showFeedback && selectedAnswer && typeof selectedAnswer === 'object' && (
+              <div className={`game-speaking-result ${Number(selectedAnswer.score || 0) >= getSpeakingPassScore(question) ? 'is-pass' : 'is-fail'}`}>
+                <strong>{Number(selectedAnswer.score || 0)}%</strong>
+                <span>{selectedAnswer.transcript ? `Bạn đọc: ${selectedAnswer.transcript}` : 'Chưa có bản ghi đọc.'}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!['matching', 'listening', 'listenbuild', 'truefalse', 'speakrepeat'].includes(question.QuestionType) && (
           <div className="game-empty">Loại game "{question?.QuestionType}" chưa được hỗ trợ.</div>
         )}
 
