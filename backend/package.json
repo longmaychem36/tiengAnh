@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "dev:all": "concurrently \"npm run dev\" \"python whisper_server.py\"",
+    "dev:all": "concurrently \"npm run dev\" \"python ../whisper/whisper_server.py\"",
     "db:migrate-minigames": "node scripts/migrate_minigames.js",
     "db:migrate-receptive": "node scripts/migrate_receptive_courses.js",
     "db:import-data": "node scripts/import_dump_data.js",

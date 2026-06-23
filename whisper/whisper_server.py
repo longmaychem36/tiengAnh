@@ -31,7 +31,7 @@ import time
 # ==========================================
 # Configuration - balanced accuracy/speed
 # ==========================================
-MODEL_SIZE = os.environ.get("WHISPER_MODEL", "base")
+MODEL_SIZE = os.environ.get("WHISPER_MODEL", "small")
 DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE", "int8")
 PORT = int(os.environ.get("WHISPER_PORT") or os.environ.get("PORT", 5001))
