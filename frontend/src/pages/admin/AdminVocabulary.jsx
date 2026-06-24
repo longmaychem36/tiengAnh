@@ -174,19 +174,19 @@ function AdminVocabulary() {
   };
 
   return (
-    <div className="fade-in" style={{ padding: 'var(--space-6)' }}>
-      <div className="flex-between" style={{ alignItems: 'flex-start', marginBottom: 'var(--space-6)' }}>
+    <div className="fade-in admin-receptive-page">
+      <div className="admin-receptive-header">
         <div>
-          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>Vocabulary Public</h1>
-          <p style={{ color: 'var(--color-text-secondary)' }}>Duyệt học phần public và tạo học phần từ vựng bằng tài khoản admin.</p>
+          <h1>Vocabulary Public</h1>
+          <p>Duyệt học phần public và tạo học phần từ vựng bằng tài khoản admin.</p>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <div className="admin-inline-actions">
           <button type="button" className="btn btn-secondary" onClick={loadCollections}><FiRefreshCw /> Tải lại</button>
           <button type="button" className="btn btn-primary" onClick={openCreateDeck}><FiPlus /> Tạo học phần</button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
+      <div className="admin-inline-actions" style={{ marginBottom: 'var(--space-2)', justifyContent: 'flex-start' }}>
         {['pending', 'approved', 'rejected', 'all'].map((item) => (
           <button key={item} type="button" className={`btn ${status === item ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setStatus(item)}>
             {item === 'all' ? 'Tất cả' : item}
@@ -194,38 +194,36 @@ function AdminVocabulary() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 0.95fr) minmax(0, 1.45fr)', gap: 'var(--space-6)' }}>
-        <section style={{ display: 'grid', gap: 'var(--space-3)', alignContent: 'start' }}>
-          {loading && <div className="card">Đang tải...</div>}
-          {!loading && collections.length === 0 && <div className="card">Không có học phần nào.</div>}
+      <div className="admin-dashboard-grid" style={{ gridTemplateColumns: 'minmax(300px, 0.95fr) minmax(0, 1.45fr)' }}>
+        <section className="admin-receptive-list">
+          {loading && <div className="admin-empty-inline">Đang tải...</div>}
+          {!loading && collections.length === 0 && <div className="admin-empty-inline">Không có học phần nào.</div>}
           {collections.map((deck) => (
             <article
               key={deck.Id}
-              className="card"
+              className={`admin-receptive-card ${selected?.Id === deck.Id ? 'is-active' : ''}`}
               onClick={() => loadWords(deck)}
-              style={{
-                cursor: 'pointer',
-                padding: 'var(--space-4)',
-                border: selected?.Id === deck.Id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)'
-              }}
+              style={{ cursor: 'pointer' }}
             >
-              <div className="flex-between" style={{ alignItems: 'flex-start', gap: 10 }}>
-                <div>
-                  <h3 style={{ fontWeight: 800 }}>{deck.Name}</h3>
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>{deck.Description}</p>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-                    <span className="badge badge-primary"><FiGlobe /> {deck.ReviewStatus}</span>
-                    <span className="badge badge-secondary">{Number(deck.WordCount || 0)} từ</span>
-                    <span className="badge badge-secondary">{deck.CreatorName || 'Admin'}</span>
+              <div className="admin-receptive-card-head" style={{ border: 0 }}>
+                <button type="button" className="admin-receptive-title" style={{ cursor: 'pointer' }}>
+                  <div>
+                    <strong>{deck.Name}</strong>
+                    <span>{deck.Description}</span>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                      <span className="badge badge-primary"><FiGlobe /> {deck.ReviewStatus}</span>
+                      <span className="badge badge-secondary">{Number(deck.WordCount || 0)} từ</span>
+                      <span className="badge badge-secondary">{deck.CreatorName || 'Admin'}</span>
+                    </div>
                   </div>
-                </div>
-                <div style={{ display: 'flex', gap: 4 }} onClick={(event) => event.stopPropagation()}>
+                </button>
+                <div className="admin-inline-actions" onClick={(event) => event.stopPropagation()}>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditDeck(deck)}>Sửa</button>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => deleteDeck(deck)} style={{ color: 'var(--color-error)' }}>Xóa</button>
+                  <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteDeck(deck)}>Xóa</button>
                 </div>
               </div>
               {deck.ReviewStatus === 'pending' && (
-                <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }} onClick={(event) => event.stopPropagation()}>
+                <div className="admin-form-actions" style={{ padding: '0 10px 10px', marginTop: 0 }} onClick={(event) => event.stopPropagation()}>
                   <button type="button" className="btn btn-primary btn-sm" onClick={() => reviewDeck(deck, 'approved')}><FiCheck /> Duyệt</button>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => reviewDeck(deck, 'rejected')}><FiX /> Từ chối</button>
                 </div>
@@ -234,42 +232,40 @@ function AdminVocabulary() {
           ))}
         </section>
 
-        <section className="card">
+        <section className="admin-subpanel" style={{ padding: '14px 16px' }}>
           {selected ? (
             <>
-              <div className="flex-between" style={{ alignItems: 'flex-start', marginBottom: 'var(--space-5)' }}>
+              <div className="admin-subpanel-head" style={{ margin: '-14px -16px var(--space-4) -16px' }}>
                 <div>
-                  <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800 }}>{selected.Name}</h2>
-                  <p style={{ color: 'var(--color-text-secondary)' }}>{selected.Description}</p>
+                  <h3>{selected.Name}</h3>
+                  <p style={{ display: 'block', fontSize: '12px', color: 'var(--admin-muted)', marginTop: 4 }}>{selected.Description}</p>
                 </div>
                 {canManageSelectedWords && (
                   <button type="button" className="btn btn-primary btn-sm" onClick={openAddWord}><FiPlus /> Thêm từ</button>
                 )}
               </div>
 
-              <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+              <div className="admin-item-list">
                 {words.map((word) => (
-                  <div key={word.Id} style={{ padding: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', background: 'var(--color-bg-secondary)' }}>
-                    <div className="flex-between" style={{ alignItems: 'flex-start', gap: 10 }}>
-                      <div>
-                        <strong style={{ color: 'var(--color-primary)' }}>{word.CustomWord}</strong>
-                        <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>{word.CustomMeaning}</p>
-                        {word.CustomExample && <small style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>"{word.CustomExample}"</small>}
-                      </div>
-                      {canManageSelectedWords && (
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditWord(word)}>Sửa</button>
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => deleteWord(word)} style={{ color: 'var(--color-error)' }}>Xóa</button>
-                        </div>
-                      )}
+                  <div key={word.Id} className="admin-list-item">
+                    <div>
+                      <strong style={{ color: 'var(--admin-primary)' }}>{word.CustomWord}</strong>
+                      <p>{word.CustomMeaning}</p>
+                      {word.CustomExample && <small style={{ color: 'var(--admin-muted)', fontStyle: 'italic' }}>"{word.CustomExample}"</small>}
                     </div>
+                    {canManageSelectedWords && (
+                      <div className="admin-inline-actions">
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditWord(word)}>Sửa</button>
+                        <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteWord(word)}>Xóa</button>
+                      </div>
+                    )}
                   </div>
                 ))}
-                {words.length === 0 && <div style={{ color: 'var(--color-text-muted)' }}>Chưa có từ vựng.</div>}
+                {words.length === 0 && <div className="admin-empty-inline">Chưa có từ vựng.</div>}
               </div>
             </>
           ) : (
-            <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-10)' }}>
+            <div className="admin-empty-inline" style={{ padding: 'var(--space-10)' }}>
               Chọn học phần để xem và quản lý từ.
             </div>
           )}
@@ -287,9 +283,9 @@ function AdminVocabulary() {
               <span className="form-label">Mô tả</span>
               <input className="form-input" value={deckForm.Description} onChange={(e) => setDeckForm({ ...deckForm, Description: e.target.value })} />
             </label>
-            <div className="flex gap-2" style={{ marginTop: 'var(--space-5)' }}>
-              <button type="button" className="btn btn-secondary w-full" onClick={() => setShowDeckForm(false)}>Hủy</button>
-              <button type="submit" className="btn btn-primary w-full">Lưu</button>
+            <div className="admin-form-actions" style={{ display: 'flex', gap: 8, marginTop: 'var(--space-5)' }}>
+              <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowDeckForm(false)}>Hủy</button>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Lưu</button>
             </div>
           </form>
         </Modal>
@@ -310,9 +306,9 @@ function AdminVocabulary() {
               <span className="form-label">Ví dụ</span>
               <input className="form-input" value={wordForm.CustomExample} onChange={(e) => setWordForm({ ...wordForm, CustomExample: e.target.value })} />
             </label>
-            <div className="flex gap-2" style={{ marginTop: 'var(--space-5)' }}>
-              <button type="button" className="btn btn-secondary w-full" onClick={() => setShowWordForm(false)}>Hủy</button>
-              <button type="submit" className="btn btn-primary w-full">Lưu</button>
+            <div className="admin-form-actions" style={{ display: 'flex', gap: 8, marginTop: 'var(--space-5)' }}>
+              <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowWordForm(false)}>Hủy</button>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Lưu</button>
             </div>
           </form>
         </Modal>
@@ -324,8 +320,8 @@ function AdminVocabulary() {
 function Modal({ title, onClose, children }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div className="card" style={{ width: 'min(480px, 100%)' }}>
-        <div className="flex-between" style={{ marginBottom: 'var(--space-4)' }}>
+      <div className="admin-nested-form" style={{ width: 'min(480px, 100%)', background: 'white !important', padding: '16px' }}>
+        <div className="admin-subpanel-head" style={{ marginBottom: 'var(--space-4)', borderBottom: 0, background: 'transparent' }}>
           <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800 }}>{title}</h3>
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Đóng</button>
         </div>

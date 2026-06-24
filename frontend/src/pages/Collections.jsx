@@ -226,6 +226,7 @@ function Vocabulary() {
         skillLabel="Từ vựng"
         gateKey={`vocabulary-${selectedDeck?.Id}`}
         allowStudy={false}
+        oneByOne={true}
         passMessage="Đã hoàn thành ôn từ vựng."
         continueLabel="Tiếp tục học bài khác"
         onPassed={() => {

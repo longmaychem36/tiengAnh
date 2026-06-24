@@ -17,27 +17,32 @@ const TYPE_LABELS = {
 };
 
 const FormModal = ({ title, fields, onSave, formData, setFormData, setShowForm }) => (
-  <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.42)', zIndex: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setShowForm(false)}>
-    <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 8, padding: 24, width: '100%', maxWidth: 560, maxHeight: '84vh', overflow: 'auto', border: '1px solid #e5e7eb' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3 style={{ fontWeight: 700 }}>{title}</h3>
+  <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowForm(false)}>
+    <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="admin-nested-form" style={{ width: 'min(520px, 100%)', background: 'white !important', padding: '16px' }}>
+      <div className="admin-subpanel-head" style={{ marginBottom: 'var(--space-4)', borderBottom: 0, background: 'transparent' }}>
+        <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800 }}>{title}</h3>
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Đóng</button>
       </div>
-      {fields.map(f => (
-        <label key={f.key} style={{ display: 'block', marginBottom: 14 }}>
-          <span style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 5, color: 'var(--color-text-secondary)' }}>{f.label}</span>
-          {f.type === 'select' ? (
-            <select aria-label={f.label} className="form-input" value={formData[f.key] ?? ''} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))}>
-              {f.options.map(o => <option key={o.value || o} value={o.value || o}>{o.label || o}</option>)}
-            </select>
-          ) : f.type === 'textarea' ? (
-            <textarea aria-label={f.label} className="form-input" rows={3} value={formData[f.key] ?? ''} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder || ''} />
-          ) : (
-            <input aria-label={f.label} className="form-input" type={f.type || 'text'} value={formData[f.key] ?? ''} onChange={e => setFormData(p => ({ ...p, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))} placeholder={f.placeholder || ''} />
-          )}
-        </label>
-      ))}
-      <button type="button" className="btn btn-primary" onClick={onSave} style={{ width: '100%' }}><FiSave /> Lưu</button>
+      <div className="admin-form-grid" style={{ gridTemplateColumns: '1fr' }}>
+        {fields.map(f => (
+          <label key={f.key} style={{ display: 'grid', gap: 5 }}>
+            <span className="form-label">{f.label}</span>
+            {f.type === 'select' ? (
+              <select aria-label={f.label} className="form-input" value={formData[f.key] ?? ''} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))}>
+                {f.options.map(o => <option key={o.value || o} value={o.value || o}>{o.label || o}</option>)}
+              </select>
+            ) : f.type === 'textarea' ? (
+              <textarea aria-label={f.label} className="form-input" rows={3} value={formData[f.key] ?? ''} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder || ''} />
+            ) : (
+              <input aria-label={f.label} className="form-input" type={f.type || 'text'} value={formData[f.key] ?? ''} onChange={e => setFormData(p => ({ ...p, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))} placeholder={f.placeholder || ''} />
+            )}
+          </label>
+        ))}
+        <div className="admin-form-actions" style={{ display: 'flex', gap: 8, marginTop: 'var(--space-4)' }}>
+          <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowForm(false)}>Hủy</button>
+          <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={onSave}><FiSave /> Lưu</button>
+        </div>
+      </div>
     </motion.div>
   </div>
 );
@@ -312,96 +317,133 @@ function AdminGames() {
         { key: 'activeStatus', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] }
       );
     }
-    if (qType === 'matching') return [...fields, { key: 'contentEN', label: 'Từ tiếng Anh', placeholder: 'apple' }, { key: 'contentVI', label: 'Nghĩa đúng', placeholder: 'qua tao' }, { key: 'options', label: 'Lựa chọn khác, cách nhau bằng dấu phẩy', placeholder: 'qua chuoi, quyen sach' }];
-    if (qType === 'listening') return [...fields, { key: 'correctAnswer', label: 'Câu sẽ được đọc', placeholder: 'Good morning' }, { key: 'contentVI', label: 'Nghĩa tiếng Việt', placeholder: 'Chao buoi sang' }, { key: 'options', label: 'Đáp án sai, cách nhau bằng dấu phẩy', placeholder: 'Good night, Good evening' }];
-    if (qType === 'listenbuild') return [...fields, { key: 'correctAnswer', label: 'Câu tiếng Anh hoàn chỉnh', placeholder: 'I go to school' }, { key: 'contentVI', label: 'Gợi ý tiếng Việt', placeholder: 'Toi di hoc' }, { key: 'options', label: 'Từ gây nhiễu thêm', placeholder: 'goes, going' }];
-    if (qType === 'truefalse') return [...fields, { key: 'contentEN', label: 'Câu tiếng Anh', placeholder: 'The dog is black' }, { key: 'contentVI', label: 'Bản dịch hiển thị', placeholder: 'Con cho mau trang' }, { key: 'correctAnswer', label: 'Đáp án', type: 'select', options: ['true', 'false'] }];
-    if (qType === 'speakrepeat') return [...fields, { key: 'correctAnswer', label: 'Câu cần đọc', placeholder: 'I can help you' }, { key: 'contentVI', label: 'Nghĩa tiếng Việt', placeholder: 'Toi co the giup ban' }, { key: 'passScore', label: 'Điểm nói đạt (%)', type: 'number' }];
+    if (qType === 'matching') return [...fields, { key: 'contentEN', label: 'Từ tiếng Anh', placeholder: 'apple' }, { key: 'contentVI', label: 'Nghĩa đúng', placeholder: 'quả táo' }, { key: 'options', label: 'Lựa chọn khác, cách nhau bằng dấu phẩy', placeholder: 'quả chuối, quyển sách' }];
+    if (qType === 'listening') return [...fields, { key: 'correctAnswer', label: 'Câu sẽ được đọc', placeholder: 'Good morning' }, { key: 'contentVI', label: 'Nghĩa tiếng Việt', placeholder: 'Chào buổi sáng' }, { key: 'options', label: 'Đáp án sai, cách nhau bằng dấu phẩy', placeholder: 'Good night, Good evening' }];
+    if (qType === 'listenbuild') return [...fields, { key: 'correctAnswer', label: 'Câu tiếng Anh hoàn chỉnh', placeholder: 'I go to school' }, { key: 'contentVI', label: 'Gợi ý tiếng Việt', placeholder: 'Tôi đi học' }, { key: 'options', label: 'Từ gây nhiễu thêm', placeholder: 'goes, going' }];
+    if (qType === 'truefalse') return [...fields, { key: 'contentEN', label: 'Câu tiếng Anh', placeholder: 'The dog is black' }, { key: 'contentVI', label: 'Bản dịch hiển thị', placeholder: 'Con chó màu trắng' }, { key: 'correctAnswer', label: 'Đáp án', type: 'select', options: ['true', 'false'] }];
+    if (qType === 'speakrepeat') return [...fields, { key: 'correctAnswer', label: 'Câu cần đọc', placeholder: 'I can help you' }, { key: 'contentVI', label: 'Nghĩa tiếng Việt', placeholder: 'Tôi có thể giúp bạn' }, { key: 'passScore', label: 'Điểm nói đạt (%)', type: 'number' }];
     return fields;
   };
 
-  const cardStyle = { padding: '14px 18px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'white', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 };
   const activePlacementCount = useMemo(() => placementQuestions.filter(q => q.IsActive).length, [placementQuestions]);
 
   const renderQuestionRow = (q, actions, extra = null) => {
     const mainText = q.QuestionType === 'truefalse' || q.QuestionType === 'listenbuild' || q.QuestionType === 'speakrepeat' ? q.CorrectAnswer : (q.ContentEN || q.CorrectAnswer);
     return (
-      <div key={q.Id} style={{ ...cardStyle, alignItems: 'flex-start' }}>
+      <div key={q.Id} className="admin-list-item">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, background: '#f1f5f9', padding: '2px 8px', borderRadius: 6 }}>{TYPE_LABELS[q.QuestionType] || q.QuestionType}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+            <span className="badge badge-primary">{TYPE_LABELS[q.QuestionType] || q.QuestionType}</span>
             {extra}
-            <b style={{ overflowWrap: 'anywhere' }}>{mainText}</b>
           </div>
-          {q.ContentVI && <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>- {q.ContentVI}</div>}
-          {Array.isArray(q.Options) && q.Options.length > 0 && <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>Options: {q.Options.join(' | ')}</div>}
+          <strong style={{ color: 'var(--admin-primary)', fontSize: '14px', wordBreak: 'break-word' }}>{mainText}</strong>
+          {q.ContentVI && <p style={{ fontSize: 13, marginTop: 4 }}>{q.ContentVI}</p>}
+          {Array.isArray(q.Options) && q.Options.length > 0 && (
+            <div style={{ fontSize: 11, color: 'var(--admin-muted)', marginTop: 4 }}>
+              Options: {q.Options.join(' | ')}
+            </div>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>{actions}</div>
+        <div className="admin-inline-actions" style={{ flexShrink: 0 }}>
+          {actions}
+        </div>
       </div>
     );
   };
 
   return (
-    <div>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="fade-in admin-receptive-page">
+      <div className="admin-receptive-header">
         <div>
           <h1>Quản lý Mini game</h1>
-          <p style={{ color: 'var(--color-text-muted)' }}>Quản lý màn chơi và bộ câu hỏi riêng cho bài test đầu vào.</p>
+          <p>Quản lý màn chơi và bộ câu hỏi riêng cho bài test đầu vào.</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="admin-inline-actions">
           {view !== 'levels' && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setView('levels'); setActiveLevel(null); }}><FiArrowLeft /> Levels</button>}
           {view === 'levels' && <button type="button" className="btn btn-primary btn-sm" onClick={() => openLevelForm()}><FiPlus /> Thêm level</button>}
           {view === 'placement' && <button type="button" className="btn btn-primary btn-sm" onClick={() => openPlacementForm()}><FiPlus /> Thêm câu test</button>}
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-        <button type="button" className={`btn btn-sm ${view !== 'placement' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => { setView('levels'); setActiveLevel(null); }}>Mini game</button>
-        <button type="button" className={`btn btn-sm ${view === 'placement' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setView('placement')}>Bài test đầu vào ({activePlacementCount})</button>
+      <div className="admin-inline-actions" style={{ marginBottom: 'var(--space-2)', justifyContent: 'flex-start' }}>
+        <button type="button" className={`btn ${view !== 'placement' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setView('levels'); setActiveLevel(null); }}>Mini game</button>
+        <button type="button" className={`btn ${view === 'placement' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('placement')}>Bài test đầu vào ({activePlacementCount})</button>
       </div>
 
       {view === 'levels' && (
-        <>
-          {levels.length === 0 && <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: 32 }}>Chưa có level mini game nào.</p>}
+        <section className="admin-receptive-list">
+          {levels.length === 0 && <div className="admin-empty-inline">Chưa có level mini game nào.</div>}
           {levels.map(lv => (
-            <div key={lv.Id} style={cardStyle}>
-              <div onClick={() => loadQuestions(lv)} style={{ cursor: 'pointer', flex: 1 }}>
-                <span style={{ fontWeight: 700, marginRight: 8 }}>Level {lv.LevelNumber}:</span>
-                <b>{lv.Name}</b>
-                <span style={{ marginLeft: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>{lv.QuestionCount} cau - {lv.TimeLimit}s - Dat {lv.PassScore}%</span>
-              </div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLevelForm(lv)}>Sửa</button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => deleteLevel(lv.Id)}>Xóa</button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => loadQuestions(lv)}>Câu hỏi</button>
+            <div key={lv.Id} className="admin-receptive-card">
+              <div className="admin-receptive-card-head" style={{ border: 0 }}>
+                <button type="button" className="admin-receptive-title" onClick={() => loadQuestions(lv)} style={{ cursor: 'pointer' }}>
+                  <strong>Level {lv.LevelNumber}: {lv.Name}</strong>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                    <span className="badge badge-secondary">{lv.QuestionCount} câu</span>
+                    <span className="badge badge-secondary">{lv.TimeLimit}s</span>
+                    <span className="badge badge-secondary">Đạt {lv.PassScore}%</span>
+                  </div>
+                </button>
+                <div className="admin-inline-actions">
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLevelForm(lv)}>Sửa</button>
+                  <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteLevel(lv.Id)}>Xóa</button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => loadQuestions(lv)}>Câu hỏi</button>
+                </div>
               </div>
             </div>
           ))}
-        </>
+        </section>
       )}
 
       {view === 'questions' && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-            <h2 style={{ fontSize: 18 }}>{activeLevel?.Name}</h2>
+        <section className="admin-subpanel" style={{ padding: '14px 16px' }}>
+          <div className="admin-subpanel-head" style={{ margin: '-14px -16px var(--space-4) -16px' }}>
+            <div>
+              <h3>Level {activeLevel?.LevelNumber}: {activeLevel?.Name}</h3>
+              <p style={{ display: 'block', fontSize: '12px', color: 'var(--admin-muted)', marginTop: 4 }}>Danh sách câu hỏi của màn chơi.</p>
+            </div>
             <button type="button" className="btn btn-primary btn-sm" onClick={() => openQuestionForm()}><FiPlus /> Thêm câu hỏi</button>
           </div>
-          {questions.map(q => renderQuestionRow(q, <><button type="button" className="btn btn-ghost btn-sm" onClick={() => openQuestionForm(q)}>Sửa</button><button type="button" className="btn btn-ghost btn-sm" onClick={() => deleteQuestion(q.Id)}>Xóa</button></>))}
-        </>
+
+          <div className="admin-item-list">
+            {questions.map(q => renderQuestionRow(
+              q,
+              <>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => openQuestionForm(q)}>Sửa</button>
+                <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteQuestion(q.Id)}>Xóa</button>
+              </>
+            ))}
+            {questions.length === 0 && <div className="admin-empty-inline">Chưa có câu hỏi nào.</div>}
+          </div>
+        </section>
       )}
 
       {view === 'placement' && (
-        <>
-          <div style={{ marginBottom: 14, color: 'var(--color-text-muted)', fontSize: 13 }}>
-            Các câu active sẽ được đưa vào bài test đầu vào. Point ratio là trọng số điểm khi chấm bài.
+        <section className="admin-subpanel" style={{ padding: '14px 16px' }}>
+          <div className="admin-subpanel-head" style={{ margin: '-14px -16px var(--space-4) -16px' }}>
+            <div>
+              <h3>Bài test đầu vào</h3>
+              <p style={{ display: 'block', fontSize: '12px', color: 'var(--admin-muted)', marginTop: 4 }}>Các câu active sẽ được đưa vào bài test đầu vào. Point ratio là trọng số điểm khi chấm bài.</p>
+            </div>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => openPlacementForm()}><FiPlus /> Thêm câu test</button>
           </div>
-          {placementQuestions.length === 0 && <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: 32 }}>Chưa có câu hỏi test đầu vào.</p>}
-          {placementQuestions.map(q => renderQuestionRow(
-            q,
-            <><button type="button" className="btn btn-ghost btn-sm" onClick={() => openPlacementForm(q)}>Sửa</button><button type="button" className="btn btn-ghost btn-sm" onClick={() => deletePlacementQuestion(q.Id)}>Xóa</button></>,
-            <><span style={{ fontSize: 12, background: q.IsActive ? '#dcfce7' : '#fee2e2', color: q.IsActive ? '#166534' : '#991b1b', padding: '2px 8px', borderRadius: 6 }}>{q.IsActive ? 'active' : 'inactive'}</span><span style={{ fontSize: 12, background: '#f8fafc', padding: '2px 8px', borderRadius: 6 }}>{q.Difficulty} x{Number(q.PointRatio || 1).toFixed(2)}</span></>
-          ))}
-        </>
+
+          <div className="admin-item-list">
+            {placementQuestions.map(q => renderQuestionRow(
+              q,
+              <>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => openPlacementForm(q)}>Sửa</button>
+                <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deletePlacementQuestion(q.Id)}>Xóa</button>
+              </>,
+              <>
+                <span className={`badge ${q.IsActive ? 'is-active' : 'is-locked'}`} style={{ color: q.IsActive ? 'var(--admin-success)' : 'var(--admin-danger)' }}>{q.IsActive ? 'Active' : 'Inactive'}</span>
+                <span className="badge badge-secondary">{q.Difficulty}</span>
+                <span className="badge badge-secondary">x{Number(q.PointRatio || 1).toFixed(2)}</span>
+              </>
+            ))}
+            {placementQuestions.length === 0 && <div className="admin-empty-inline">Chưa có câu hỏi test đầu vào nào.</div>}
+          </div>
+        </section>
       )}
 
       {showForm && view === 'levels' && (

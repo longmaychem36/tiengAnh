@@ -8,7 +8,6 @@ import { stopAllPlayback } from './utils/audioControl';
 import { installSoundEffects } from './utils/soundEffects';
 
 // Pages
-import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -51,6 +50,9 @@ function App() {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const isAdmin = user?.role === 'admin';
+  const homePath = user
+    ? (isAdmin ? '/admin' : (user.onboardingCompleted === false ? '/onboarding' : '/dashboard'))
+    : '/login';
 
   useEffect(() => {
     stopAllPlayback();
@@ -76,7 +78,7 @@ function App() {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<Navigate to={homePath} replace />} />
       <Route path="/login" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <Login />} />
       <Route path="/register" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <Register />} />
       <Route path="/forgot-password" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <ForgotPassword />} />
@@ -133,3 +135,4 @@ function App() {
 }
 
 export default App;
+

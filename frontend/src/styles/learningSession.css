@@ -1669,3 +1669,160 @@
     transition-duration: 1ms !important;
   }
 }
+
+/* Minimalist Writing Lesson feedback styles */
+.writing-editor-meta-clean {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 0.88rem;
+  color: var(--learning-muted);
+  font-weight: 800;
+  padding-inline: 4px;
+}
+
+.writing-checking-tag {
+  color: var(--learning-primary);
+  animation: pulse-checking 1.5s infinite;
+}
+
+@keyframes pulse-checking {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.writing-feedback-clean {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 18px;
+  background: #ffffff;
+  border: 1.5px solid var(--learning-border);
+  border-radius: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.writing-score-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  width: fit-content;
+}
+
+.writing-score-pill.is-pass {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.writing-score-pill.is-fail {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.writing-score-pill svg {
+  font-size: 18px;
+}
+
+.writing-score-pill strong {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.feedback-section-title {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--learning-muted);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--learning-border);
+  padding-bottom: 4px;
+}
+
+.writing-feedback-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feedback-comment-item {
+  background: #f8fafc;
+  border: 1px solid var(--learning-border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.feedback-comment-item strong {
+  display: block;
+  font-size: 13px;
+  color: #475569;
+  margin-bottom: 4px;
+  font-weight: 800;
+}
+
+.feedback-comment-item p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--learning-text);
+  line-height: 1.5;
+}
+
+.writing-comparison-card {
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  border: 1px solid var(--learning-border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.comparison-diff-display {
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 800;
+  padding: 10px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1.5px dashed var(--learning-border);
+  margin-bottom: 8px;
+}
+
+.comparison-note {
+  font-size: 12px;
+  color: var(--learning-muted);
+  margin: 0;
+  font-weight: 800;
+  text-align: center;
+}
+
+.diff-green-text {
+  color: #166534;
+  font-weight: 900;
+}
+
+.diff-red-text {
+  color: #b91c1c;
+  font-weight: 900;
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  .writing-feedback-clean {
+    background: #111827;
+  }
+  .feedback-comment-item,
+  .writing-comparison-card {
+    background: #0f172a;
+  }
+  .comparison-diff-display {
+    background: #1e293b;
+  }
+}
+

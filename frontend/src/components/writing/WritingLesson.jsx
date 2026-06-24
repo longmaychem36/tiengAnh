@@ -470,61 +470,50 @@ const WritingLesson = () => {
             }}
           />
 
-          <div className="writing-editor-meta">
-            <div className="writing-stat-row">
-              <div className="writing-stat-card">
-                <span>Từ</span>
-                <strong>{wordCount}</strong>
-              </div>
-              <div className="writing-stat-card">
-                <span>Ký tự</span>
-                <strong>{characterCount}</strong>
-              </div>
-            </div>
-            {isChecking && <span className="lesson-topic-tag">Đang chấm</span>}
+          <div className="writing-editor-meta-clean">
+            <span>{wordCount} từ · {characterCount} ký tự</span>
+            {isChecking && <span className="writing-checking-tag">Đang chấm...</span>}
           </div>
 
           {result && (
-            <motion.div className="writing-feedback" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <div className={`speaking-score ${isWritingPassed ? 'is-pass' : 'is-fail'}`}>
+            <motion.div className="writing-feedback-clean" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <div className={`writing-score-pill ${isWritingPassed ? 'is-pass' : 'is-fail'}`}>
                 {isWritingPassed ? <FiCheckCircle /> : <FiXCircle />}
-                <strong>{result.score}%</strong>
-                <span>{isWritingPassed ? 'Đạt yêu cầu' : 'Cần sửa thêm'}</span>
+                <span>Điểm số: <strong>{result.score}%</strong> — {isWritingPassed ? 'Đạt yêu cầu' : 'Cần chỉnh sửa thêm'}</span>
               </div>
 
-              <div className="writing-feedback-grid">
-                <div>
-                  <span>Ngữ pháp</span>
-                  <p>{formatFeedbackText(result.grammar || result.feedback, 'So sánh với đáp án mẫu để chỉnh cấu trúc câu.')}</p>
-                </div>
-                <div>
-                  <span>Chính tả</span>
-                  <p>{formatFeedbackText(result.spelling, 'Kiểm tra lại các từ bị đánh dấu ở phần đối chiếu.')}</p>
-                </div>
-                <div>
-                  <span>Gợi ý</span>
-                  <p>{formatFeedbackText(result.suggestions, currentExercise.correctAnswerEN)}</p>
-                </div>
-              </div>
+              {(result.grammar || result.feedback || (result.spelling && !String(result.spelling).includes('đánh dấu ở phần đối chiếu'))) && (
+                <div className="writing-feedback-comments">
+                  <div className="feedback-section-title">Nhận xét chi tiết</div>
+                  
+                  {(result.grammar || result.feedback) && (
+                    <div className="feedback-comment-item">
+                      <strong>Cấu trúc & Ngữ pháp:</strong>
+                      <p>{formatFeedbackText(result.grammar || result.feedback, '')}</p>
+                    </div>
+                  )}
 
-              <div className="writing-review-grid">
-                <div>
-                  <span>Bạn</span>
-                  <p>{currentAttempt?.userText || userText}</p>
+                  {result.spelling && !String(result.spelling).includes('đánh dấu ở phần đối chiếu') && (
+                    <div className="feedback-comment-item">
+                      <strong>Chính tả:</strong>
+                      <p>{formatFeedbackText(result.spelling, '')}</p>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <span>Mẫu</span>
-                  <p>{currentExercise.correctAnswerEN}</p>
-                </div>
-              </div>
+              )}
 
-              <div className="writing-diff-box">
-                <span>Đối chiếu</span>
-                <p>
+              <div className="writing-comparison-card">
+                <div className="feedback-section-title">So sánh đáp án gợi ý</div>
+                
+                <div className="comparison-diff-display">
                   <TargetDiff
                     userText={currentAttempt?.userText || userText}
                     targetText={currentExercise.correctAnswerEN}
                   />
+                </div>
+                
+                <p className="comparison-note">
+                  (Từ màu <span className="diff-green-text">xanh lá</span> là chính xác, từ màu <span className="diff-red-text">đỏ</span> cần thay thế/bổ sung)
                 </p>
               </div>
             </motion.div>

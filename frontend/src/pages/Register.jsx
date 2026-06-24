@@ -179,13 +179,6 @@ function Register() {
           Already have an account?{' '}
           <Link to="/login" style={{ fontWeight: 600 }}>Sign In</Link>
         </p>
-
-        <Link to="/" style={{
-          display: 'block', textAlign: 'center', marginTop: 'var(--space-4)',
-          fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)'
-        }}>
-          &lt;- Back to Home
-        </Link>
       </motion.div>
     </div>
   );

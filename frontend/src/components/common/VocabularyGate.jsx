@@ -49,12 +49,17 @@ const VocabularyGate = ({
   confirmOnExit = false,
   allowStudy = true,
   passMessage = 'Đã mở khóa bài học.',
-  continueLabel = 'Vào làm bài'
+  continueLabel = 'Vào làm bài',
+  oneByOne = false
 }) => {
   const vocabulary = useMemo(() => dedupeVocabulary(items), [items]);
   const [phase, setPhase] = useState(allowStudy ? 'study' : 'test');
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
+
+  // oneByOne specific states
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAnswerChecked, setIsAnswerChecked] = useState(false);
 
   const correctCount = vocabulary.filter((item, index) => normalize(answers[index]) === normalize(item.word)).length;
   const score = vocabulary.length ? Math.round((correctCount / vocabulary.length) * 100) : 100;
@@ -80,6 +85,8 @@ const VocabularyGate = ({
     setPhase('test');
     setSubmitted(false);
     setAnswers({});
+    setCurrentIndex(0);
+    setIsAnswerChecked(false);
     playSound('confirm');
   };
 
@@ -94,9 +101,51 @@ const VocabularyGate = ({
     playSound(score === 100 ? 'success' : 'error');
   };
 
+  const handleCheckOneByOne = () => {
+    const currentAnswer = String(answers[currentIndex] || '').trim();
+    if (!currentAnswer) {
+      toast.error('Vui lòng nhập từ tiếng Anh.');
+      playSound('error');
+      return;
+    }
+
+    setIsAnswerChecked(true);
+    const item = vocabulary[currentIndex];
+    const isCorrect = normalize(currentAnswer) === normalize(item.word);
+
+    // Auto-speak word on check
+    speakText(item.word, { lang: 'en-US', rate: 0.92 });
+    playSound(isCorrect ? 'success' : 'error');
+  };
+
+  const handleNextOneByOne = () => {
+    if (currentIndex < vocabulary.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+      setIsAnswerChecked(false);
+    } else {
+      setSubmitted(true);
+      const finalCorrectCount = vocabulary.filter((item, idx) => normalize(answers[idx]) === normalize(item.word)).length;
+      const finalScore = vocabulary.length ? Math.round((finalCorrectCount / vocabulary.length) * 100) : 100;
+      playSound(finalScore === 100 ? 'success' : 'error');
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!isAnswerChecked) {
+        handleCheckOneByOne();
+      } else {
+        handleNextOneByOne();
+      }
+    }
+  };
+
   const handleRetry = () => {
     setAnswers({});
     setSubmitted(false);
+    setCurrentIndex(0);
+    setIsAnswerChecked(false);
     playSound('tap');
   };
 
@@ -105,6 +154,8 @@ const VocabularyGate = ({
     setPhase('study');
     setAnswers({});
     setSubmitted(false);
+    setCurrentIndex(0);
+    setIsAnswerChecked(false);
     playSound('tap');
   };
 
@@ -173,6 +224,138 @@ const VocabularyGate = ({
             </button>
           </div>
         </section>
+      ) : oneByOne ? (
+        submitted ? (
+          <section className="vocab-quiz-panel vocab-results-panel">
+            <div className="vocab-results-summary">
+              <div className={`vocab-results-score-circle ${score === 100 ? 'is-pass' : 'is-fail'}`}>
+                <FiTarget />
+                <h2>{score}%</h2>
+                <span>Đúng {correctCount}/{vocabulary.length} từ</span>
+              </div>
+              
+              <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, marginTop: 'var(--space-4)' }}>
+                {score === 100 
+                  ? 'Tuyệt vời! Bạn đã thuộc tất cả các từ!' 
+                  : 'Hãy ôn lại các từ chưa chính xác nhé!'}
+              </h3>
+            </div>
+
+            {score < 100 && (
+              <div className="vocab-incorrect-list-container">
+                <h4 style={{ fontWeight: 800, marginBottom: 'var(--space-2)' }}>Các từ cần ôn lại:</h4>
+                <div className="vocab-incorrect-list">
+                  {vocabulary.map((item, index) => {
+                    const isCorrect = normalize(answers[index]) === normalize(item.word);
+                    if (isCorrect) return null;
+                    return (
+                      <article key={`${item.word}-${index}`} className="vocab-incorrect-card">
+                        <div className="vocab-incorrect-info">
+                          <span className="meaning">{item.meaning}</span>
+                          <span className="arrow">→</span>
+                          <strong className="word">{item.word}</strong>
+                        </div>
+                        <span className="user-answer">Bạn đã gõ: "{answers[index] || '(trống)'}"</span>
+                        <button type="button" className="btn btn-icon btn-ghost btn-sm speak-incorrect-btn" onClick={() => speakWord(item)} style={{ color: 'var(--color-primary)' }} aria-label={`Nghe ${item.word}`}>
+                          <FiVolume2 />
+                        </button>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="vocab-gate-actions">
+              {score < 100 ? (
+                <button type="button" className="btn btn-secondary" onClick={handleRetry}>
+                  <FiRefreshCw /> Thử lại
+                </button>
+              ) : (
+                <button type="button" className="btn btn-primary" onClick={handleContinue}>
+                  {continueLabel} <FiArrowRight />
+                </button>
+              )}
+            </div>
+          </section>
+        ) : (
+          <section className="vocab-quiz-panel vocab-typing-panel one-by-one-layout">
+            <div className="vocab-progress-container">
+              <div 
+                className="vocab-progress-bar" 
+                style={{ width: `${(currentIndex / vocabulary.length) * 100}%` }}
+              />
+            </div>
+
+            <div className="vocab-flashcard-wrapper">
+              <div className="vocab-flashcard-header">
+                <span>Học phần: {title}</span>
+                <span>Từ {currentIndex + 1} / {vocabulary.length}</span>
+              </div>
+
+              <motion.div
+                key={currentIndex}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.25 }}
+                className="vocab-flashcard-body"
+              >
+                <div className="vocab-flashcard-meaning-box">
+                  <span className="vocab-flashcard-label">Nghĩa tiếng Việt</span>
+                  <h2 className="vocab-flashcard-meaning">{vocabulary[currentIndex]?.meaning}</h2>
+                  {isAnswerChecked && vocabulary[currentIndex]?.example && (
+                    <p className="vocab-flashcard-example">"{vocabulary[currentIndex]?.example}"</p>
+                  )}
+                </div>
+
+                <div className="vocab-flashcard-input-box">
+                  <input
+                    type="text"
+                    className="vocab-type-input centered-input"
+                    value={answers[currentIndex] || ''}
+                    disabled={isAnswerChecked}
+                    placeholder="Gõ từ tiếng Anh..."
+                    autoComplete="off"
+                    autoFocus
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setAnswers((current) => ({ ...current, [currentIndex]: e.target.value }))}
+                  />
+                </div>
+              </motion.div>
+            </div>
+
+            <div className={`vocab-feedback-bar ${isAnswerChecked ? (normalize(answers[currentIndex]) === normalize(vocabulary[currentIndex]?.word) ? 'is-correct' : 'is-wrong') : ''}`}>
+              {!isAnswerChecked ? (
+                <div className="vocab-feedback-actions-only">
+                  <button type="button" className="btn btn-primary" onClick={handleCheckOneByOne}>
+                    Kiểm tra
+                  </button>
+                </div>
+              ) : (
+                <div className="vocab-feedback-content">
+                  <div className="vocab-feedback-status-group">
+                    <button type="button" className="vocab-audio-btn-small" onClick={() => speakWord(vocabulary[currentIndex])} aria-label={`Nghe ${vocabulary[currentIndex]?.word}`}>
+                      <FiVolume2 />
+                    </button>
+                    <div className="vocab-feedback-text">
+                      {normalize(answers[currentIndex]) === normalize(vocabulary[currentIndex]?.word) ? (
+                        <span className="feedback-title correct"><FiCheckCircle /> Chính xác!</span>
+                      ) : (
+                        <>
+                          <span className="feedback-title wrong"><FiXCircle /> Chưa đúng</span>
+                          <p className="feedback-answer">Đáp án đúng: <strong>{vocabulary[currentIndex]?.word}</strong></p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <button type="button" className="btn btn-primary" onClick={handleNextOneByOne}>
+                    Tiếp tục <FiArrowRight />
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+        )
       ) : (
         <section className="vocab-quiz-panel vocab-typing-panel">
           <div className="compact-panel-title">

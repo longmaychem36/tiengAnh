@@ -20,6 +20,7 @@ import { receptiveApi } from '../../api/receptiveApi';
 import Loading from '../common/Loading';
 import VocabularyGate from '../common/VocabularyGate';
 import QuestionNavigator from '../common/QuestionNavigator';
+import ExpReward from '../common/ExpReward';
 import { receptiveSkillMeta } from './receptiveMeta';
 import {
   LearningLayout,
@@ -146,6 +147,8 @@ const ReceptiveLesson = ({ skill }) => {
   const [activeLineIndex, setActiveLineIndex] = useState(null);
   const [vocabPassed, setVocabPassed] = useState(false);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [showCompletion, setShowCompletion] = useState(false);
+  const [expReward, setExpReward] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,6 +162,8 @@ const ReceptiveLesson = ({ skill }) => {
     setListeningStartIndex(0);
     setActiveLineIndex(null);
     setActiveQuestionIndex(0);
+    setShowCompletion(false);
+    setExpReward(null);
 
     Promise.all([
       receptiveApi.getLessonDetails(skill, id),
@@ -281,17 +286,32 @@ const ReceptiveLesson = ({ skill }) => {
       return;
     }
 
+    setLoading(true);
     const correctCount = lesson.questions.filter((question) => isQuestionCorrect(question, answers[question.id])).length;
     const score = Math.round((correctCount / lesson.questions.length) * 100);
-    setResult({ correctCount, score });
-    receptiveApi.saveProgress(skill, {
-      lessonId: lesson.id,
-      score,
-      completed: score >= PASS_SCORE
-    }).catch(() => {});
+    const isCompleted = score >= PASS_SCORE;
 
-    if (score >= PASS_SCORE) toast.success('Đã hoàn thành bài học.');
-    else toast('Bạn nên luyện lại bài này để đạt ít nhất 70%.');
+    try {
+      const res = await receptiveApi.saveProgress(skill, {
+        lessonId: lesson.id,
+        score,
+        completed: isCompleted
+      });
+
+      setResult({ correctCount, score });
+      setExpReward(res.data?.expReward || null);
+
+      if (isCompleted) {
+        toast.success('Đã hoàn thành bài học!');
+        setShowCompletion(true);
+      } else {
+        toast('Bạn nên luyện lại bài này để đạt ít nhất 70%.');
+      }
+    } catch (err) {
+      toast.error('Lỗi lưu tiến độ bài học');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRetry = () => {
@@ -300,6 +320,8 @@ const ReceptiveLesson = ({ skill }) => {
     setResult(null);
     setShowTranscript(false);
     setActiveQuestionIndex(0);
+    setShowCompletion(false);
+    setExpReward(null);
   };
 
   const speechText = buildSpeechText(lesson, skill);
@@ -319,7 +341,7 @@ const ReceptiveLesson = ({ skill }) => {
     setActiveLineIndex(null);
   };
 
-  const speakListeningLesson = () => {
+  const speakListeningLesson = (rate = speechRate) => {
     if (!hasSpeechSupport()) {
       toast.error('Trình duyệt chưa hỗ trợ đọc audio.');
       return;
@@ -329,11 +351,14 @@ const ReceptiveLesson = ({ skill }) => {
     const startIndex = Math.min(listeningStartIndex, Math.max(transcript.length - 1, 0));
     const queue = transcript.slice(startIndex).map((line, offset) => {
       const lineIndex = startIndex + offset;
+      const voiceOpts = (skill === 'listening')
+        ? getSpeakerSpeechOptions(line.speakerProfile, voices)
+        : (selectedVoice ? { voice: selectedVoice } : getSpeakerSpeechOptions(line.speakerProfile, voices));
       return {
         text: line.text,
-        ...(selectedVoice ? { voice: selectedVoice } : getSpeakerSpeechOptions(line.speakerProfile, voices)),
-        rate: speechRate,
-        volume: speechVolume,
+        ...voiceOpts,
+        rate: rate,
+        volume: skill === 'listening' ? 1 : speechVolume,
         onstart: () => {
           setActiveLineIndex(lineIndex);
           setListeningStartIndex(lineIndex);
@@ -344,21 +369,34 @@ const ReceptiveLesson = ({ skill }) => {
       };
     });
 
-    speakTextQueue(queue, { lang: 'en-US', rate: speechRate, volume: speechVolume });
+    speakTextQueue(queue, { lang: 'en-US', rate: rate, volume: skill === 'listening' ? 1 : speechVolume });
   };
 
-  const speakTranscriptLine = (line) => {
+  const speakTranscriptLine = (line, rate = speechRate) => {
     const lineIndex = lesson.transcript.indexOf(line);
     if (lineIndex >= 0) setListeningStartIndex(lineIndex);
+    const voiceOpts = (skill === 'listening')
+      ? getSpeakerSpeechOptions(line.speakerProfile, voices)
+      : (selectedVoice ? { voice: selectedVoice } : getSpeakerSpeechOptions(line.speakerProfile, voices));
     speak(line.text, {
-      ...(selectedVoice ? { voice: selectedVoice } : getSpeakerSpeechOptions(line.speakerProfile, voices)),
-      rate: speechRate,
-      volume: speechVolume,
+      ...voiceOpts,
+      rate: rate,
+      volume: skill === 'listening' ? 1 : speechVolume,
       onstart: () => {
         if (lineIndex >= 0) setActiveLineIndex(lineIndex);
       },
       onend: () => setActiveLineIndex(null)
     });
+  };
+
+  const handleSpeedChange = (newRate) => {
+    setSpeechRate(newRate);
+    if (activeLineIndex !== null) {
+      stopSpeech();
+      setTimeout(() => {
+        speakListeningLesson(newRate);
+      }, 50);
+    }
   };
 
   const handleStopListening = () => {
@@ -441,32 +479,11 @@ const ReceptiveLesson = ({ skill }) => {
         </SecondaryButton>
         <label>
           Tốc độ
-          <select aria-label="Playback speed" value={speechRate} onChange={(event) => setSpeechRate(Number(event.target.value))}>
+          <select aria-label="Playback speed" value={speechRate} onChange={(event) => handleSpeedChange(Number(event.target.value))}>
             <option value={0.75}>0.75x</option>
             <option value={1}>1x</option>
             <option value={1.15}>1.15x</option>
             <option value={1.3}>1.3x</option>
-          </select>
-        </label>
-        <label>
-          Âm lượng
-          <input
-            aria-label="Volume"
-            type="range"
-            min="0"
-            max="1"
-            step="0.1"
-            value={speechVolume}
-            onChange={(event) => setSpeechVolume(Number(event.target.value))}
-          />
-        </label>
-        <label>
-          Giọng
-          <select aria-label="Chọn giọng đọc" value={selectedVoiceURI} onChange={(event) => handleVoiceChange(event.target.value)}>
-            {voices.length === 0 && <option value="">Đang tải giọng đọc…</option>}
-            {voices.map((voice) => (
-              <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name}</option>
-            ))}
           </select>
         </label>
       </div>
@@ -609,6 +626,58 @@ const ReceptiveLesson = ({ skill }) => {
       </QuestionCard>
     </motion.div>
   ) : null;
+
+  if (showCompletion) {
+    const completionTitle = `Hoàn thành chủ đề ${skill === 'listening' ? 'Listening' : 'Reading'}`;
+
+    return (
+      <div className="receptive-page fade-in" style={{ '--receptive-accent': '#2563eb' }}>
+        <section className="receptive-panel speaking-completion-panel">
+          <div className="speaking-completion-head">
+            <FiCheckCircle />
+            <div>
+              <span>{completionTitle}</span>
+              <h1>{lesson.title}</h1>
+            </div>
+          </div>
+
+          <ExpReward reward={expReward} />
+
+          <div className="speaking-summary-grid">
+            {lesson.questions.map((question, index) => {
+              const isCorrect = isQuestionCorrect(question, answers[question.id]);
+              return (
+                <div key={question.id || index} className="speaking-summary-item">
+                  <span>Câu {index + 1}</span>
+                  <strong style={{ color: isCorrect ? 'var(--admin-success)' : 'var(--admin-danger)' }}>
+                    {isCorrect ? 'Đúng' : 'Sai'}
+                  </strong>
+                  <p>{question.prompt}</p>
+                  <p className="speaking-question-translation" style={{ fontSize: '12px', color: 'var(--admin-muted)', marginTop: 4 }}>
+                    Đáp án đúng: {question.type === 'true_false' ? String(question.answer) : question.answer}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="receptive-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => navigate(meta.listPath)}>
+              <FiArrowLeft /> Về danh sách
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={handleRetry}>
+              <FiRefreshCw /> Làm lại
+            </button>
+            {nextLesson && (
+              <button type="button" className="btn btn-primary" onClick={() => navigate(`/${skill}/lessons/${nextLesson.id}`)}>
+                Bài tiếp theo <FiArrowRight />
+              </button>
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <LearningLayout

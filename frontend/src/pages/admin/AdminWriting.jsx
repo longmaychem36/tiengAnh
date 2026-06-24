@@ -240,22 +240,22 @@ const AdminWriting = () => {
   };
 
   const renderExerciseForm = () => (
-    <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-4)', background: 'white' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-3)' }}>
-        <div>
-          <span className="form-label">Câu hỏi (Tiếng Việt)</span>
-          <textarea aria-label="Nội dung" className="form-input" value={exContent} onChange={e => setExContent(e.target.value)} />
-        </div>
-        <div>
-          <span className="form-label">Đáp án đúng (English)</span>
+    <div className="admin-nested-form">
+      <div className="admin-form-grid">
+        <span className="is-wide">
+          <span>Câu hỏi (Tiếng Việt)</span>
+          <textarea aria-label="Nội dung" className="form-input" value={exContent} onChange={e => setExContent(e.target.value)} rows={2} />
+        </span>
+        <span className="is-wide">
+          <span>Đáp án đúng (English)</span>
           <input aria-label="Trường nhập" className="form-input" value={exAnswer} onChange={e => setExAnswer(e.target.value)} />
-        </div>
-        <div>
-          <span className="form-label">Thứ tự</span>
-          <input aria-label="Trường nhập" className="form-input form-input-sm" type="number" value={exOrder} onChange={e => setExOrder(e.target.value)} />
-        </div>
+        </span>
+        <span>
+          <span>Thứ tự</span>
+          <input aria-label="Trường nhập" className="form-input" type="number" value={exOrder} onChange={e => setExOrder(e.target.value)} />
+        </span>
       </div>
-      <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
+      <div className="admin-form-actions">
         <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveEx}><FiSave /> Lưu</button>
         <button type="button" className="btn btn-ghost btn-sm" onClick={closeExForm}><FiX /> Hủy</button>
       </div>
@@ -265,139 +265,124 @@ const AdminWriting = () => {
   if (loading) return <div className="p-8">Đang tải...</div>;
 
   return (
-    <div className="fade-in" style={{ padding: 'var(--space-6)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
-        <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>Quản lý Writing Skills</h1>
+    <div className="fade-in admin-receptive-page">
+      <div className="admin-receptive-header">
+        <div>
+          <h1>Quản lý Writing</h1>
+        </div>
         <button type="button" className="btn btn-primary" onClick={openNewLessonForm}>
           <FiPlus /> Thêm bài học
         </button>
       </div>
 
       {showLessonForm && (
-        <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-6)' }}>
-          <h3 style={{ marginBottom: 'var(--space-4)' }}>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-            <div>
-              <span className="form-label">Tiêu đề</span>
+        <div className="admin-receptive-form">
+          <h3>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
+          <div className="admin-form-grid">
+            <span>
+              <span>Tiêu đề</span>
               <input aria-label="Trường nhập" className="form-input" value={lTitle} onChange={e => setLTitle(e.target.value)} />
-            </div>
-            <div>
-              <span className="form-label">Thứ tự</span>
+            </span>
+            <span>
+              <span>Thứ tự</span>
               <input aria-label="Trường nhập" className="form-input" type="number" value={lOrder} onChange={e => setLOrder(e.target.value)} />
-            </div>
-            <label className="admin-check-row" style={{ gridColumn: 'span 2' }}>
+            </span>
+            <label className="admin-check-row">
               <input type="checkbox" checked={lFoundation} onChange={e => setLFoundation(e.target.checked)} />
               <span>Bài nền tảng</span>
             </label>
-            <div style={{ gridColumn: 'span 2' }}>
-              <span className="form-label">Mô tả</span>
+            <span className="is-wide">
+              <span>Mô tả</span>
               <textarea aria-label="Nội dung" className="form-input" value={lDesc} onChange={e => setLDesc(e.target.value)} rows={2} />
-            </div>
-            <div style={{ gridColumn: 'span 2' }}>
-              <span className="form-label">Bài văn hoàn chỉnh (English)</span>
+            </span>
+            <span className="is-wide">
+              <span>Bài văn hoàn chỉnh (English)</span>
               <textarea aria-label="Nội dung" className="form-input" value={lPassageEN} onChange={e => setLPassageEN(e.target.value)} rows={5} />
-            </div>
-            <div style={{ gridColumn: 'span 2' }}>
-              <span className="form-label">Bản dịch bài văn (Tiếng Việt)</span>
+            </span>
+            <span className="is-wide">
+              <span>Bản dịch bài văn (Tiếng Việt)</span>
               <textarea aria-label="Nội dung" className="form-input" value={lPassageVI} onChange={e => setLPassageVI(e.target.value)} rows={4} />
-            </div>
+            </span>
           </div>
-          <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-2)' }}>
+          <div className="admin-form-actions">
             <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
             <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
           </div>
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      <div className="admin-receptive-list">
         {lessons.map((lesson, index) => (
-          <div key={lesson.Id} className="card">
-            <div style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }} onClick={() => handleSelectLesson(lesson)}>
+          <div key={lesson.Id} className={`admin-receptive-card ${selectedLesson?.Id === lesson.Id ? 'is-active' : ''}`}>
+            <div className="admin-receptive-card-head">
+              <button type="button" className="admin-receptive-title" onClick={() => handleSelectLesson(lesson)}>
                 <span className="admin-expand-label">{selectedLesson?.Id === lesson.Id ? 'Đóng' : 'Mở'}</span>
                 <div>
-                  <div style={{ fontWeight: 600 }}>{lesson.Title}</div>
-                  <div className="admin-order-badge">STT {lesson.OrderIndex || index + 1}</div>
+                  <strong>{lesson.Title}</strong>
+                  <p className="admin-order-badge">STT {lesson.OrderIndex || index + 1}{lesson.IsFoundation ? ' · Nền tảng' : ''}</p>
                   {lesson.PassageEN && (
-                    <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 6 }}>
+                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 4 }}>
                       {lesson.PassageEN.slice(0, 140)}{lesson.PassageEN.length > 140 ? '...' : ''}
-                    </div>
+                    </span>
                   )}
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              </button>
+              <div className="admin-inline-actions">
                 <button type="button" className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => handleMoveLesson(lesson.Id, -1)}>Lên</button>
                 <button type="button" className="btn btn-ghost btn-sm" disabled={index === lessons.length - 1} onClick={() => handleMoveLesson(lesson.Id, 1)}>Xuống</button>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
                   setEditingLesson(lesson); setLTitle(lesson.Title); setLDesc(lesson.Description); setLPassageEN(lesson.PassageEN || ''); setLPassageVI(lesson.PassageVI || ''); setLOrder(lesson.OrderIndex); setLFoundation(Boolean(lesson.IsFoundation));
                   setShowLessonForm(true);
                 }}>Sửa</button>
-                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteLesson(lesson.Id)}>Xóa</button>
+                <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => handleDeleteLesson(lesson.Id)}>Xóa</button>
               </div>
             </div>
 
             {selectedLesson?.Id === lesson.Id && (
-              <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.01)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
-                  <h4 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Bài tập Writing</h4>
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => { closeExForm(); setShowExForm(true); }}><FiPlus /> Thêm bài tập</button>
-                </div>
-
-                {showExForm && !editingEx && (
-                  <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-4)', background: 'white' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-3)' }}>
-                      <div>
-                        <span className="form-label">Câu hỏi (Tiếng Việt)</span>
-                        <textarea aria-label="Nội dung" className="form-input" value={exContent} onChange={e => setExContent(e.target.value)} />
-                      </div>
-                      <div>
-                        <span className="form-label">Đáp án đúng (English)</span>
-                        <input aria-label="Trường nhập" className="form-input" value={exAnswer} onChange={e => setExAnswer(e.target.value)} />
-                      </div>
-                      <div>
-                        <span className="form-label">Thứ tự</span>
-                        <input aria-label="Trường nhập" className="form-input form-input-sm" type="number" value={exOrder} onChange={e => setExOrder(e.target.value)} />
-                      </div>
-                    </div>
-                    <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-                      <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveEx}><FiSave /> Lưu</button>
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={closeExForm}><FiX /> Hủy</button>
-                    </div>
+              <div className="admin-receptive-detail">
+                <section className="admin-subpanel">
+                  <div className="admin-subpanel-head">
+                    <h3>Bài tập Writing</h3>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { closeExForm(); setShowExForm(true); }}><FiPlus /> Thêm bài tập</button>
                   </div>
-                )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                  {exercises.map(ex => (
-                    <React.Fragment key={ex.Id}>
-                    <div className="card" style={{ background: 'white', padding: 'var(--space-3)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500 }}>{ex.ContentVI}</div>
-                          <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)', marginTop: 4 }}>{ex.CorrectAnswerEN}</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-                          <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
-                            setEditingEx(ex); setExContent(ex.ContentVI); setExAnswer(ex.CorrectAnswerEN); setExOrder(ex.OrderIndex);
-                            setShowExForm(true);
-                          }}>Sửa</button>
-                          <button type="button" className="btn btn-ghost btn-xs" style={{ color: 'var(--color-error)' }} onClick={() => handleDeleteEx(ex.Id)}>Xóa</button>
-                        </div>
-                      </div>
+                  {showExForm && !editingEx && renderExerciseForm()}
 
-                      {/* Vocab hints for this exercise */}
-                      <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-2)', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          GỢI Ý TỪ VỰNG
+                  <div className="admin-item-list">
+                    {exercises.map(ex => (
+                      <React.Fragment key={ex.Id}>
+                        <div className="admin-list-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <strong>{ex.ContentVI}</strong>
+                              <p style={{ color: 'var(--admin-primary)', fontWeight: 600, marginTop: 4 }}>{ex.CorrectAnswerEN}</p>
+                            </div>
+                            <div className="admin-inline-actions">
+                              <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
+                                setEditingEx(ex); setExContent(ex.ContentVI); setExAnswer(ex.CorrectAnswerEN); setExOrder(ex.OrderIndex);
+                                setShowExForm(true);
+                              }}>Sửa</button>
+                              <button type="button" className="btn btn-ghost btn-xs is-danger" onClick={() => handleDeleteEx(ex.Id)}>Xóa</button>
+                            </div>
+                          </div>
+
+                          <div style={{ padding: 'var(--space-2)', background: 'var(--admin-sidebar-bg)', border: '1px solid var(--admin-border)', borderRadius: '3px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--admin-muted)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              GỢI Ý TỪ VỰNG
+                            </div>
+                            <div className="admin-chip-list">
+                              <VocabManager exId={ex.Id} />
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 'var(--space-2)' }}>
-                          <VocabManager exId={ex.Id} />
-                        </div>
-                      </div>
-                    </div>
-                    {showExForm && editingEx?.Id === ex.Id && renderExerciseForm()}
-                    </React.Fragment>
-                  ))}
-                </div>
+                        {showExForm && editingEx?.Id === ex.Id && renderExerciseForm()}
+                      </React.Fragment>
+                    ))}
+                    {exercises.length === 0 && !showExForm && (
+                      <div className="admin-empty-inline">Chưa có bài tập nào.</div>
+                    )}
+                  </div>
+                </section>
               </div>
             )}
           </div>

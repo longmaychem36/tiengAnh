@@ -149,17 +149,10 @@ function Login() {
           Don't have an account?{' '}
           <Link to="/register" style={{ fontWeight: 600 }}>Sign Up</Link>
         </p>
-
-        <Link to="/" style={{
-          display: 'block', textAlign: 'center',
-          marginTop: 'var(--space-4)',
-          fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)'
-        }}>
-          ← Back to Home
-        </Link>
       </motion.div>
     </div>
   );
 }
 
 export default Login;
+
