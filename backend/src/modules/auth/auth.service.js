@@ -143,11 +143,16 @@ function getMailTransporter() {
   const pass = process.env.SMTP_PASS;
   if (!host || !user || !pass) return null;
 
+  const timeout = Number(process.env.SMTP_TIMEOUT_MS || 20000);
+
   return nodemailer.createTransport({
     host,
     port,
     secure: process.env.SMTP_SECURE === 'true' || port === 465,
-    auth: { user, pass }
+    auth: { user, pass },
+    connectionTimeout: timeout,
+    greetingTimeout: timeout,
+    socketTimeout: timeout
   });
 }
 
@@ -159,21 +164,28 @@ async function sendResetCodeEmail(email, code) {
 
   const appName = process.env.APP_NAME || 'LingoConnect';
   const from = process.env.MAIL_FROM || process.env.SMTP_USER;
-  await transporter.sendMail({
-    from,
-    to: email,
-    subject: `${appName} password reset code`,
-    text: `Your ${appName} password reset code is ${code}. This code expires in 10 minutes. If you did not request this, ignore this email.`,
-    html: `
-      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#102033">
-        <h2>${appName} password reset</h2>
-        <p>Your verification code is:</p>
-        <div style="font-size:28px;font-weight:800;letter-spacing:6px;color:#1cb0f6">${code}</div>
-        <p>This code expires in <strong>10 minutes</strong>.</p>
-        <p>If you did not request this, ignore this email.</p>
-      </div>
-    `
-  });
+
+  try {
+    await transporter.sendMail({
+      from,
+      to: email,
+      subject: `${appName} password reset code`,
+      text: `Your ${appName} password reset code is ${code}. This code expires in 10 minutes. If you did not request this, ignore this email.`,
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#102033">
+          <h2>${appName} password reset</h2>
+          <p>Your verification code is:</p>
+          <div style="font-size:28px;font-weight:800;letter-spacing:6px;color:#1cb0f6">${code}</div>
+          <p>This code expires in <strong>10 minutes</strong>.</p>
+          <p>If you did not request this, ignore this email.</p>
+        </div>
+      `
+    });
+  } catch (err) {
+    const reason = err?.code || err?.command || err?.message || 'SMTP error';
+    console.error('[Auth] Failed to send password reset email:', reason);
+    return { error: 'Could not send reset code email. Check SMTP settings on the server.' };
+  }
 
   return { sent: true };
 }
