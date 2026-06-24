@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "start:all": "concurrently \"node server.js\" \"python whisper_server.py\"",
+    "start:all": "concurrently \"node server.js\" \"python3 whisper_server.py\"",
     "dev": "nodemon server.js",
     "dev:all": "concurrently \"npm run dev\" \"python whisper_server.py\"",
     "db:migrate-minigames": "node scripts/migrate_minigames.js",
