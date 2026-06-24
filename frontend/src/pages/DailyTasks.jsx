@@ -70,7 +70,7 @@ function DailyTasks() {
         <div className="daily-hero-progress">
           <FiStar />
           <strong>{progress}%</strong>
-          <span>{completedCount}/{tasks.length || 3} xong</span>
+          <span>{completedCount}/{tasks.length || 4} xong</span>
         </div>
       </section>
 
@@ -85,7 +85,7 @@ function DailyTasks() {
             </div>
             <div className="daily-progress-pill">
               <FiClock />
-              <strong>{completedCount}/{tasks.length || 3}</strong>
+              <strong>{completedCount}/{tasks.length || 4}</strong>
             </div>
           </div>
 

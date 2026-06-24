@@ -1,7 +1,7 @@
 const { getPool } = require('../../config/database');
 const gamificationService = require('../gamification/gamification.service');
 
-const DAILY_TASK_COUNT = 3;
+const DAILY_TASK_COUNT = 4;
 const DAILY_TASK_REWARDS = {
   daily_login: 10,
   listening_lesson: 20,

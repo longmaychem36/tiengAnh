@@ -5,8 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:all": "concurrently \"node server.js\" \"python whisper_server.py\"",
     "dev": "nodemon server.js",
-    "dev:all": "concurrently \"npm run dev\" \"python ../whisper/whisper_server.py\"",
+    "dev:all": "concurrently \"npm run dev\" \"python whisper_server.py\"",
     "db:migrate-minigames": "node scripts/migrate_minigames.js",
     "db:migrate-receptive": "node scripts/migrate_receptive_courses.js",
     "db:import-data": "node scripts/import_dump_data.js",
@@ -45,10 +46,10 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "pg": "^8.20.0",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "concurrently": "^9.2.1"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1",
     "nodemon": "^3.1.4"
   }
 }
