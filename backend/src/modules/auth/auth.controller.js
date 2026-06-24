@@ -1,5 +1,5 @@
 // ============================================
-// Auth Module — Controller
+// Auth Module - Controller
 // ============================================
 const authService = require('./auth.service');
 const { success, error, badRequest } = require('../../utils/responseHelper');
@@ -36,6 +36,42 @@ const authController = {
       }
 
       return success(res, result, 'Login successful');
+    } catch (err) {
+      next(err);
+    }
+  },
+
+
+  /**
+   * POST /api/v1/auth/forgot-password
+   */
+  async forgotPassword(req, res, next) {
+    try {
+      const result = await authService.requestPasswordReset({ email: req.body.email });
+
+      if (result.error) {
+        return badRequest(res, result.error);
+      }
+
+      return success(res, result, 'Reset code sent');
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * POST /api/v1/auth/reset-password
+   */
+  async resetPassword(req, res, next) {
+    try {
+      const { email, code, password } = req.body;
+      const result = await authService.resetPassword({ email, code, password });
+
+      if (result.error) {
+        return badRequest(res, result.error);
+      }
+
+      return success(res, result, 'Password reset successful');
     } catch (err) {
       next(err);
     }

@@ -1,5 +1,5 @@
 // ============================================
-// Auth Module — Routes
+// Auth Module - Routes
 // ============================================
 const router = require('express').Router();
 const { body } = require('express-validator');
@@ -27,9 +27,23 @@ const loginValidation = [
   validate
 ];
 
+const forgotPasswordValidation = [
+  body('email').isEmail().withMessage('Invalid email address').normalizeEmail(),
+  validate
+];
+
+const resetPasswordValidation = [
+  body('email').isEmail().withMessage('Invalid email address').normalizeEmail(),
+  body('code').trim().isLength({ min: 6, max: 6 }).withMessage('Reset code must be 6 digits').isNumeric().withMessage('Reset code must be numeric'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  validate
+];
+
 // Routes
 router.post('/register', registerValidation, authController.register);
 router.post('/login', loginValidation, authController.login);
+router.post('/forgot-password', forgotPasswordValidation, authController.forgotPassword);
+router.post('/reset-password', resetPasswordValidation, authController.resetPassword);
 router.get('/me', authMiddleware, authController.getMe);
 
 module.exports = router;

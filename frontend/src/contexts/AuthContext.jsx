@@ -1,5 +1,5 @@
 // ============================================
-// Auth Context — Global Authentication State
+// Auth Context - Global Authentication State
 // ============================================
 import { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authApi } from '../api/authApi';

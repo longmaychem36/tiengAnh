@@ -11,6 +11,7 @@ import { installSoundEffects } from './utils/soundEffects';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Dictionary from './pages/Dictionary';
 import Collections from './pages/Collections';
@@ -78,6 +79,7 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <Login />} />
       <Route path="/register" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <Register />} />
+      <Route path="/forgot-password" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <ForgotPassword />} />
 
       <Route path="/onboarding" element={<ProtectedRoute learnerOnly><Onboarding /></ProtectedRoute>} />
 
