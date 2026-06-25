@@ -449,7 +449,7 @@ const VocabManager = ({ exId }) => {
       {showAdd && (
         <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
           <input aria-label="Trường nhập" className="input input-sm" style={{ height: 24 }} placeholder="Từ" value={w} onChange={e => setW(e.target.value)} />
-          <input aria-label="Trường nhập" className="input input-sm" style={{ height: 24 }} placeholder="NghÄ©a" value={m} onChange={e => setM(e.target.value)} />
+          <input aria-label="Trường nhập" className="input input-sm" style={{ height: 24 }} placeholder="Nghĩa" value={m} onChange={e => setM(e.target.value)} />
           <button type="button" className="btn btn-primary btn-xs" onClick={add}>Lưu</button>
           <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAdd(false)}>Hủy</button>
         </div>

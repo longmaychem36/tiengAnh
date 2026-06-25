@@ -26,10 +26,13 @@ export const adminApi = {
   createUser: (data) => axiosClient.post('/admin/users', data),
   getUsers: (params) => axiosClient.get('/admin/users', { params }),
   getUserStats: () => axiosClient.get('/admin/users/stats'),
+  updateUser: (id, data) => axiosClient.put(`/admin/users/${id}`, data),
+  resetUserPassword: (id, password) => axiosClient.put(`/admin/users/${id}/password`, { password }),
   toggleUserActive: (id) => axiosClient.put(`/admin/users/${id}/toggle-active`),
+  deleteUser: (id) => axiosClient.delete(`/admin/users/${id}`),
 
   // Vocabulary public collections
-  getVocabularyCollections: (status = 'all') => axiosClient.get('/admin/vocabulary/collections', { params: { status } }),
+  getVocabularyCollections: (status = 'all', source = 'all') => axiosClient.get('/admin/vocabulary/collections', { params: { status, source } }),
   createVocabularyCollection: (data) => axiosClient.post('/admin/vocabulary/collections', data),
   updateVocabularyCollection: (id, data) => axiosClient.put(`/admin/vocabulary/collections/${id}`, data),
   reviewVocabularyCollection: (id, status) => axiosClient.put(`/admin/vocabulary/collections/${id}/review`, { status }),

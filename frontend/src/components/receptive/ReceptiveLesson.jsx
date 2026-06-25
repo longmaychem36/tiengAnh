@@ -56,27 +56,38 @@ const buildSpeechText = (lesson, skill) => {
 const FEMALE_VOICE_HINTS = ['aria', 'jenny', 'zira', 'sara', 'samantha', 'susan', 'victoria', 'alice', 'ava', 'emma', 'michelle', 'female'];
 const MALE_VOICE_HINTS = ['guy', 'david', 'mark', 'alex', 'daniel', 'george', 'fred', 'tom', 'male'];
 
-const pickSpeakerVoice = (speaker, voices) => {
+const getVoiceKey = (voice) => voice?.voiceURI || voice?.name || '';
+
+const getSpeakerKey = (speaker) => String(speaker?.id || speaker?.name || '').toLowerCase();
+
+const findUnusedVoice = (items, usedVoiceKeys) => (
+  items.find((voice) => !usedVoiceKeys.has(getVoiceKey(voice))) || items[0] || null
+);
+
+const pickSpeakerVoice = (speaker, voices, usedVoiceKeys = new Set()) => {
   if (!speaker || !voices.length) return null;
-  const byUri = speaker.voiceURI ? voices.find((voice) => voice.voiceURI === speaker.voiceURI) : null;
+  const byUri = speaker.voiceURI ? findUnusedVoice(voices.filter((voice) => voice.voiceURI === speaker.voiceURI), usedVoiceKeys) : null;
   if (byUri) return byUri;
 
   const byName = speaker.voiceName
-    ? voices.find((voice) => voice.name.toLowerCase().includes(speaker.voiceName.toLowerCase()))
+    ? findUnusedVoice(voices.filter((voice) => voice.name.toLowerCase().includes(speaker.voiceName.toLowerCase())), usedVoiceKeys)
     : null;
   if (byName) return byName;
 
   const hints = speaker.gender === 'male' ? MALE_VOICE_HINTS : speaker.gender === 'female' ? FEMALE_VOICE_HINTS : [];
-  return voices.find((voice) => {
+  const byGender = voices.filter((voice) => {
     const name = voice.name.toLowerCase();
     return hints.some((hint) => name.includes(hint));
-  }) || voices[0] || null;
+  });
+  if (byGender.length) return findUnusedVoice(byGender, usedVoiceKeys);
+
+  return voices.find((voice) => !usedVoiceKeys.has(getVoiceKey(voice))) || voices[0] || null;
 };
 
-const getSpeakerSpeechOptions = (speaker, voices) => {
+const getSpeakerSpeechOptions = (speaker, voices, assignedVoice = null) => {
   return {
     lang: 'en-US',
-    voice: pickSpeakerVoice(speaker, voices)
+    voice: assignedVoice || pickSpeakerVoice(speaker, voices)
   };
 };
 
@@ -244,6 +255,26 @@ const ReceptiveLesson = ({ skill }) => {
     setVocabPassed(localStorage.getItem(vocabularyGateKey) === 'passed');
   }, [lesson, vocabularyGateKey, vocabularyItems.length]);
 
+  const speakerVoiceMap = useMemo(() => {
+    const map = new Map();
+    const usedVoiceKeys = new Set();
+    const sourceSpeakers = lesson?.speakers?.length
+      ? lesson.speakers
+      : (lesson?.transcript || []).map((line) => line.speakerProfile).filter(Boolean);
+
+    sourceSpeakers.forEach((speaker) => {
+      const key = getSpeakerKey(speaker);
+      if (!key || map.has(key)) return;
+      const voice = pickSpeakerVoice(speaker, voices, usedVoiceKeys);
+      if (voice) {
+        map.set(key, voice);
+        usedVoiceKeys.add(getVoiceKey(voice));
+      }
+    });
+
+    return map;
+  }, [lesson, voices]);
+
   if (loading) return <Loading />;
 
   if (!lesson) {
@@ -302,8 +333,8 @@ const ReceptiveLesson = ({ skill }) => {
       setExpReward(res.data?.expReward || null);
 
       if (isCompleted) {
+        setActiveQuestionIndex(Math.max(lesson.questions.length - 1, 0));
         toast.success('Đã hoàn thành bài học!');
-        setShowCompletion(true);
       } else {
         toast('Bạn nên luyện lại bài này để đạt ít nhất 70%.');
       }
@@ -328,7 +359,6 @@ const ReceptiveLesson = ({ skill }) => {
   const selectedVoice = selectedVoiceURI && voices.length > 0
     ? voices.find((voice) => voice.voiceURI === selectedVoiceURI) || null
     : null;
-
   const handleVoiceChange = (value) => {
     setSelectedVoiceURI(value);
     localStorage.setItem('listening_voice', value);
@@ -341,18 +371,20 @@ const ReceptiveLesson = ({ skill }) => {
     setActiveLineIndex(null);
   };
 
-  const speakListeningLesson = (rate = speechRate) => {
+  const speakListeningLesson = (rateOrEvent = speechRate) => {
     if (!hasSpeechSupport()) {
       toast.error('Trình duyệt chưa hỗ trợ đọc audio.');
       return;
     }
 
+    const rate = typeof rateOrEvent === 'number' ? rateOrEvent : speechRate;
     const transcript = lesson.transcript || [];
     const startIndex = Math.min(listeningStartIndex, Math.max(transcript.length - 1, 0));
     const queue = transcript.slice(startIndex).map((line, offset) => {
       const lineIndex = startIndex + offset;
+      const assignedVoice = speakerVoiceMap.get(getSpeakerKey(line.speakerProfile)) || null;
       const voiceOpts = (skill === 'listening')
-        ? getSpeakerSpeechOptions(line.speakerProfile, voices)
+        ? getSpeakerSpeechOptions(line.speakerProfile, voices, assignedVoice)
         : (selectedVoice ? { voice: selectedVoice } : getSpeakerSpeechOptions(line.speakerProfile, voices));
       return {
         text: line.text,
@@ -375,8 +407,9 @@ const ReceptiveLesson = ({ skill }) => {
   const speakTranscriptLine = (line, rate = speechRate) => {
     const lineIndex = lesson.transcript.indexOf(line);
     if (lineIndex >= 0) setListeningStartIndex(lineIndex);
+    const assignedVoice = speakerVoiceMap.get(getSpeakerKey(line.speakerProfile)) || null;
     const voiceOpts = (skill === 'listening')
-      ? getSpeakerSpeechOptions(line.speakerProfile, voices)
+      ? getSpeakerSpeechOptions(line.speakerProfile, voices, assignedVoice)
       : (selectedVoice ? { voice: selectedVoice } : getSpeakerSpeechOptions(line.speakerProfile, voices));
     speak(line.text, {
       ...voiceOpts,
@@ -442,15 +475,15 @@ const ReceptiveLesson = ({ skill }) => {
     <LessonCard
       className="listening-player-card"
       title="Audio"
-      action={(
+      action={allAnswered ? (
         <SecondaryButton onClick={() => setShowTranscript((current) => !current)}>
           {showTranscript ? <FiEyeOff /> : <FiEye />}
           {showTranscript ? 'Ẩn' : 'Text'}
         </SecondaryButton>
-      )}
+      ) : null}
     >
       <div className="listening-player-top">
-        <button type="button" className="audio-play-button" onClick={speakListeningLesson} aria-label="Play lesson audio">
+        <button type="button" className="audio-play-button" onClick={() => speakListeningLesson()} aria-label="Play lesson audio">
           <FiVolume2 />
         </button>
         <div className="audio-player-copy">
@@ -548,9 +581,9 @@ const ReceptiveLesson = ({ skill }) => {
             <SecondaryButton onClick={handleRetry}>
               <FiRefreshCw /> Làm lại
             </SecondaryButton>
-            {nextLesson && result.score >= PASS_SCORE && (
-              <PrimaryButton onClick={() => navigate(`/${skill}/lessons/${nextLesson.id}`)}>
-                Bài tiếp theo <FiArrowRight />
+            {result.score >= PASS_SCORE && (
+              <PrimaryButton onClick={() => setShowCompletion(true)}>
+                Hoàn thành <FiCheckCircle />
               </PrimaryButton>
             )}
           </>

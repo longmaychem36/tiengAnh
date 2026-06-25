@@ -47,14 +47,9 @@ function AdminSidebar() {
     <aside className="admin-sidebar" aria-label="Admin navigation">
       <nav className="admin-sidebar-nav">
         {adminItems.map((item) => <NavItem key={item.to} {...item} />)}
-
       </nav>
 
       <div className="admin-sidebar-bottom">
-        <a className="admin-sidebar-mini-link" href="https://themesberg.com" target="_blank" rel="noreferrer">
-          Read tutorial
-        </a>
-        <span className="admin-sidebar-badge">Volt Dashboard</span>
         <button type="button" onClick={logout} className="admin-logout-button">
           <span className="admin-nav-icon" aria-hidden="true">
             <FiLogOut />

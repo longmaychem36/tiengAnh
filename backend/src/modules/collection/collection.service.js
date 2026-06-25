@@ -1,5 +1,4 @@
 const collectionRepo = require('../../repositories/CollectionRepository');
-const billingService = require('../billing/billing.service');
 
 function createHttpError(message, statusCode = 400) {
   const error = new Error(message);
@@ -27,9 +26,17 @@ function isPublicCollection(collection) {
   return Boolean(collection?.IsPublic || collection?.ispublic);
 }
 
+function hasText(value) {
+  return String(value || '').trim().length > 0;
+}
+
 const collectionService = {
   async getByUserId(userId) {
     return await collectionRepo.getByUserId(userId);
+  },
+
+  async getPublicSubmissionsByUser(userId) {
+    return await collectionRepo.getPublicSubmissionsByUser(userId);
   },
 
   async getPublicCollections() {
@@ -38,18 +45,25 @@ const collectionService = {
 
   async create(userId, data) {
     if (!data.name) throw new Error('Collection name is required');
-    const isPublic = Boolean(data.isPublic);
-    if (isPublic) {
-      const isPlus = await billingService.isPlusUser(userId);
-      if (!isPlus) throw createHttpError('Tạo học phần public là tính năng Plus.', 403);
-    }
 
     return await collectionRepo.create({
       userId,
       name: data.name,
       description: data.description,
-      isPublic,
-      reviewStatus: isPublic ? 'pending' : 'approved'
+      isPublic: false,
+      reviewStatus: 'approved'
+    });
+  },
+
+  async createPublicSubmission(userId, data) {
+    if (!data.name) throw new Error('Collection name is required');
+
+    return await collectionRepo.create({
+      userId,
+      name: data.name,
+      description: data.description,
+      isPublic: true,
+      reviewStatus: 'draft'
     });
   },
 
@@ -57,19 +71,42 @@ const collectionService = {
     const collection = await collectionRepo.getById(collectionId);
     if (!collection) throw createHttpError('Collection not found', 404);
     if (getIdValue(collection, 'UserId', 'userid') !== String(userId)) throw createHttpError('Unauthorized to modify this collection', 403);
-
-    const isPublic = Boolean(data.isPublic ?? pickValue(collection, 'IsPublic', 'ispublic'));
-    if (isPublic) {
-      const isPlus = await billingService.isPlusUser(userId);
-      if (!isPlus) throw createHttpError('Tạo học phần public là tính năng Plus.', 403);
-    }
+    if (isPublicCollection(collection)) throw createHttpError('Use public submission endpoint to modify this collection', 400);
 
     return await collectionRepo.update(collectionId, {
       name: data.name || pickValue(collection, 'Name', 'name'),
       description: data.description ?? pickValue(collection, 'Description', 'description'),
-      isPublic,
-      reviewStatus: isPublic ? 'pending' : 'approved'
+      isPublic: false,
+      reviewStatus: 'approved'
     });
+  },
+
+  async updatePublicSubmission(userId, collectionId, data) {
+    const collection = await collectionRepo.getById(collectionId);
+    if (!collection) throw createHttpError('Collection not found', 404);
+    if (getIdValue(collection, 'UserId', 'userid') !== String(userId)) throw createHttpError('Unauthorized to modify this collection', 403);
+    if (!isPublicCollection(collection)) throw createHttpError('Public submission not found', 404);
+
+    return await collectionRepo.update(collectionId, {
+      name: data.name || pickValue(collection, 'Name', 'name'),
+      description: data.description ?? pickValue(collection, 'Description', 'description'),
+      isPublic: true,
+      reviewStatus: 'draft'
+    });
+  },
+
+  async submitPublicSubmission(userId, collectionId) {
+    const collection = await collectionRepo.getById(collectionId);
+    if (!collection) throw createHttpError('Collection not found', 404);
+    if (getIdValue(collection, 'UserId', 'userid') !== String(userId)) throw createHttpError('Unauthorized to modify this collection', 403);
+    if (!isPublicCollection(collection)) throw createHttpError('Public submission not found', 404);
+
+    const words = await collectionRepo.getWords(collectionId);
+    if (!words.length) throw createHttpError('Thêm ít nhất một từ vựng trước khi gửi duyệt.', 400);
+    const hasInvalidWord = words.some((word) => !hasText(pickValue(word, 'CustomWord', 'customword')) || !hasText(pickValue(word, 'CustomMeaning', 'custommeaning')));
+    if (hasInvalidWord) throw createHttpError('Mỗi từ vựng cần có đầy đủ từ và nghĩa trước khi gửi duyệt.', 400);
+
+    return await collectionRepo.markPending(collectionId);
   },
 
   async delete(collectionId, userId) {
@@ -106,7 +143,7 @@ const collectionService = {
       customMeaning: data.customMeaning,
       customExample: data.customExample
     });
-    if (isPublicCollection(collection)) await collectionRepo.markPending(collectionId);
+    if (isPublicCollection(collection)) await collectionRepo.markDraft(collectionId);
     return word;
   },
 
@@ -124,7 +161,7 @@ const collectionService = {
       customMeaning: data.customMeaning,
       customExample: data.customExample
     });
-    if (isPublicCollection(collection)) await collectionRepo.markPending(collectionId);
+    if (isPublicCollection(collection)) await collectionRepo.markDraft(collectionId);
     return updated;
   },
 
@@ -137,7 +174,7 @@ const collectionService = {
     if (!word || getIdValue(word, 'CollectionId', 'collectionid') !== String(collectionId)) throw createHttpError('Word not found', 404);
     
     const removed = await collectionRepo.removeWord(wordId);
-    if (removed && isPublicCollection(collection)) await collectionRepo.markPending(collectionId);
+    if (removed && isPublicCollection(collection)) await collectionRepo.markDraft(collectionId);
     return removed;
   }
 };

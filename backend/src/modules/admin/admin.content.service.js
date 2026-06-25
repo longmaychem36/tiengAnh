@@ -53,6 +53,27 @@ function isAdminCreator(role) {
   return String(role || '').toLowerCase() === 'admin';
 }
 
+function mapVocabularyCollection(row) {
+  if (!row) return null;
+  return {
+    Id: row.id,
+    UserId: row.userid,
+    Name: row.name,
+    Description: row.description,
+    IsPublic: row.ispublic,
+    ReviewStatus: row.reviewstatus,
+    SubmittedAt: row.submittedat,
+    ReviewedAt: row.reviewedat,
+    ReviewedBy: row.reviewedby,
+    UpdatedAt: row.updatedat,
+    CreatedAt: row.createdat,
+    CreatorName: row.creatorname,
+    CreatorRole: row.creatorrole,
+    ReviewerName: row.reviewername,
+    WordCount: Number(row.wordcount || 0)
+  };
+}
+
 async function assertAdminOwnedVocabularyCollection(pool, collectionId) {
   const result = await pool.query(`
     SELECT c.Id, u.Role as CreatorRole
@@ -860,44 +881,37 @@ const adminContentService = {
     await pool.request().input('id', sql.UniqueIdentifier, id).query(`DELETE FROM GrammarQuiz WHERE Id = @id`);
   },
 
-  async getVocabularyCollections(status = 'all') {
+  async getVocabularyCollections(status = 'all', source = 'all') {
     const pool = getPool();
     const normalizedStatus = ['pending', 'approved', 'rejected'].includes(status) ? status : null;
+    const normalizedSource = ['user', 'admin'].includes(source) ? source : null;
     const result = await pool.query(`
       SELECT c.*,
              u.Username as CreatorName,
              u.Role as CreatorRole,
              reviewer.Username as ReviewerName,
-             COUNT(w.Id)::int as WordCount
+             (
+               SELECT COUNT(*)::int
+               FROM UserCollectionWords w
+               WHERE w.CollectionId = c.Id
+             ) as WordCount
       FROM UserCollections c
       LEFT JOIN Users u ON u.Id = c.UserId
       LEFT JOIN Users reviewer ON reviewer.Id = c.ReviewedBy
-      LEFT JOIN UserCollectionWords w ON w.CollectionId = c.Id
       WHERE c.IsPublic = true
+        AND c.ReviewStatus <> 'draft'
         AND ($1::varchar IS NULL OR c.ReviewStatus = $1)
-      GROUP BY c.Id, u.Username, u.Role, reviewer.Username
+        AND (
+          $2::varchar IS NULL
+          OR ($2 = 'admin' AND lower(COALESCE(u.Role, '')) = 'admin')
+          OR ($2 = 'user' AND lower(COALESCE(u.Role, '')) <> 'admin')
+        )
       ORDER BY
         CASE WHEN c.ReviewStatus = 'pending' THEN 0 ELSE 1 END,
         c.UpdatedAt DESC,
         c.CreatedAt DESC
-    `, [normalizedStatus]);
-    return result.rows.map((row) => ({
-      Id: row.id,
-      UserId: row.userid,
-      Name: row.name,
-      Description: row.description,
-      IsPublic: row.ispublic,
-      ReviewStatus: row.reviewstatus,
-      SubmittedAt: row.submittedat,
-      ReviewedAt: row.reviewedat,
-      ReviewedBy: row.reviewedby,
-      UpdatedAt: row.updatedat,
-      CreatedAt: row.createdat,
-      CreatorName: row.creatorname,
-      CreatorRole: row.creatorrole,
-      ReviewerName: row.reviewername,
-      WordCount: row.wordcount
-    }));
+    `, [normalizedStatus, normalizedSource]);
+    return result.rows.map(mapVocabularyCollection);
   },
 
   async createVocabularyCollection(adminUserId, data) {
@@ -926,14 +940,33 @@ const adminContentService = {
       throw new Error('Invalid vocabulary review status');
     }
     const pool = getPool();
-    await pool.query(`
-      UPDATE UserCollections
-      SET ReviewStatus = $1,
-          ReviewedBy = $2,
-          ReviewedAt = NOW(),
-          UpdatedAt = NOW()
-      WHERE Id = $3 AND IsPublic = true
+    const result = await pool.query(`
+      WITH updated AS (
+        UPDATE UserCollections
+        SET ReviewStatus = $1,
+            ReviewedBy = $2,
+            ReviewedAt = NOW(),
+            UpdatedAt = NOW()
+        WHERE Id = $3 AND IsPublic = true AND ReviewStatus <> 'draft'
+        RETURNING *
+      )
+      SELECT updated.*,
+             creator.Username as CreatorName,
+             creator.Role as CreatorRole,
+             reviewer.Username as ReviewerName,
+             (
+               SELECT COUNT(*)::int
+               FROM UserCollectionWords w
+               WHERE w.CollectionId = updated.Id
+             ) as WordCount
+      FROM updated
+      LEFT JOIN Users creator ON creator.Id = updated.UserId
+      LEFT JOIN Users reviewer ON reviewer.Id = updated.ReviewedBy
     `, [status, reviewerId, id]);
+
+    const updated = mapVocabularyCollection(result.rows[0]);
+    if (!updated) throw createAdminError('Vocabulary collection not found or not submitted for review', 404);
+    return updated;
   },
 
   async deleteVocabularyCollection(id) {

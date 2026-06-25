@@ -1,0 +1,72 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"22px","actorFontSize":"22px","messageFontSize":"20px","noteFontSize":"20px"},"sequence":{"actorMargin":110,"messageMargin":65,"diagramMarginX":45,"diagramMarginY":25}}}%%
+sequenceDiagram
+    autonumber
+    actor Learner as Learner
+    participant FE as React Frontend<br/>(Onboarding Page)
+    participant BE as Node.js/Express Backend<br/>(Onboarding Module)
+    participant DB as PostgreSQL
+
+    rect rgb(245, 248, 255)
+    Note over Learner,DB: Phase 1 - Load onboarding status
+    Learner->>FE: Open onboarding page
+    FE->>BE: GET /api/v1/onboarding/status
+    BE->>BE: Verify JWT and learner role
+    par User placement state
+        BE->>DB: Select onboarding and placement fields from Users
+    and Active test availability
+        BE->>DB: Count active PlacementMiniGameQuestions
+    end
+    DB-->>BE: Placement state and active question count
+    BE-->>FE: 200 onboarding status
+    FE-->>Learner: Show survey or continue learning
+    end
+
+    rect rgb(248, 255, 246)
+    Note over Learner,DB: Phase 2 - Submit survey answer
+    Learner->>FE: Select starting level
+    FE->>BE: POST /api/v1/onboarding/survey
+    BE->>BE: Validate survey answer
+    alt Answer is new or basic
+        BE->>DB: Mark onboarding completed with survey placement
+        DB-->>BE: Updated placement state
+        BE-->>FE: 200 placement without test
+        FE-->>Learner: Continue to dashboard or courses
+    else Answer is unsure
+        BE-->>FE: 200 placement test required
+        FE-->>Learner: Show placement test start action
+    else Invalid answer
+        BE-->>FE: 400 invalid survey answer
+    end
+    end
+
+    rect rgb(255, 250, 240)
+    Note over Learner,DB: Phase 3 - Placement test with mini-game questions
+    Learner->>FE: Start placement test
+    FE->>BE: POST /api/v1/onboarding/test-attempts
+    BE->>DB: Select active PlacementMiniGameQuestions
+    DB-->>BE: Source questions
+    alt No active source questions
+        BE-->>FE: 404 no placement source questions
+        FE-->>Learner: Show data unavailable message
+    else Questions available
+        BE->>BE: Create randomized ids and encrypted attempt token
+        BE-->>FE: 201 attempt token and questions without answers
+        FE-->>Learner: Render placement questions
+    end
+
+    loop Each question
+        Learner->>FE: Submit answer
+        FE->>BE: POST /api/v1/onboarding/test-attempts/check
+        BE->>BE: Decrypt token and check answer correctness
+        BE-->>FE: 200 question result
+        FE-->>Learner: Show correct or incorrect state
+    end
+
+    Learner->>FE: Submit placement test
+    FE->>BE: POST /api/v1/onboarding/test-attempts/submit
+    BE->>BE: Score answers and calculate placement level
+    BE->>DB: Mark onboarding completed with test placement
+    DB-->>BE: Updated placement state
+    BE-->>FE: 200 score, skill scores and placement
+    FE-->>Learner: Show result and enter the system
+    end

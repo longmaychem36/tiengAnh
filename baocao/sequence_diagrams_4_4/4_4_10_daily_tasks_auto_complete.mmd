@@ -1,0 +1,58 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"22px","actorFontSize":"22px","messageFontSize":"20px","noteFontSize":"20px"},"sequence":{"actorMargin":110,"messageMargin":65,"diagramMarginX":45,"diagramMarginY":25}}}%%
+sequenceDiagram
+    autonumber
+    actor Learner as Learner
+    participant FE as React Frontend<br/>(Daily + Lesson UI)
+    participant BE as Node.js/Express Backend<br/>(Daily + Skill Modules)
+    participant DB as PostgreSQL
+
+    rect rgb(245, 248, 255)
+    Note over Learner,DB: Phase 1 - Create or load today's tasks
+    Learner->>FE: Open Daily Tasks
+    FE->>BE: GET /api/v1/daily-tasks/today
+    BE->>BE: Verify JWT and learner role
+    BE->>DB: Select DailyTasks for user and Saigon date
+    alt Tasks already exist today
+        DB-->>BE: Existing tasks
+        BE->>BE: Auto-complete daily login task when pending
+    else No tasks exist today
+        BE->>DB: Select candidates from skills, game, grammar and vocabulary
+        DB-->>BE: Candidate tasks
+        BE->>BE: Build default tasks based on plan and progress
+        BE->>DB: Replace today's DailyTasks with selected tasks
+    end
+    alt Daily login task is newly completed
+        BE->>DB: Mark login task completed and add reward EXP
+    end
+    BE-->>FE: 200 task date, tasks and reward summary
+    FE-->>Learner: Show checklist and rewards
+    end
+
+    rect rgb(248, 255, 246)
+    Note over Learner,DB: Phase 2 - Automatically complete matching tasks
+    Learner->>FE: Finish a lesson or mini-game level
+    FE->>BE: POST /progress or POST /api/v1/games/submit
+    BE->>DB: Save skill or game progress
+    BE->>DB: Add lesson or game EXP when eligible
+    BE->>DB: Mark matching DailyTasks as completed for today's date
+    DB-->>BE: Completed task rows
+    loop Each newly completed task
+        BE->>DB: Add daily task reward EXP to UserStats
+    end
+    BE-->>FE: 200 progress and reward summary
+    FE-->>Learner: Show completion and earned EXP
+    end
+
+    rect rgb(255, 250, 240)
+    Note over Learner,DB: Phase 3 - Manually complete a task from Daily page
+    Learner->>FE: Click complete on a manual task
+    FE->>BE: POST /api/v1/daily-tasks/:taskId/complete
+    BE->>DB: Select DailyTasks by task id and user id
+    alt Task is missing or already completed
+        BE-->>FE: 404 or no state change
+    else Task is pending
+        BE->>DB: Mark task completed and add reward EXP
+        BE-->>FE: 200 completed task and reward summary
+        FE-->>Learner: Update checklist
+    end
+    end

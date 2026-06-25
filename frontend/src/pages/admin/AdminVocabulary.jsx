@@ -5,12 +5,33 @@ import { adminApi } from '../../api/adminApi';
 
 const emptyDeck = { Name: '', Description: '' };
 const emptyWord = { CustomWord: '', CustomMeaning: '', CustomExample: '' };
+
+const sourceOptions = [
+  ['user', 'User gửi duyệt'],
+  ['admin', 'Admin tạo'],
+  ['all', 'Tất cả']
+];
+
+const statusOptions = [
+  ['pending', 'Chờ duyệt'],
+  ['approved', 'Đã duyệt'],
+  ['rejected', 'Từ chối'],
+  ['all', 'Tất cả']
+];
+
+const statusLabels = {
+  pending: 'Chờ duyệt',
+  approved: 'Đã duyệt',
+  rejected: 'Từ chối'
+};
+
 const getData = (res, fallback) => res?.data ?? fallback;
 const getErrorMessage = (err, fallback) => err?.response?.data?.message || err?.message || fallback;
 const isAdminCreatedDeck = (deck) => String(deck?.CreatorRole || '').toLowerCase() === 'admin';
 
 function AdminVocabulary() {
   const [status, setStatus] = useState('pending');
+  const [source, setSource] = useState('user');
   const [collections, setCollections] = useState([]);
   const [selected, setSelected] = useState(null);
   const [words, setWords] = useState([]);
@@ -27,15 +48,15 @@ function AdminVocabulary() {
 
   useEffect(() => {
     loadCollections();
-  }, [status]);
+  }, [status, source]);
 
   const loadCollections = async () => {
     setLoading(true);
     try {
-      const res = await adminApi.getVocabularyCollections(status);
+      const res = await adminApi.getVocabularyCollections(status, source);
       setCollections(getData(res, []));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Không tải được Vocabulary.'));
+      toast.error(getErrorMessage(err, 'Không tải được học phần.'));
     } finally {
       setLoading(false);
     }
@@ -59,6 +80,10 @@ function AdminVocabulary() {
   };
 
   const openEditDeck = (deck) => {
+    if (!isAdminCreatedDeck(deck)) {
+      toast.error('Bài user gửi chỉ được duyệt, từ chối hoặc xóa.');
+      return;
+    }
     setEditingDeck(deck);
     setDeckForm({ Name: deck.Name || '', Description: deck.Description || '' });
     setShowDeckForm(true);
@@ -73,7 +98,9 @@ function AdminVocabulary() {
         toast.success('Đã cập nhật học phần.');
       } else {
         await adminApi.createVocabularyCollection(deckForm);
-        toast.success('Đã tạo học phần public bằng tài khoản admin.');
+        toast.success('Đã tạo học phần.');
+        setSource('admin');
+        setStatus('approved');
       }
       setShowDeckForm(false);
       setEditingDeck(null);
@@ -86,9 +113,15 @@ function AdminVocabulary() {
 
   const reviewDeck = async (deck, nextStatus) => {
     try {
-      await adminApi.reviewVocabularyCollection(deck.Id, nextStatus);
+      const res = await adminApi.reviewVocabularyCollection(deck.Id, nextStatus);
+      const updatedDeck = getData(res, { ...deck, ReviewStatus: nextStatus });
       toast.success(nextStatus === 'approved' ? 'Đã duyệt học phần.' : 'Đã từ chối học phần.');
-      if (selected?.Id === deck.Id) setSelected({ ...selected, ReviewStatus: nextStatus });
+      if (selected?.Id === deck.Id) setSelected(updatedDeck);
+      setCollections((prev) => {
+        const shouldRemainInCurrentFilter = status === 'all' || status === nextStatus;
+        if (!shouldRemainInCurrentFilter) return prev.filter((item) => item.Id !== deck.Id);
+        return prev.map((item) => (item.Id === deck.Id ? updatedDeck : item));
+      });
       await loadCollections();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Không cập nhật trạng thái.'));
@@ -96,7 +129,7 @@ function AdminVocabulary() {
   };
 
   const deleteDeck = async (deck) => {
-    if (!window.confirm('Xóa học phần public này?')) return;
+    if (!window.confirm('Xóa học phần này?')) return;
     try {
       await adminApi.deleteVocabularyCollection(deck.Id);
       toast.success('Đã xóa học phần.');
@@ -177,8 +210,7 @@ function AdminVocabulary() {
     <div className="fade-in admin-receptive-page">
       <div className="admin-receptive-header">
         <div>
-          <h1>Vocabulary Public</h1>
-          <p>Duyệt học phần public và tạo học phần từ vựng bằng tài khoản admin.</p>
+          <h1>Vocabulary</h1>
         </div>
         <div className="admin-inline-actions">
           <button type="button" className="btn btn-secondary" onClick={loadCollections}><FiRefreshCw /> Tải lại</button>
@@ -187,9 +219,25 @@ function AdminVocabulary() {
       </div>
 
       <div className="admin-inline-actions" style={{ marginBottom: 'var(--space-2)', justifyContent: 'flex-start' }}>
-        {['pending', 'approved', 'rejected', 'all'].map((item) => (
-          <button key={item} type="button" className={`btn ${status === item ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setStatus(item)}>
-            {item === 'all' ? 'Tất cả' : item}
+        {sourceOptions.map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={`btn ${source === value ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => {
+              setSource(value);
+              if (value === 'admin' && status === 'pending') setStatus('approved');
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="admin-inline-actions" style={{ marginBottom: 'var(--space-2)', justifyContent: 'flex-start' }}>
+        {statusOptions.map(([value, label]) => (
+          <button key={value} type="button" className={`btn ${status === value ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setStatus(value)}>
+            {label}
           </button>
         ))}
       </div>
@@ -211,18 +259,21 @@ function AdminVocabulary() {
                     <strong>{deck.Name}</strong>
                     <span>{deck.Description}</span>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-                      <span className="badge badge-primary"><FiGlobe /> {deck.ReviewStatus}</span>
+                      <span className="badge badge-primary"><FiGlobe /> {statusLabels[deck.ReviewStatus] || deck.ReviewStatus}</span>
                       <span className="badge badge-secondary">{Number(deck.WordCount || 0)} từ</span>
+                      <span className="badge badge-secondary">{isAdminCreatedDeck(deck) ? 'Admin tạo' : 'User gửi'}</span>
                       <span className="badge badge-secondary">{deck.CreatorName || 'Admin'}</span>
                     </div>
                   </div>
                 </button>
                 <div className="admin-inline-actions" onClick={(event) => event.stopPropagation()}>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditDeck(deck)}>Sửa</button>
-                  <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteDeck(deck)}>Xóa</button>
+                  {isAdminCreatedDeck(deck) && (
+                    <button type="button" className="btn btn-icon btn-sm" title="Sửa" aria-label="Sửa học phần" onClick={() => openEditDeck(deck)}><FiEdit2 /></button>
+                  )}
+                  <button type="button" className="btn btn-icon btn-sm is-danger" title="Xóa" aria-label="Xóa học phần" onClick={() => deleteDeck(deck)}><FiTrash2 /></button>
                 </div>
               </div>
-              {deck.ReviewStatus === 'pending' && (
+              {!isAdminCreatedDeck(deck) && deck.ReviewStatus === 'pending' && (
                 <div className="admin-form-actions" style={{ padding: '0 10px 10px', marginTop: 0 }} onClick={(event) => event.stopPropagation()}>
                   <button type="button" className="btn btn-primary btn-sm" onClick={() => reviewDeck(deck, 'approved')}><FiCheck /> Duyệt</button>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => reviewDeck(deck, 'rejected')}><FiX /> Từ chối</button>
@@ -238,7 +289,7 @@ function AdminVocabulary() {
               <div className="admin-subpanel-head" style={{ margin: '-14px -16px var(--space-4) -16px' }}>
                 <div>
                   <h3>{selected.Name}</h3>
-                  <p style={{ display: 'block', fontSize: '12px', color: 'var(--admin-muted)', marginTop: 4 }}>{selected.Description}</p>
+                  {selected.Description && <p style={{ display: 'block', fontSize: '12px', color: 'var(--admin-muted)', marginTop: 4 }}>{selected.Description}</p>}
                 </div>
                 {canManageSelectedWords && (
                   <button type="button" className="btn btn-primary btn-sm" onClick={openAddWord}><FiPlus /> Thêm từ</button>
@@ -255,8 +306,8 @@ function AdminVocabulary() {
                     </div>
                     {canManageSelectedWords && (
                       <div className="admin-inline-actions">
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEditWord(word)}>Sửa</button>
-                        <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteWord(word)}>Xóa</button>
+                        <button type="button" className="btn btn-icon btn-sm" title="Sửa" aria-label="Sửa từ" onClick={() => openEditWord(word)}><FiEdit2 /></button>
+                        <button type="button" className="btn btn-icon btn-sm is-danger" title="Xóa" aria-label="Xóa từ" onClick={() => deleteWord(word)}><FiTrash2 /></button>
                       </div>
                     )}
                   </div>
@@ -266,14 +317,14 @@ function AdminVocabulary() {
             </>
           ) : (
             <div className="admin-empty-inline" style={{ padding: 'var(--space-10)' }}>
-              Chọn học phần để xem và quản lý từ.
+              Chọn học phần để xem từ.
             </div>
           )}
         </section>
       </div>
 
       {showDeckForm && (
-        <Modal title={editingDeck ? 'Sửa học phần' : 'Tạo học phần public'} onClose={() => setShowDeckForm(false)}>
+        <Modal title={editingDeck ? 'Sửa học phần' : 'Tạo học phần'} onClose={() => setShowDeckForm(false)}>
           <form onSubmit={saveDeck}>
             <label className="form-group">
               <span className="form-label">Tên học phần</span>
@@ -320,7 +371,7 @@ function AdminVocabulary() {
 function Modal({ title, onClose, children }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div className="admin-nested-form" style={{ width: 'min(480px, 100%)', background: 'white !important', padding: '16px' }}>
+      <div className="admin-nested-form" style={{ width: 'min(480px, 100%)', background: 'white', padding: '16px' }}>
         <div className="admin-subpanel-head" style={{ marginBottom: 'var(--space-4)', borderBottom: 0, background: 'transparent' }}>
           <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800 }}>{title}</h3>
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Đóng</button>

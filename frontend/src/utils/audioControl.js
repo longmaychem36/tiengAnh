@@ -1,4 +1,5 @@
 const trackedAudio = new Set();
+let speechSessionId = 0;
 
 export const hasSpeechSupport = () => (
   typeof window !== 'undefined' && 'speechSynthesis' in window
@@ -6,8 +7,15 @@ export const hasSpeechSupport = () => (
 
 export const stopSpeechPlayback = () => {
   if (hasSpeechSupport()) {
+    speechSessionId += 1;
     window.speechSynthesis.cancel();
   }
+};
+
+const speakUtterance = (utterance) => {
+  if (!hasSpeechSupport()) return;
+  if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+  window.speechSynthesis.speak(utterance);
 };
 
 export const registerAudioElement = (audio) => {
@@ -62,18 +70,27 @@ export const speakText = (text, options = {}) => {
   } = options;
 
   stopSpeechPlayback();
+  const sessionId = speechSessionId;
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = lang;
-  utterance.rate = rate;
+  utterance.rate = Number(rate) || 1;
   utterance.pitch = pitch;
   utterance.volume = volume;
   if (voice) utterance.voice = voice;
-  if (onstart) utterance.onstart = onstart;
-  if (onend) utterance.onend = onend;
-  if (onerror) utterance.onerror = onerror;
+  if (onstart) utterance.onstart = () => {
+    if (sessionId === speechSessionId) onstart();
+  };
+  if (onend) utterance.onend = () => {
+    if (sessionId === speechSessionId) onend();
+  };
+  if (onerror) utterance.onerror = (event) => {
+    if (sessionId === speechSessionId) onerror(event);
+  };
 
-  window.speechSynthesis.speak(utterance);
+  window.setTimeout(() => {
+    if (sessionId === speechSessionId) speakUtterance(utterance);
+  }, 30);
   return utterance;
 };
 
@@ -82,6 +99,7 @@ export const speakTextQueue = (items, defaultOptions = {}) => {
   if (typeof document !== 'undefined' && document.hidden) return [];
 
   stopSpeechPlayback();
+  const sessionId = speechSessionId;
 
   const utterances = items
     .filter((item) => item?.text)
@@ -89,17 +107,40 @@ export const speakTextQueue = (items, defaultOptions = {}) => {
       const options = { ...defaultOptions, ...item };
       const utterance = new SpeechSynthesisUtterance(item.text);
       utterance.lang = options.lang || 'en-US';
-      utterance.rate = options.rate || 1;
+      utterance.rate = Number(options.rate) || 1;
       utterance.pitch = options.pitch || 1;
       utterance.volume = options.volume ?? 1;
       if (options.voice) utterance.voice = options.voice;
-      if (options.onstart) utterance.onstart = options.onstart;
-      if (options.onend) utterance.onend = options.onend;
-      if (options.onerror) utterance.onerror = options.onerror;
+      utterance.__speechOptions = options;
       return utterance;
     });
 
-  utterances.forEach((utterance) => window.speechSynthesis.speak(utterance));
+  const speakAt = (index) => {
+    if (sessionId !== speechSessionId || index >= utterances.length) return;
+
+    const utterance = utterances[index];
+    const options = utterance.__speechOptions || {};
+
+    utterance.onstart = () => {
+      if (sessionId === speechSessionId && options.onstart) options.onstart();
+    };
+
+    utterance.onend = () => {
+      if (sessionId !== speechSessionId) return;
+      if (options.onend) options.onend();
+      speakAt(index + 1);
+    };
+
+    utterance.onerror = (event) => {
+      if (sessionId !== speechSessionId) return;
+      if (options.onerror) options.onerror(event);
+      speakAt(index + 1);
+    };
+
+    speakUtterance(utterance);
+  };
+
+  window.setTimeout(() => speakAt(0), 30);
   return utterances;
 };
 

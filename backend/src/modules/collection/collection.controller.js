@@ -11,6 +11,15 @@ const collectionController = {
     }
   },
 
+  async getMyPublicSubmissions(req, res, next) {
+    try {
+      const collections = await collectionService.getPublicSubmissionsByUser(req.user.id);
+      return success(res, collections);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async getPublicCollections(req, res, next) {
     try {
       const collections = await collectionService.getPublicCollections();
@@ -29,10 +38,37 @@ const collectionController = {
     }
   },
 
+  async createPublicSubmission(req, res, next) {
+    try {
+      const result = await collectionService.createPublicSubmission(req.user.id, req.body);
+      return created(res, result, 'Public collection submitted successfully');
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async updateCollection(req, res, next) {
     try {
       const result = await collectionService.update(req.user.id, req.params.id, req.body);
       return success(res, result, 'Collection updated');
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async updatePublicSubmission(req, res, next) {
+    try {
+      const result = await collectionService.updatePublicSubmission(req.user.id, req.params.id, req.body);
+      return success(res, result, 'Public collection submission updated');
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async submitPublicSubmission(req, res, next) {
+    try {
+      const result = await collectionService.submitPublicSubmission(req.user.id, req.params.id);
+      return success(res, result, 'Public collection submitted for review');
     } catch (err) {
       next(err);
     }

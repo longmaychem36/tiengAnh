@@ -24,14 +24,16 @@ const learningTracks = [
     label: 'Nghe',
     desc: 'Luyện nghe theo bài học hiện tại',
     to: '/listening/lessons',
-    color: '#0e7490'
+    color: '#0e7490',
+    plusOnly: true
   },
   {
     icon: '/nav-icons/admin-speaking.svg',
     label: 'Nói',
     desc: 'Luyện phát âm và phản xạ nói',
     to: '/speaking/options',
-    color: '#f59e0b'
+    color: '#f59e0b',
+    plusOnly: true
   },
   {
     icon: '/nav-icons/admin-reading.svg',
@@ -83,6 +85,7 @@ function Dashboard() {
     () => Math.max(1, ...months.map((month) => number(month.minutes))),
     [months]
   );
+  const isPlus = Boolean(user?.isPlus || user?.plan === 'plus');
 
   if (loading) return <Loading />;
 
@@ -284,16 +287,19 @@ function Dashboard() {
         </div>
 
         <div className="grid grid-3">
-          {learningTracks.map((track, index) => (
-            <motion.div key={track.to} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}>
-              <Link to={track.to} className="lingo-course-card" style={{ '--action-color': track.color }}>
-                <span className="lingo-course-level"><img src={track.icon} alt="" aria-hidden="true" /></span>
-                <h3>{track.label}</h3>
-                <p>{track.desc}</p>
-                <small>Đi tới luyện tập</small>
-              </Link>
-            </motion.div>
-          ))}
+          {learningTracks.map((track, index) => {
+            const lockedByPlan = track.plusOnly && !isPlus;
+            return (
+              <motion.div key={track.to} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}>
+                <Link to={lockedByPlan ? '/profile' : track.to} className={`lingo-course-card ${lockedByPlan ? 'is-plus-locked' : ''}`} style={{ '--action-color': track.color }}>
+                  <span className="lingo-course-level"><img src={track.icon} alt="" aria-hidden="true" /></span>
+                  <h3>{track.label}</h3>
+                  <p>{track.desc}</p>
+                  <small>{lockedByPlan ? 'Plus' : 'Đi tới luyện tập'}</small>
+                </Link>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
     </div>

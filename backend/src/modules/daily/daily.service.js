@@ -1,5 +1,6 @@
 const { getPool } = require('../../config/database');
 const gamificationService = require('../gamification/gamification.service');
+const billingService = require('../billing/billing.service');
 
 const DAILY_TASK_COUNT = 4;
 const DAILY_TASK_REWARDS = {
@@ -107,7 +108,7 @@ function addCandidate(list, candidate) {
   });
 }
 
-async function collectCandidateTargets(userId) {
+async function collectCandidateTargets(userId, { includePlusSkills = false } = {}) {
   const pool = getPool();
   const candidates = [];
 
@@ -129,7 +130,7 @@ async function collectCandidateTargets(userId) {
         reasonSeed: 'Improve writing accuracy and grammar.'
       }));
     },
-    async () => {
+    Object.assign(async () => {
       const result = await pool.query(`
         SELECT l.Id, l.Title
         FROM SpeakingLessons l
@@ -145,7 +146,7 @@ async function collectCandidateTargets(userId) {
         description: 'Nghe mẫu và luyện nói lại các câu trọng tâm.',
         reasonSeed: 'Improve speaking accuracy and missing words.'
       }));
-    },
+    }, { plusOnly: true }),
     async () => {
       const result = await pool.query(`
         SELECT gt.Id, gt.Title, gt.TitleVI, gc.NameVI AS CategoryNameVI
@@ -163,7 +164,7 @@ async function collectCandidateTargets(userId) {
         reasonSeed: 'Fix repeated grammar mistakes.'
       }));
     },
-    async () => {
+    Object.assign(async () => {
       const result = await pool.query(`
         SELECT l.Id, l.Title, l.Topic, COALESCE(lp.Status, 'pending') AS Status
         FROM ListeningLessons l
@@ -179,7 +180,7 @@ async function collectCandidateTargets(userId) {
         description: row.topic ? `Luyện nghe chủ đề ${row.topic}.` : 'Luyện nghe và trả lời câu hỏi.',
         reasonSeed: 'Improve listening comprehension.'
       }));
-    },
+    }, { plusOnly: true }),
     async () => {
       const result = await pool.query(`
         SELECT l.Id, l.Title, l.Topic, COALESCE(rp.Status, 'pending') AS Status
@@ -237,7 +238,11 @@ async function collectCandidateTargets(userId) {
     }
   ];
 
-  for (const collect of collectors) {
+  const activeCollectors = includePlusSkills
+    ? collectors
+    : collectors.filter((collect) => !collect.plusOnly);
+
+  for (const collect of activeCollectors) {
     try {
       await collect();
     } catch (err) {
@@ -275,9 +280,15 @@ function getTaskReason(targetType) {
   return reasons[targetType] || 'Một hoạt động học ngắn để duy trì tiến độ hôm nay.';
 }
 
-function buildDefaultDailyTasks(candidates) {
+function isPlusTaskType(targetType) {
+  return targetType === 'listening_lesson' || targetType === 'speaking_lesson';
+}
+
+function buildDefaultDailyTasks(candidates, { includePlusSkills = false } = {}) {
   const selected = [getStarterTask()];
-  const preferredTypes = ['listening_lesson', 'speaking_lesson', 'reading_lesson', 'writing_lesson', 'game_level', 'vocabulary_review', 'grammar_topic'];
+  const preferredTypes = includePlusSkills
+    ? ['listening_lesson', 'speaking_lesson', 'reading_lesson', 'writing_lesson', 'game_level', 'vocabulary_review', 'grammar_topic']
+    : ['reading_lesson', 'writing_lesson', 'game_level', 'vocabulary_review', 'grammar_topic'];
   const used = new Set(selected.map((task) => `${task.targetType}:${task.targetId}`));
 
   for (const targetType of preferredTypes) {
@@ -334,6 +345,20 @@ async function insertDailyTasks(userId, taskDate, tasks) {
 
 async function completeTaskById(userId, taskId) {
   const pool = getPool();
+  const existing = await pool.query(
+    'SELECT TargetType FROM DailyTasks WHERE Id = $1 AND UserId = $2',
+    [taskId, userId]
+  );
+  const targetType = existing.rows[0]?.targettype || existing.rows[0]?.TargetType;
+  if (isPlusTaskType(targetType)) {
+    const isPlus = await billingService.isPlusUser(userId);
+    if (!isPlus) {
+      const error = new Error('Vui lòng nâng cấp Plus để hoàn thành nhiệm vụ Listening/Speaking.');
+      error.statusCode = 403;
+      throw error;
+    }
+  }
+
   const result = await pool.query(`
     UPDATE DailyTasks
     SET Status = 'completed',
@@ -368,6 +393,7 @@ const dailyService = {
   async getToday(user) {
     await ensureInsightsSchema();
     const taskDate = getSaigonDate();
+    const includePlusSkills = await billingService.isPlusUser(user.id);
 
     const pool = getPool();
     const existing = await pool.query(`
@@ -377,7 +403,12 @@ const dailyService = {
       ORDER BY OrderIndex ASC
     `, [user.id, taskDate]);
 
-    if (existing.rows.some((row) => (row.targettype || row.TargetType) === 'daily_login')) {
+    const hasLockedPlusTask = !includePlusSkills && existing.rows.some((row) => {
+      const type = row.targettype || row.TargetType;
+      return type === 'listening_lesson' || type === 'speaking_lesson';
+    });
+
+    if (existing.rows.some((row) => (row.targettype || row.TargetType) === 'daily_login') && !hasLockedPlusTask) {
       const shapedTasks = existing.rows.map(shapeTask);
       const completed = await autoCompleteLoginTask(user.id, shapedTasks);
       return {
@@ -388,8 +419,8 @@ const dailyService = {
       };
     }
 
-    const candidates = await collectCandidateTargets(user.id);
-    const selected = buildDefaultDailyTasks(candidates);
+    const candidates = await collectCandidateTargets(user.id, { includePlusSkills });
+    const selected = buildDefaultDailyTasks(candidates, { includePlusSkills });
     const tasks = await insertDailyTasks(user.id, taskDate, selected);
     const completed = await autoCompleteLoginTask(user.id, tasks);
     return { locked: false, taskDate, tasks: completed.tasks, expReward: completed.expReward };

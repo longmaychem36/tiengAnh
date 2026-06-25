@@ -2,7 +2,7 @@
 // Navbar Component
 // ============================================
 import { useAuth } from '../../hooks/useAuth';
-import { FiBell, FiLogOut } from 'react-icons/fi';
+import { FiBell, FiLogOut, FiZap } from 'react-icons/fi';
 import { HiOutlineFire } from 'react-icons/hi';
 
 function Navbar() {
@@ -18,7 +18,7 @@ function Navbar() {
               <span>{user.stats.streakDays || 0} ngày</span>
             </div>
             <div className="lingo-chip lingo-chip-indigo">
-              âš¡ {user.stats.exp || 0} EXP
+              <FiZap size={16} /> {user.stats.exp || 0} EXP
             </div>
           </>
         )}

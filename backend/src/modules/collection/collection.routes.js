@@ -10,6 +10,11 @@ router.use(authMiddleware, learnerOnly());
 // Collections
 router.get('/', collectionController.getMyCollections);
 router.get('/public', collectionController.getPublicCollections);
+router.get('/submissions', collectionController.getMyPublicSubmissions);
+router.post('/submissions', collectionController.createPublicSubmission);
+router.put('/submissions/:id', collectionController.updatePublicSubmission);
+router.post('/submissions/:id/submit', collectionController.submitPublicSubmission);
+router.delete('/submissions/:id', collectionController.deleteCollection);
 router.post('/', collectionController.createCollection);
 router.put('/:id', collectionController.updateCollection);
 router.delete('/:id', collectionController.deleteCollection);

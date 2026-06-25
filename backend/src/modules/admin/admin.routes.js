@@ -383,7 +383,7 @@ router.delete('/grammar/quizzes/:id', requireRole('admin'), async (req, res, nex
 // ========== VOCABULARY MANAGEMENT ==========
 router.get('/vocabulary/collections', requireRole('admin'), async (req, res, next) => {
   try {
-    const data = await adminContentService.getVocabularyCollections(req.query.status || 'all');
+    const data = await adminContentService.getVocabularyCollections(req.query.status || 'all', req.query.source || 'all');
     return success(res, data);
   } catch (err) { next(err); }
 });
@@ -406,8 +406,8 @@ router.put('/vocabulary/collections/:id/review', requireRole('admin'), async (re
   try {
     const { status } = req.body;
     if (!status) return badRequest(res, 'status is required');
-    await adminContentService.reviewVocabularyCollection(req.params.id, status, req.user.id);
-    return success(res, null, 'Vocabulary collection reviewed');
+    const data = await adminContentService.reviewVocabularyCollection(req.params.id, status, req.user.id);
+    return success(res, data, 'Vocabulary collection reviewed');
   } catch (err) { next(err); }
 });
 
@@ -541,15 +541,28 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
     const pool = getPool();
     const countTable = async (tableName) => {
       try {
-        return await pool.query(`SELECT count(*) as count FROM ${tableName}`);
+        return await pool.query(`SELECT count(*)::int as count FROM ${tableName}`);
       } catch (err) {
         return { rows: [{ count: 0 }] };
       }
     };
+    const scalar = async (query, fallback = 0) => {
+      try {
+        const result = await pool.query(query);
+        return Number(Object.values(result.rows[0] || {})[0] || fallback);
+      } catch {
+        return fallback;
+      }
+    };
+
     const queries = await Promise.all([
       countTable('Users'),
-      pool.query("SELECT count(*) as count FROM Users WHERE isactive = true"),
-      pool.query("SELECT count(*) as count FROM Users WHERE createdat >= NOW() - INTERVAL '7 days'"),
+      scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsActive, true) = true"),
+      scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsActive, true) = false"),
+      scalar("SELECT count(*)::int FROM Users WHERE Role = 'admin'"),
+      scalar("SELECT count(*)::int FROM Users WHERE Role = 'user'"),
+      scalar("SELECT count(*)::int FROM Users WHERE Plan = 'plus'"),
+      scalar("SELECT count(*)::int FROM Users WHERE CreatedAt >= NOW() - INTERVAL '7 days'"),
       countTable('GameLevels'),
       countTable('MiniGameQuestions'),
       countTable('SpeakingLessons'),
@@ -558,33 +571,99 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       countTable('WritingExercises'),
       countTable('GrammarCategories'),
       countTable('GrammarTopics'),
+      countTable('GrammarQuiz'),
       countTable('ListeningLessons'),
       countTable('ListeningQuestions'),
       countTable('ReadingLessons'),
       countTable('ReadingQuestions'),
+      countTable('UserCollections'),
+      countTable('UserCollectionWords'),
+      countTable('PaymentRequests'),
+      countTable('DailyTasks'),
+      scalar("SELECT COALESCE(SUM(ActiveSeconds), 0)::int FROM StudyTimeDaily"),
+      scalar("SELECT COALESCE(SUM(Exp), 0)::int FROM UserStats"),
     ]);
+
+    const topLearners = await pool.query(`
+      SELECT u.Id, u.Username, u.Email, COALESCE(us.Exp, 0)::int AS Exp, COALESCE(us.Level, 1)::int AS Level, COALESCE(us.StreakDays, 0)::int AS StreakDays
+      FROM Users u
+      LEFT JOIN UserStats us ON us.UserId = u.Id
+      WHERE u.Role = 'user'
+      ORDER BY COALESCE(us.Exp, 0) DESC, u.CreatedAt DESC
+      LIMIT 8
+    `);
+
+    const activity7d = await pool.query(`
+      SELECT d.day::date AS Date,
+             COALESCE(std.ActiveSeconds, 0)::int AS ActiveSeconds,
+             COALESCE(dt.CompletedTasks, 0)::int AS CompletedTasks,
+             COALESCE(newu.NewUsers, 0)::int AS NewUsers
+      FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') d(day)
+      LEFT JOIN (
+        SELECT ActivityDate::date AS day, SUM(ActiveSeconds)::int AS ActiveSeconds
+        FROM StudyTimeDaily
+        GROUP BY ActivityDate::date
+      ) std ON std.day = d.day::date
+      LEFT JOIN (
+        SELECT TaskDate::date AS day, COUNT(*)::int AS CompletedTasks
+        FROM DailyTasks
+        WHERE Status = 'completed'
+        GROUP BY TaskDate::date
+      ) dt ON dt.day = d.day::date
+      LEFT JOIN (
+        SELECT CreatedAt::date AS day, COUNT(*)::int AS NewUsers
+        FROM Users
+        GROUP BY CreatedAt::date
+      ) newu ON newu.day = d.day::date
+      ORDER BY d.day ASC
+    `);
+
     const stats = {
-      totalUsers: parseInt(queries[0].rows[0].count),
-      activeUsers: parseInt(queries[1].rows[0].count),
-      newUsers7d: parseInt(queries[2].rows[0].count),
-      totalGameLevels: parseInt(queries[3].rows[0].count),
-      totalQuestions: parseInt(queries[4].rows[0].count),
-      totalSpeakingLessons: parseInt(queries[5].rows[0].count),
-      totalSpeakingQuestions: parseInt(queries[6].rows[0].count),
-      totalWritingLessons: parseInt(queries[7].rows[0].count),
-      totalWritingExercises: parseInt(queries[8].rows[0].count),
-      totalGrammarCategories: parseInt(queries[9].rows[0].count),
-      totalGrammarTopics: parseInt(queries[10].rows[0].count),
-      totalListeningLessons: parseInt(queries[11].rows[0].count),
-      totalListeningQuestions: parseInt(queries[12].rows[0].count),
-      totalReadingLessons: parseInt(queries[13].rows[0].count),
-      totalReadingQuestions: parseInt(queries[14].rows[0].count),
+      totalUsers: Number(queries[0].rows[0].count || 0),
+      activeUsers: queries[1],
+      lockedUsers: queries[2],
+      adminUsers: queries[3],
+      learnerUsers: queries[4],
+      plusUsers: queries[5],
+      newUsers7d: queries[6],
+      totalGameLevels: Number(queries[7].rows[0].count || 0),
+      totalQuestions: Number(queries[8].rows[0].count || 0),
+      totalSpeakingLessons: Number(queries[9].rows[0].count || 0),
+      totalSpeakingQuestions: Number(queries[10].rows[0].count || 0),
+      totalWritingLessons: Number(queries[11].rows[0].count || 0),
+      totalWritingExercises: Number(queries[12].rows[0].count || 0),
+      totalGrammarCategories: Number(queries[13].rows[0].count || 0),
+      totalGrammarTopics: Number(queries[14].rows[0].count || 0),
+      totalGrammarQuiz: Number(queries[15].rows[0].count || 0),
+      totalListeningLessons: Number(queries[16].rows[0].count || 0),
+      totalListeningQuestions: Number(queries[17].rows[0].count || 0),
+      totalReadingLessons: Number(queries[18].rows[0].count || 0),
+      totalReadingQuestions: Number(queries[19].rows[0].count || 0),
+      totalVocabularyCollections: Number(queries[20].rows[0].count || 0),
+      totalVocabularyWords: Number(queries[21].rows[0].count || 0),
+      totalPaymentRequests: Number(queries[22].rows[0].count || 0),
+      totalDailyTasks: Number(queries[23].rows[0].count || 0),
+      totalStudySeconds: queries[24],
+      totalExp: queries[25],
+      topLearners: topLearners.rows,
+      activity7d: activity7d.rows,
     };
+
     stats.totalSkillLessons = stats.totalSpeakingLessons + stats.totalWritingLessons + stats.totalListeningLessons + stats.totalReadingLessons;
+    stats.totalLearningItems = stats.totalSpeakingQuestions + stats.totalWritingExercises + stats.totalListeningQuestions + stats.totalReadingQuestions + stats.totalGrammarQuiz + stats.totalQuestions;
+    stats.modules = [
+      { key: 'listening', name: 'Listening', lessons: stats.totalListeningLessons, items: stats.totalListeningQuestions, to: '/admin/listening' },
+      { key: 'reading', name: 'Reading', lessons: stats.totalReadingLessons, items: stats.totalReadingQuestions, to: '/admin/reading' },
+      { key: 'speaking', name: 'Speaking', lessons: stats.totalSpeakingLessons, items: stats.totalSpeakingQuestions, to: '/admin/speaking' },
+      { key: 'writing', name: 'Writing', lessons: stats.totalWritingLessons, items: stats.totalWritingExercises, to: '/admin/writing' },
+      { key: 'grammar', name: 'Grammar', lessons: stats.totalGrammarTopics, items: stats.totalGrammarQuiz, to: '/admin/grammar' },
+      { key: 'games', name: 'Mini games', lessons: stats.totalGameLevels, items: stats.totalQuestions, to: '/admin/games' },
+      { key: 'vocabulary', name: 'Vocabulary', lessons: stats.totalVocabularyCollections, items: stats.totalVocabularyWords, to: '/admin/vocabulary' },
+    ];
+
     return success(res, stats);
   } catch (err) { next(err); }
 });
-
 // ========== USER MANAGEMENT ==========
 
 router.post('/users', requireRole('admin'), async (req, res, next) => {
@@ -596,8 +675,8 @@ router.post('/users', requireRole('admin'), async (req, res, next) => {
 
 router.get('/users', requireRole('admin'), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search = '' } = req.query;
-    const data = await adminUserService.getAllUsers(Number(page), Number(limit), search);
+    const { page = 1, limit = 20, search = '', role = 'all' } = req.query;
+    const data = await adminUserService.getAllUsers(Number(page), Number(limit), search, role);
     return success(res, data);
   } catch (err) { next(err); }
 });
@@ -609,11 +688,31 @@ router.get('/users/stats', requireRole('admin'), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.put('/users/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminUserService.updateUser(req.params.id, req.body, req.user.id);
+    return success(res, data, 'User account updated');
+  } catch (err) { next(err); }
+});
+
+router.put('/users/:id/password', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminUserService.resetPassword(req.params.id, req.body.password);
+    return success(res, null, 'User password reset');
+  } catch (err) { next(err); }
+});
+
 router.put('/users/:id/toggle-active', requireRole('admin'), async (req, res, next) => {
   try {
-    if (req.params.id === req.user.id) return badRequest(res, 'Cannot lock your own account');
-    await adminUserService.toggleUserActive(req.params.id);
+    await adminUserService.toggleUserActive(req.params.id, req.user.id);
     return success(res, null, 'User status toggled');
+  } catch (err) { next(err); }
+});
+
+router.delete('/users/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    await adminUserService.deleteUser(req.params.id, req.user.id);
+    return success(res, null, 'User account deleted');
   } catch (err) { next(err); }
 });
 

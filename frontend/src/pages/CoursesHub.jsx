@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import SoftIcon from '../components/common/SoftIcon';
+import { useAuth } from '../hooks/useAuth';
 
 const skills = [
   {
@@ -12,7 +13,8 @@ const skills = [
     desc: 'Nghe hội thoại, đọc transcript và trả lời câu hỏi kiểm tra mức hiểu.',
     route: '/listening/lessons',
     color: '#0e7490',
-    ready: true
+    ready: true,
+    plusOnly: true
   },
   {
     id: 'reading',
@@ -32,7 +34,8 @@ const skills = [
     desc: 'Ghi âm câu trả lời, nhận điểm phát âm và luyện phản xạ nói.',
     route: '/speaking/options',
     color: '#c2410c',
-    ready: true
+    ready: true,
+    plusOnly: true
   },
   {
     id: 'writing',
@@ -56,12 +59,29 @@ const skills = [
   }
 ];
 
+const skillOrder = {
+  games: 0,
+  reading: 1,
+  writing: 2,
+  listening: 3,
+  speaking: 4
+};
+
 function CoursesHub() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isPlus = Boolean(user?.isPlus || user?.plan === 'plus');
+  const orderedSkills = [...skills].sort((a, b) => skillOrder[a.id] - skillOrder[b.id]);
 
   const handleSelectSkill = (skill) => {
     if (!skill.ready) {
       toast('Khóa học này đang được phát triển!', { icon: '🔒' });
+      return;
+    }
+
+    if (skill.plusOnly && !isPlus) {
+      toast('Listening và Speaking là tính năng Plus.');
+      navigate('/profile');
       return;
     }
 
@@ -84,20 +104,25 @@ function CoursesHub() {
       </section>
 
       <section className="course-skill-board" aria-label="Danh sách kỹ năng">
-        {skills.map((skill, index) => (
+          {orderedSkills.map((skill, index) => (
           <motion.button
             key={skill.id}
             type="button"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className={`course-skill-row ${skill.ready ? '' : 'is-disabled'}`}
+            className={`course-skill-row ${skill.ready ? '' : 'is-disabled'} ${skill.plusOnly && !isPlus ? 'is-plus-locked' : ''}`}
             style={{ '--skill-color': skill.color }}
             onClick={() => handleSelectSkill(skill)}
           >
             {!skill.ready && (
               <span className="course-lock-badge">
                 Sắp ra mắt
+              </span>
+            )}
+            {skill.plusOnly && !isPlus && (
+              <span className="course-lock-badge">
+                Plus
               </span>
             )}
             <span className="course-skill-image course-skill-icon-tile">
@@ -109,7 +134,7 @@ function CoursesHub() {
               <span>{skill.desc}</span>
             </span>
             <span className="course-skill-action">
-              Bắt đầu
+              {skill.plusOnly && !isPlus ? 'Nâng cấp' : 'Bắt đầu'}
             </span>
           </motion.button>
         ))}

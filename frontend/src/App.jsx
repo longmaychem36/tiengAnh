@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth';
 import Layout from './components/layout/Layout';
 import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import PlusRoute from './components/common/PlusRoute';
 import { stopAllPlayback } from './utils/audioControl';
 import { installSoundEffects } from './utils/soundEffects';
 
@@ -93,15 +94,15 @@ function App() {
         <Route path="/skill/:type" element={<SkillCourse />} />
         
         {/* Speaking & Writing Module */}
-        <Route path="/speaking/options" element={<SpeakingOptions />} />
-        <Route path="/speaking/ai" element={<SpeakingAiBuilder />} />
-        <Route path="/speaking/lessons" element={<SpeakingList />} />
-        <Route path="/speaking/lessons/:id" element={<SpeakingLesson />} />
-        <Route path="/speaking/personalized/:sessionId" element={<SpeakingLesson />} />
+        <Route path="/speaking/options" element={<PlusRoute featureName="Speaking"><SpeakingOptions /></PlusRoute>} />
+        <Route path="/speaking/ai" element={<PlusRoute featureName="Speaking AI"><SpeakingAiBuilder /></PlusRoute>} />
+        <Route path="/speaking/lessons" element={<PlusRoute featureName="Speaking"><SpeakingList /></PlusRoute>} />
+        <Route path="/speaking/lessons/:id" element={<PlusRoute featureName="Speaking"><SpeakingLesson /></PlusRoute>} />
+        <Route path="/speaking/personalized/:sessionId" element={<PlusRoute featureName="Speaking AI"><SpeakingLesson /></PlusRoute>} />
         <Route path="/writing/lessons" element={<WritingList />} />
         <Route path="/writing/lessons/:id" element={<WritingLesson />} />
-        <Route path="/listening/lessons" element={<ListeningList />} />
-        <Route path="/listening/lessons/:id" element={<ListeningLesson />} />
+        <Route path="/listening/lessons" element={<PlusRoute featureName="Listening"><ListeningList /></PlusRoute>} />
+        <Route path="/listening/lessons/:id" element={<PlusRoute featureName="Listening"><ListeningLesson /></PlusRoute>} />
         <Route path="/reading/lessons" element={<ReadingList />} />
         <Route path="/reading/lessons/:id" element={<ReadingLesson />} />
         

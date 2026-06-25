@@ -9,8 +9,8 @@ import {
   FiCheckCircle,
   FiEdit2,
   FiGlobe,
-  FiLock,
   FiPlus,
+  FiSend,
   FiTrash2,
   FiVolume2,
   FiX
@@ -22,7 +22,7 @@ import VocabularyGate from '../components/common/VocabularyGate';
 import { speakText } from '../utils/audioControl';
 import { useAuth } from '../hooks/useAuth';
 
-const emptyDeckForm = { name: '', description: '', isPublic: false };
+const emptyDeckForm = { name: '', description: '' };
 const emptyWordForm = { customWord: '', customMeaning: '', customExample: '' };
 const getData = (res, fallback) => res?.data ?? fallback;
 const getErrorMessage = (err, fallback) => err?.message || err?.response?.data?.message || fallback;
@@ -37,6 +37,7 @@ function normalizeWord(item = {}) {
 }
 
 function statusLabel(status) {
+  if (status === 'draft') return 'Bản nháp';
   if (status === 'pending') return 'Chờ duyệt';
   if (status === 'rejected') return 'Bị từ chối';
   return 'Đã duyệt';
@@ -44,10 +45,10 @@ function statusLabel(status) {
 
 function Vocabulary() {
   const { user } = useAuth();
-  const isPlus = Boolean(user?.isPlus || user?.plan === 'plus');
   const [activeTab, setActiveTab] = useState('mine');
   const [myDecks, setMyDecks] = useState([]);
   const [publicDecks, setPublicDecks] = useState([]);
+  const [submissionDecks, setSubmissionDecks] = useState([]);
   const [selectedDeck, setSelectedDeck] = useState(null);
   const [words, setWords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,8 +62,8 @@ function Vocabulary() {
   const [editingWord, setEditingWord] = useState(null);
   const [wordForm, setWordForm] = useState(emptyWordForm);
 
-  const visibleDecks = activeTab === 'mine' ? myDecks : publicDecks;
-  const editable = activeTab === 'mine' && selectedDeck?.UserId === user?.id;
+  const visibleDecks = activeTab === 'mine' ? myDecks : activeTab === 'submissions' ? submissionDecks : publicDecks;
+  const editable = (activeTab === 'mine' || activeTab === 'submissions') && selectedDeck?.UserId === user?.id;
   const vocabularyItems = useMemo(() => words.map(normalizeWord).filter((item) => item.word && item.meaning), [words]);
 
   useEffect(() => {
@@ -78,12 +79,14 @@ function Vocabulary() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [mineRes, publicRes] = await Promise.all([
+      const [mineRes, publicRes, submissionsRes] = await Promise.all([
         collectionApi.getMyCollections(),
-        collectionApi.getPublicCollections()
+        collectionApi.getPublicCollections(),
+        collectionApi.getMyPublicSubmissions()
       ]);
       setMyDecks(getData(mineRes, []));
       setPublicDecks(getData(publicRes, []));
+      setSubmissionDecks(getData(submissionsRes, []));
     } catch (err) {
       toast.error(getErrorMessage(err, 'Không tải được từ vựng.'));
     } finally {
@@ -114,8 +117,7 @@ function Vocabulary() {
     setEditingDeck(deck);
     setDeckForm({
       name: deck.Name || '',
-      description: deck.Description || '',
-      isPublic: Boolean(deck.IsPublic)
+      description: deck.Description || ''
     });
     setShowDeckModal(true);
   };
@@ -123,15 +125,24 @@ function Vocabulary() {
   const saveDeck = async (event) => {
     event.preventDefault();
     if (!deckForm.name.trim()) return toast.error('Nhập tên học phần.');
-    if (deckForm.isPublic && !isPlus) return toast.error('Tạo học phần công khai là tính năng Plus.');
 
     try {
       if (editingDeck) {
-        await collectionApi.updateCollection(editingDeck.Id, deckForm);
-        toast.success(deckForm.isPublic ? 'Đã gửi lại để admin duyệt.' : 'Đã cập nhật học phần.');
+        if (activeTab === 'submissions') {
+          await collectionApi.updatePublicSubmission(editingDeck.Id, deckForm);
+          toast.success('Đã lưu bản nháp học phần công khai.');
+        } else {
+          await collectionApi.updateCollection(editingDeck.Id, deckForm);
+          toast.success('Đã cập nhật học phần.');
+        }
       } else {
-        await collectionApi.createCollection(deckForm);
-        toast.success(deckForm.isPublic ? 'Đã tạo học phần công khai, đang chờ duyệt.' : 'Đã tạo học phần.');
+        if (activeTab === 'submissions') {
+          await collectionApi.createPublicSubmission(deckForm);
+          toast.success('Đã tạo bản nháp học phần công khai. Thêm từ rồi gửi duyệt khi sẵn sàng.');
+        } else {
+          await collectionApi.createCollection(deckForm);
+          toast.success('Đã tạo học phần.');
+        }
       }
       setShowDeckModal(false);
       setDeckForm(emptyDeckForm);
@@ -146,7 +157,11 @@ function Vocabulary() {
     event.stopPropagation();
     if (!window.confirm('Xóa học phần này và toàn bộ từ vựng?')) return;
     try {
-      await collectionApi.deleteCollection(deck.Id);
+      if (activeTab === 'submissions') {
+        await collectionApi.deletePublicSubmission(deck.Id);
+      } else {
+        await collectionApi.deleteCollection(deck.Id);
+      }
       toast.success('Đã xóa học phần.');
       if (selectedDeck?.Id === deck.Id) {
         setSelectedDeck(null);
@@ -184,15 +199,15 @@ function Vocabulary() {
     try {
       if (editingWord) {
         await collectionApi.updateWord(selectedDeck.Id, editingWord.Id, wordForm);
-        toast.success(Boolean(selectedDeck.IsPublic) ? 'Đã sửa từ, học phần chờ duyệt lại.' : 'Đã sửa từ.');
+        toast.success(activeTab === 'submissions' ? 'Đã sửa từ, học phần trở về bản nháp.' : 'Đã sửa từ.');
       } else {
         await collectionApi.addWord(selectedDeck.Id, wordForm);
-        toast.success(Boolean(selectedDeck.IsPublic) ? 'Đã thêm từ, học phần chờ duyệt lại.' : 'Đã thêm từ.');
+        toast.success(activeTab === 'submissions' ? 'Đã thêm từ vào bản nháp học phần công khai.' : 'Đã thêm từ.');
       }
       setShowWordModal(false);
       setEditingWord(null);
       setWordForm(emptyWordForm);
-      if (selectedDeck.IsPublic) setSelectedDeck({ ...selectedDeck, ReviewStatus: 'pending' });
+      if (activeTab === 'submissions') setSelectedDeck({ ...selectedDeck, ReviewStatus: 'draft' });
       await loadWords(selectedDeck);
       await loadAll();
     } catch (err) {
@@ -204,12 +219,24 @@ function Vocabulary() {
     if (!selectedDeck || !window.confirm('Xóa từ này?')) return;
     try {
       await collectionApi.removeWord(selectedDeck.Id, wordId);
-      toast.success(Boolean(selectedDeck.IsPublic) ? 'Đã xóa từ, học phần chờ duyệt lại.' : 'Đã xóa từ.');
-      if (selectedDeck.IsPublic) setSelectedDeck({ ...selectedDeck, ReviewStatus: 'pending' });
+      toast.success(activeTab === 'submissions' ? 'Đã xóa từ, học phần trở về bản nháp.' : 'Đã xóa từ.');
+      if (activeTab === 'submissions') setSelectedDeck({ ...selectedDeck, ReviewStatus: 'draft' });
       await loadWords(selectedDeck);
       await loadAll();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Không xóa được từ.'));
+    }
+  };
+
+  const submitForReview = async () => {
+    if (!selectedDeck) return;
+    try {
+      await collectionApi.submitPublicSubmission(selectedDeck.Id);
+      toast.success('Đã gửi học phần công khai để admin duyệt.');
+      setSelectedDeck({ ...selectedDeck, ReviewStatus: 'pending' });
+      await loadAll();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Không gửi duyệt được học phần.'));
     }
   };
 
@@ -245,9 +272,9 @@ function Vocabulary() {
         <div>
           <h1>Từ vựng</h1>
         </div>
-        {activeTab === 'mine' && (
+        {(activeTab === 'mine' || activeTab === 'submissions') && (
           <button type="button" className="btn btn-primary" onClick={openCreateDeck}>
-            <FiPlus /> Tạo học phần
+            <FiPlus /> {activeTab === 'submissions' ? 'Gửi học phần công khai' : 'Tạo học phần'}
           </button>
         )}
       </div>
@@ -258,6 +285,9 @@ function Vocabulary() {
         </button>
         <button type="button" className={`btn ${activeTab === 'public' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('public')}>
           <FiGlobe /> Học phần công khai
+        </button>
+        <button type="button" className={`btn ${activeTab === 'submissions' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('submissions')}>
+          <FiGlobe /> Bài công khai của tôi
         </button>
       </div>
 
@@ -287,15 +317,32 @@ function Vocabulary() {
                     <FiPlus /> Thêm từ
                   </button>
                 )}
+                {activeTab === 'submissions' && ['draft', 'rejected'].includes(selectedDeck.ReviewStatus) && (
+                  <button type="button" className="btn btn-primary btn-sm" disabled={vocabularyItems.length === 0} onClick={submitForReview}>
+                    <FiSend /> Gửi duyệt
+                  </button>
+                )}
                 <button type="button" className="btn btn-primary btn-sm" disabled={vocabularyItems.length === 0} onClick={() => setPracticeMode(true)}>
                   <FiCheckCircle /> Ôn luyện
                 </button>
               </div>
             </div>
 
-            {selectedDeck.IsPublic && selectedDeck.ReviewStatus !== 'approved' && activeTab === 'mine' && (
+            {activeTab === 'submissions' && selectedDeck.ReviewStatus === 'draft' && (
               <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)', background: '#fef3c7', color: '#92400e', marginBottom: 'var(--space-4)' }}>
-                Học phần công khai chỉ hiển thị cho người khác sau khi admin duyệt.
+                Đây là bản nháp. Thêm đầy đủ từ vựng rồi bấm Gửi duyệt để admin xét duyệt.
+              </div>
+            )}
+
+            {activeTab === 'submissions' && selectedDeck.ReviewStatus === 'pending' && (
+              <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)', background: '#dbeafe', color: '#1e40af', marginBottom: 'var(--space-4)' }}>
+                Học phần đang chờ admin duyệt. Nếu chỉnh sửa, học phần sẽ trở về bản nháp.
+              </div>
+            )}
+
+            {activeTab === 'submissions' && selectedDeck.ReviewStatus === 'rejected' && (
+              <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)', background: '#fee2e2', color: '#991b1b', marginBottom: 'var(--space-4)' }}>
+                Học phần đã bị từ chối. Chỉnh sửa nội dung rồi gửi duyệt lại.
               </div>
             )}
 
@@ -334,7 +381,11 @@ function Vocabulary() {
         <section>
           {visibleDecks.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-8)' }}>
-              {activeTab === 'mine' ? 'Chưa có học phần từ vựng.' : ''}
+              {activeTab === 'mine'
+                ? 'Chưa có học phần từ vựng.'
+                : activeTab === 'submissions'
+                  ? 'Chưa có học phần công khai nào đang gửi duyệt.'
+                  : 'Chưa có học phần công khai nào.'}
             </div>
           ) : (
             <div className="vocabulary-deck-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-3)' }}>
@@ -359,15 +410,15 @@ function Vocabulary() {
                     <h3 style={{ fontWeight: 800, marginBottom: 6 }}>{deck.Name}</h3>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                       <span className="badge badge-primary">{Number(deck.WordCount || 0)} từ</span>
-                      {deck.IsPublic && <span className="badge badge-secondary"><FiGlobe /> Công khai</span>}
-                      {activeTab === 'mine' && deck.IsPublic && <span className="badge badge-secondary">{statusLabel(deck.ReviewStatus)}</span>}
+                      {activeTab === 'public' && <span className="badge badge-secondary"><FiGlobe /> Công khai</span>}
+                      {activeTab === 'submissions' && <span className="badge badge-secondary">{statusLabel(deck.ReviewStatus)}</span>}
                     </div>
                     <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>{deck.Description}</p>
                     {deck.CreatorName && activeTab === 'public' && (
                       <small style={{ color: 'var(--color-text-muted)' }}>Tác giả: {deck.CreatorName}</small>
                     )}
                   </div>
-                  {activeTab === 'mine' && (
+                  {(activeTab === 'mine' || activeTab === 'submissions') && (
                     <div style={{ display: 'flex', gap: 4 }} onClick={(event) => event.stopPropagation()}>
                       <button type="button" className="btn btn-icon btn-ghost" onClick={(event) => openEditDeck(deck, event)}><FiEdit2 /></button>
                       <button type="button" className="btn btn-icon btn-ghost" onClick={(event) => deleteDeck(deck, event)} style={{ color: 'var(--color-error)' }}><FiTrash2 /></button>
@@ -381,7 +432,10 @@ function Vocabulary() {
       )}
 
       {showDeckModal && (
-        <Modal title={editingDeck ? 'Sửa học phần' : 'Tạo học phần'} onClose={() => setShowDeckModal(false)}>
+        <Modal
+          title={editingDeck ? 'Sửa học phần' : activeTab === 'submissions' ? 'Gửi học phần công khai' : 'Tạo học phần'}
+          onClose={() => setShowDeckModal(false)}
+        >
           <form onSubmit={saveDeck}>
             <label className="form-group">
               <span className="form-label">Tên học phần</span>
@@ -391,16 +445,11 @@ function Vocabulary() {
               <span className="form-label">Mô tả</span>
               <input className="form-input" value={deckForm.description} onChange={(e) => setDeckForm({ ...deckForm, description: e.target.value })} />
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 'var(--space-3)', color: !isPlus ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
-              <input
-                type="checkbox"
-                checked={deckForm.isPublic}
-                disabled={!isPlus}
-                onChange={(e) => setDeckForm({ ...deckForm, isPublic: e.target.checked })}
-              />
-              <span>Đăng công khai {isPlus ? '(cần admin duyệt)' : '(Plus)'}</span>
-              {!isPlus && <FiLock />}
-            </label>
+            {activeTab === 'submissions' && (
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginTop: 'var(--space-3)' }}>
+                Học phần này được tạo riêng để gửi công khai và sẽ cần admin duyệt trước khi hiển thị cho người khác.
+              </p>
+            )}
             <div className="flex gap-2" style={{ marginTop: 'var(--space-5)' }}>
               <button type="button" className="btn btn-secondary w-full" onClick={() => setShowDeckModal(false)}>Hủy</button>
               <button type="submit" className="btn btn-primary w-full">Lưu</button>

@@ -8,6 +8,7 @@ const path = require('path');
 const speakingController = require('./speaking.controller');
 const authMiddleware = require('../../middlewares/authMiddleware');
 const { learnerOnly } = require('../../middlewares/roleMiddleware');
+const { requirePlus } = require('../../middlewares/plusMiddleware');
 
 // Multer config for audio uploads
 const audioStorage = multer.diskStorage({
@@ -47,14 +48,14 @@ router.post('/transcribe', audioUpload.single('audio'), speakingController.trans
 router.post('/transcribe-analyze', audioUpload.single('audio'), speakingController.transcribeAndAnalyze);
 
 // Temporary AI-generated personalized speaking lesson (stored in memory only)
-router.post('/personalized', speakingController.createPersonalizedLesson);
-router.get('/personalized/:sessionId', speakingController.getPersonalizedLesson);
-router.post('/personalized/:sessionId/complete', speakingController.completePersonalizedLesson);
+router.post('/personalized', requirePlus('Speaking AI'), speakingController.createPersonalizedLesson);
+router.get('/personalized/:sessionId', requirePlus('Speaking AI'), speakingController.getPersonalizedLesson);
+router.post('/personalized/:sessionId/complete', requirePlus('Speaking AI'), speakingController.completePersonalizedLesson);
 
 // Existing endpoints
-router.get('/lessons', speakingController.getLessons);
-router.get('/lessons/:id', speakingController.getLessonDetails);
-router.post('/progress', speakingController.saveProgress);
+router.get('/lessons', requirePlus('Speaking'), speakingController.getLessons);
+router.get('/lessons/:id', requirePlus('Speaking'), speakingController.getLessonDetails);
+router.post('/progress', requirePlus('Speaking'), speakingController.saveProgress);
 router.post('/analyze', speakingController.analyzeText);
 
 module.exports = router;

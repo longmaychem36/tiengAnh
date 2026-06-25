@@ -45,7 +45,7 @@ function SpeakingOptions() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            <div style={bulletStyle}><FiStar color="#f59e0b" fill="#f59e0b" /> Miễn phí cho mọi tài khoản</div>
+            <div style={bulletStyle}><FiStar color="#f59e0b" fill="#f59e0b" /> Dành cho tài khoản Plus</div>
             <div style={bulletStyle}><FiStar color="#f59e0b" fill="#f59e0b" /> Bài học theo lộ trình có sẵn</div>
             <div style={bulletStyle}><FiStar color="#f59e0b" fill="#f59e0b" /> Có câu hỏi, câu trả lời mẫu và TTS</div>
             <div style={bulletStyle}><FiStar color="#f59e0b" fill="#f59e0b" /> Ghi âm, nhận dạng giọng nói và chấm điểm</div>
@@ -61,7 +61,7 @@ function SpeakingOptions() {
           onClick={() => navigate(canUseAi ? '/speaking/ai' : '/profile')}
         >
           <span style={{ position: 'absolute', top: 18, right: 18 }} className={canUseAi ? 'badge badge-success' : 'badge badge-warning'}>
-            {canUseAi ? 'PLUS' : 'Cần Plus'}
+            {canUseAi ? 'PLUS' : 'Plus'}
           </span>
 
           <div>
@@ -69,7 +69,7 @@ function SpeakingOptions() {
               {canUseAi ? <FiCpu size={56} /> : <FiLock size={56} />}
             </div>
             <button type="button" className={canUseAi ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'} onClick={(e) => { e.stopPropagation(); navigate(canUseAi ? '/speaking/ai' : '/profile'); }}>
-              {canUseAi ? 'Truy cập' : 'Nâng cấp'}
+              {canUseAi ? 'Truy cập' : 'Truy cập'}
             </button>
           </div>
 

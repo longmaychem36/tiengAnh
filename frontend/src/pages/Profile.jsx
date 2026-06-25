@@ -3,7 +3,7 @@
 // ============================================
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiCamera, FiSave } from 'react-icons/fi';
+import { FiCamera, FiCheckCircle, FiCpu, FiHeadphones, FiMic, FiSave, FiShield, FiZap } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import { userApi } from '../api/userApi';
 import { billingApi } from '../api/billingApi';
@@ -13,6 +13,31 @@ const VND_FORMATTER = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
   currency: 'VND'
 });
+
+const plusFeatures = [
+  {
+    icon: FiHeadphones,
+    title: 'Listening theo bài học',
+    text: 'Mở khóa toàn bộ bài nghe với hội thoại, câu hỏi kiểm tra và phần luyện lại từ vựng.'
+  },
+  {
+    icon: FiMic,
+    title: 'Speaking có phản hồi',
+    text: 'Luyện nói theo tình huống, ghi âm câu trả lời và theo dõi tiến bộ qua từng bài.'
+  },
+  {
+    icon: FiCpu,
+    title: 'AI Speaking Builder',
+    text: 'Tạo bài luyện nói theo chủ đề riêng để học đúng nhu cầu hiện tại của bạn.'
+  }
+];
+
+const plusIncluded = [
+  'Listening và Speaking không giới hạn trong thời hạn gói',
+  'Bài luyện nói AI theo chủ đề cá nhân',
+  'Giữ nguyên toàn bộ quyền Free: Reading, Writing, Grammar, Mini game, Vocabulary',
+  'Kích hoạt bằng QR SePay sau khi hệ thống xác nhận thanh toán'
+];
 
 function Profile() {
   const { user, updateUser } = useAuth();
@@ -248,6 +273,7 @@ function Profile() {
           <div style={{ padding: 'var(--space-4)', background: '#ecfdf5', color: '#047857', borderRadius: 'var(--radius-lg)', fontWeight: 600 }}>
             Tài khoản đang dùng Plus
             {user?.plusExpiresAt ? ` đến ${new Date(user.plusExpiresAt).toLocaleDateString('vi-VN')}` : ''}.
+            <div style={{ marginTop: 8 }}>Đã mở khóa Listening, Speaking và bài luyện nói AI.</div>
           </div>
         ) : (
           <>
@@ -269,9 +295,52 @@ function Profile() {
             )}
 
             {billingInfo && !plusOrder && (
-              <button type="button" className="btn btn-primary" onClick={createPlusOrder} disabled={loadingBilling}>
-                {loadingBilling ? 'Đang tạo...' : 'Tạo QR thanh toán SePay'}
-              </button>
+              <div className="profile-plus-showcase">
+                <div className="profile-plus-showcase-hero">
+                  <div>
+                    <span className="profile-plus-pill"><FiZap /> Gói luyện kỹ năng chủ động</span>
+                    <h3>Mở khóa Listening, Speaking và AI Speaking Builder</h3>
+                    <p>
+                      Plus dành cho phần học cần nghe, phản xạ và luyện nói theo ngữ cảnh. Các phần Reading, Writing,
+                      Grammar, Mini game và Vocabulary vẫn giữ nguyên cho tài khoản Free.
+                    </p>
+                  </div>
+                  <div className="profile-plus-price-card">
+                    <span>Giá demo</span>
+                    <strong>{formatVnd(billingInfo?.upgrade?.price || 2000)}</strong>
+                    <small>{billingInfo?.upgrade?.durationDays || 30} ngày sử dụng</small>
+                  </div>
+                </div>
+
+                <div className="profile-plus-feature-grid">
+                  {plusFeatures.map((feature) => {
+                    const Icon = feature.icon;
+                    return (
+                      <div className="profile-plus-feature" key={feature.title}>
+                        <span><Icon /></span>
+                        <h4>{feature.title}</h4>
+                        <p>{feature.text}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="profile-plus-included">
+                  <div>
+                    <span><FiShield /></span>
+                    <h4>Quyền lợi trong gói</h4>
+                  </div>
+                  <ul>
+                    {plusIncluded.map((item) => (
+                      <li key={item}><FiCheckCircle /> {item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <button type="button" className="btn btn-primary" onClick={createPlusOrder} disabled={loadingBilling}>
+                  {loadingBilling ? 'Đang tạo...' : 'Tạo QR thanh toán SePay'}
+                </button>
+              </div>
             )}
 
             {plusOrder && (
@@ -295,7 +364,7 @@ function Profile() {
                   <div><strong>Số tài khoản:</strong><br />{billingInfo.upgrade.transfer.accountNumber || 'Chưa cấu hình'}</div>
                   <div><strong>Chủ tài khoản:</strong><br />{billingInfo.upgrade.transfer.accountName || 'Chưa cấu hình'}</div>
                   <div><strong>Số tiền:</strong><br />{formatVnd(plusOrder.amount)}</div>
-                  <div style={{ gridColumn: '1 / -1' }}><strong>Ná»™i dung:</strong><br />{plusOrder.transferContent}</div>
+                  <div style={{ gridColumn: '1 / -1' }}><strong>Nội dung:</strong><br />{plusOrder.transferContent}</div>
                   <div><strong>Trạng thái:</strong><br />{plusOrder.status}</div>
                 </div>
                 <div style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-3)', background: '#fff7ed', color: '#9a3412', borderRadius: 'var(--radius-lg)', fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
@@ -455,7 +524,7 @@ function Profile() {
             />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
-              <button className="btn btn-secondary" type="button" onClick={closeAvatarCrop} disabled={uploadingAvatar}>Há»§y</button>
+              <button className="btn btn-secondary" type="button" onClick={closeAvatarCrop} disabled={uploadingAvatar}>Hủy</button>
               <button className="btn btn-primary" type="button" onClick={uploadCroppedAvatar} disabled={uploadingAvatar}>
                 {uploadingAvatar ? 'Đang tải...' : 'Lưu ảnh'}
               </button>
