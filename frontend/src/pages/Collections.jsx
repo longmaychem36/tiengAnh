@@ -26,6 +26,10 @@ const emptyDeckForm = { name: '', description: '' };
 const emptyWordForm = { customWord: '', customMeaning: '', customExample: '' };
 const getData = (res, fallback) => res?.data ?? fallback;
 const getErrorMessage = (err, fallback) => err?.message || err?.response?.data?.message || fallback;
+const isSubmissionsRouteMissing = (err) => {
+  const message = err?.response?.data?.message || err?.message || '';
+  return err?.response?.status === 404 && /collections\/submissions/i.test(message);
+};
 
 function normalizeWord(item = {}) {
   return {
@@ -53,6 +57,7 @@ function Vocabulary() {
   const [words, setWords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [practiceMode, setPracticeMode] = useState(false);
+  const [submissionsUnavailable, setSubmissionsUnavailable] = useState(false);
 
   const [showDeckModal, setShowDeckModal] = useState(false);
   const [editingDeck, setEditingDeck] = useState(null);
@@ -79,14 +84,22 @@ function Vocabulary() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [mineRes, publicRes, submissionsRes] = await Promise.all([
+      const [mineRes, publicRes] = await Promise.all([
         collectionApi.getMyCollections(),
-        collectionApi.getPublicCollections(),
-        collectionApi.getMyPublicSubmissions()
+        collectionApi.getPublicCollections()
       ]);
       setMyDecks(getData(mineRes, []));
       setPublicDecks(getData(publicRes, []));
-      setSubmissionDecks(getData(submissionsRes, []));
+
+      try {
+        const submissionsRes = await collectionApi.getMyPublicSubmissions();
+        setSubmissionDecks(getData(submissionsRes, []));
+        setSubmissionsUnavailable(false);
+      } catch (submissionErr) {
+        if (!isSubmissionsRouteMissing(submissionErr)) throw submissionErr;
+        setSubmissionDecks([]);
+        setSubmissionsUnavailable(true);
+      }
     } catch (err) {
       toast.error(getErrorMessage(err, 'Không tải được từ vựng.'));
     } finally {
@@ -273,7 +286,7 @@ function Vocabulary() {
           <h1>Từ vựng</h1>
         </div>
         {(activeTab === 'mine' || activeTab === 'submissions') && (
-          <button type="button" className="btn btn-primary" onClick={openCreateDeck}>
+          <button type="button" className="btn btn-primary" disabled={activeTab === 'submissions' && submissionsUnavailable} onClick={openCreateDeck}>
             <FiPlus /> {activeTab === 'submissions' ? 'Gửi học phần công khai' : 'Tạo học phần'}
           </button>
         )}
@@ -290,6 +303,12 @@ function Vocabulary() {
           <FiGlobe /> Bài công khai của tôi
         </button>
       </div>
+
+      {activeTab === 'submissions' && submissionsUnavailable && (
+        <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)', background: '#fee2e2', color: '#991b1b', marginBottom: 'var(--space-4)' }}>
+          Server chưa có route gửi học phần công khai. Vui lòng deploy lại backend để dùng tính năng này.
+        </div>
+      )}
 
       {selectedDeck ? (
         <section>

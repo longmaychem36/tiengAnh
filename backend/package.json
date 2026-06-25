@@ -13,6 +13,7 @@
     "db:import-data": "node scripts/import_dump_data.js",
     "db:import-data:check": "node scripts/import_dump_data.js --dry-run",
     "db:counts": "node scripts/db_counts.js",
+    "routes:check-collections": "node scripts/check_collection_submissions_route.js",
     "db:migrate-collections": "node scripts/migrate_collections.js",
     "db:migrate-onboarding": "node scripts/migrate_onboarding.js",
     "db:migrate-roles": "node scripts/migrate_roles.js",
