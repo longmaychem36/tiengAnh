@@ -129,6 +129,18 @@ function getTargetText(question) {
   return String(getQuestionPayload(question).targetText || question?.contentEN || '');
 }
 
+function getSentenceWords(text = '') {
+  return String(text)
+    .replace(/[.,!?]/g, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function getListenBuildTargetWordCount(question) {
+  return getSentenceWords(getTargetText(question)).length;
+}
+
 function getSpeakingOptions(question) {
   const payloadOptions = getQuestionPayload(question).options;
   if (Array.isArray(payloadOptions) && payloadOptions.length > 0) {
@@ -915,6 +927,8 @@ function Onboarding() {
   };
 
   const handleMiniBuiltWordAdd = (word, index) => {
+    const targetWordCount = getListenBuildTargetWordCount(miniCurrentQuestion);
+    if (targetWordCount && miniBuiltWords.length >= targetWordCount) return;
     setMiniBuiltWords((current) => [...current, word]);
     setMiniWordBank((current) => current.filter((_, itemIndex) => itemIndex !== index));
   };
@@ -1003,8 +1017,9 @@ function Onboarding() {
     }
 
     if (type === 'listenbuild') {
-      const hasBuilt = miniBuiltWords.length > 0;
-      const isComplete = hasBuilt && miniWordBank.length === 0;
+      const targetWordCount = getListenBuildTargetWordCount(question);
+      const isComplete = targetWordCount > 0 && miniBuiltWords.length === targetWordCount;
+      const reachedTargetLength = targetWordCount > 0 && miniBuiltWords.length >= targetWordCount;
       return (
         <div className="placement-minigame-card game-placement-body">
           <p className="game-question-prompt">Nghe và xếp câu hoàn chỉnh</p>
@@ -1020,7 +1035,7 @@ function Onboarding() {
           </div>
           <div className="game-word-bank">
             {miniWordBank.map((word, index) => (
-              <button key={`${word}-${index}`} type="button" onClick={() => handleMiniBuiltWordAdd(word, index)} disabled={hasResult || isCheckingAnswer}>{word}</button>
+              <button key={`${word}-${index}`} type="button" onClick={() => handleMiniBuiltWordAdd(word, index)} disabled={hasResult || isCheckingAnswer || reachedTargetLength}>{word}</button>
             ))}
           </div>
           <PrimaryButton onClick={() => checkMiniAnswer(question, miniBuiltWords.join(' '))} disabled={!isComplete || hasResult || isCheckingAnswer}>Chọn câu này</PrimaryButton>

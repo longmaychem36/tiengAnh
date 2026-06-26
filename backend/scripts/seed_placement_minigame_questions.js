@@ -77,9 +77,29 @@ async function seed() {
     inserted += 1;
   }
 
+  const activeKeys = new Set(QUESTIONS.map((item) => `${item.questionType}::${item.contentEN.toLowerCase()}`));
+  const allRows = await pool.query(`
+    SELECT Id, QuestionType, ContentEN
+    FROM PlacementMiniGameQuestions
+    WHERE COALESCE(IsActive, true) = true
+  `);
+  let deactivated = 0;
+  for (const row of allRows.rows) {
+    const key = `${row.questiontype}::${String(row.contenten || '').toLowerCase()}`;
+    if (activeKeys.has(key)) continue;
+    const result = await pool.query(`
+      UPDATE PlacementMiniGameQuestions
+      SET IsActive = false,
+          UpdatedAt = NOW()
+      WHERE Id = $1
+    `, [row.id]);
+    deactivated += result.rowCount;
+  }
+
   console.log(JSON.stringify({
     insertedPlacementMiniGameQuestions: inserted,
-    updatedPlacementMiniGameQuestions: updated
+    updatedPlacementMiniGameQuestions: updated,
+    deactivatedPlacementMiniGameQuestions: deactivated
   }, null, 2));
 }
 

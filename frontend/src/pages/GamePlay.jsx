@@ -28,6 +28,13 @@ const TYPE_LABELS = {
 
 const getSpeakingTarget = (question) => question?.CorrectAnswer || question?.ContentEN || '';
 const getSpeakingPassScore = (question) => Number(question?.Options?.passScore || 70);
+const getSentenceWords = (text = '') => String(text)
+  .replace(/[.,!?]/g, '')
+  .trim()
+  .split(/\s+/)
+  .filter(Boolean);
+const getBuildTarget = (question) => question?.CorrectAnswer || question?.ContentEN || '';
+const getBuildTargetWordCount = (question) => getSentenceWords(getBuildTarget(question)).length;
 const getSpeakingMaxDuration = (question) => {
   const wordCount = getSpeakingTarget(question).trim().split(/\s+/).filter(Boolean).length;
   return Math.min(18, Math.max(8, Math.ceil(wordCount * 1.35)));
@@ -336,6 +343,9 @@ function GamePlay() {
   };
 
   const addWord = (word, idx) => {
+    const question = levelData?.questions?.[currentQ];
+    const targetWordCount = getBuildTargetWordCount(question);
+    if (targetWordCount && builtWords.length >= targetWordCount) return;
     setBuiltWords(prev => [...prev, word]);
     setWordBank(prev => prev.filter((_, i) => i !== idx));
   };
@@ -578,7 +588,11 @@ function GamePlay() {
           </>
         )}
 
-        {question.QuestionType === 'listenbuild' && (
+        {question.QuestionType === 'listenbuild' && (() => {
+          const targetWordCount = getBuildTargetWordCount(question);
+          const canCheckBuild = targetWordCount > 0 && builtWords.length === targetWordCount;
+          const reachedTargetLength = targetWordCount > 0 && builtWords.length >= targetWordCount;
+          return (
           <>
             <p className="game-question-prompt">Nghe và xếp các từ thành câu hoàn chỉnh</p>
             {question.ContentVI && <p className="game-question-hint">({question.ContentVI})</p>}
@@ -614,6 +628,7 @@ function GamePlay() {
                     type="button"
                     whileTap={{ scale: 0.94 }}
                     onClick={() => addWord(word, idx)}
+                    disabled={reachedTargetLength}
                   >
                     {word}
                   </motion.button>
@@ -621,11 +636,12 @@ function GamePlay() {
               </div>
             )}
 
-            {!buildChecked && builtWords.length > 0 && wordBank.length === 0 && (
+            {!buildChecked && canCheckBuild && (
               <button type="button" className="btn btn-primary" onClick={checkBuild}>Kiểm tra câu</button>
             )}
           </>
-        )}
+          );
+        })()}
 
         {question.QuestionType === 'truefalse' && (
           <>
