@@ -1018,7 +1018,7 @@ function Onboarding() {
 
     if (type === 'listenbuild') {
       const targetWordCount = getListenBuildTargetWordCount(question);
-      const isComplete = targetWordCount > 0 && miniBuiltWords.length === targetWordCount;
+      const isComplete = miniBuiltWords.length > 0;
       const reachedTargetLength = targetWordCount > 0 && miniBuiltWords.length >= targetWordCount;
       return (
         <div className="placement-minigame-card game-placement-body">
@@ -1096,7 +1096,6 @@ function Onboarding() {
     const answer = answers[miniCurrentQuestion.id];
     const answerResult = answerResults[miniCurrentQuestion.id];
     const isCheckingAnswer = checkingMiniAnswerId === miniCurrentQuestion.id;
-    const canGoPrevious = activeQuestionIndex > 0;
     const isLastQuestion = activeQuestionIndex + 1 >= miniQuestions.length;
     const canContinue = isAnswered(answer) && typeof answerResult === 'boolean';
     const progressForQuestion = ((activeQuestionIndex + (canContinue ? 1 : 0)) / Math.max(miniQuestions.length, 1)) * 100;
@@ -1111,6 +1110,11 @@ function Onboarding() {
         return;
       }
       setActiveQuestionIndex((index) => index + 1);
+    };
+
+    const skipMiniQuestion = () => {
+      if (isCheckingAnswer || typeof answerResult === 'boolean') return;
+      checkMiniAnswer(miniCurrentQuestion, '__skipped__');
     };
 
     return (
@@ -1142,26 +1146,28 @@ function Onboarding() {
         >
           <CharacterSvg className={`is-${miniCurrentQuestion.questionType}`} width={96} aria-hidden="true" focusable="false" />
           {renderMiniQuestionBody(miniCurrentQuestion)}
-          {isCheckingAnswer && (
-            <div className="placement-answer-feedback is-checking" role="status">
-              <FiLoader className="spin" />
-              <div><strong>Đang kiểm tra</strong><span>Vui lòng chờ trong giây lát.</span></div>
-            </div>
-          )}
-          {typeof answerResult === 'boolean' && (
-            <motion.div className={`placement-answer-feedback ${answerResult ? 'is-correct' : 'is-wrong'}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} role="status">
-              {answerResult ? <FiCheckCircle /> : <FiXCircle />}
-              <div>
-                <strong>{answerResult ? 'Chính xác' : 'Chưa chính xác'}</strong>
-                <span>{answerResult ? 'Bạn đã trả lời đúng câu này.' : 'Câu trả lời của bạn chưa đúng.'}</span>
-              </div>
-            </motion.div>
-          )}
         </motion.section>
 
-        <div className="placement-game-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setActiveQuestionIndex((index) => Math.max(0, index - 1))} disabled={!canGoPrevious || loading || isCheckingAnswer}>
-            <FiArrowLeft /> Trước
+        <div className={`placement-game-actions ${typeof answerResult === 'boolean' ? (answerResult ? 'is-correct' : 'is-wrong') : ''}`}>
+          <div className="placement-game-action-status" role="status">
+            {isCheckingAnswer && (
+              <>
+                <FiLoader className="spin" />
+                <div><strong>Đang kiểm tra</strong><span>Vui lòng chờ trong giây lát.</span></div>
+              </>
+            )}
+            {typeof answerResult === 'boolean' && (
+              <>
+                {answerResult ? <FiCheckCircle /> : <FiXCircle />}
+                <div>
+                  <strong>{answerResult ? 'Chính xác' : 'Chưa chính xác'}</strong>
+                  <span>{answerResult ? 'Bạn đã trả lời đúng câu này.' : 'Câu này được tính là sai.'}</span>
+                </div>
+              </>
+            )}
+          </div>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={skipMiniQuestion} disabled={loading || isCheckingAnswer || typeof answerResult === 'boolean'}>
+            Bỏ qua
           </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={goMiniNext} disabled={loading || !canContinue || isCheckingAnswer}>
             {isLastQuestion ? 'Nộp bài' : 'Tiếp'} {loading ? <FiLoader className="spin" /> : <FiArrowRight />}

@@ -9982,8 +9982,16 @@ body.lesson-focus-mode {
   min-height:104px;align-items:center;justify-content:space-between;gap:24px;
   padding:20px max(calc((100vw - 840px)/2),24px);border-top:2px solid var(--duo-line);background:#fff;
 }
+.placement-game-actions.is-correct{border-color:#a5ed6e;color:#2f8b00;background:#d7ffb8}
+.placement-game-actions.is-wrong{border-color:#ffb2b5;color:#d33131;background:#ffdfe0}
+.placement-game-action-status{flex:1;min-width:0;display:flex;align-items:center;gap:14px;color:inherit}
+.placement-game-action-status:empty{display:block}
+.placement-game-action-status>svg{width:48px;height:48px;flex:0 0 auto;padding:10px;border:3px solid currentColor;border-radius:50%}
+.placement-game-action-status strong{display:block;color:inherit;font-size:1.2rem;font-weight:900}
+.placement-game-action-status span{display:block;color:inherit;font-size:.9rem;font-weight:800}
 .placement-game-actions .btn-secondary{color:#afafaf;background:#fff;border:2px solid var(--duo-line);box-shadow:0 4px 0 var(--duo-line-dark)}
 .placement-game-actions .btn-primary{color:#fff;background:var(--duo-green)}
+.placement-game-actions.is-wrong .btn-primary{background:var(--duo-red);box-shadow:0 4px 0 #d33131}
 .placement-game-actions .btn:disabled{color:#afafaf;background:#e5e5e5;box-shadow:0 4px 0 #cecece;opacity:1}
 .game-start-card,.game-result-card{
   width:min(620px,calc(100% - 40px));margin:clamp(48px,10vh,100px) auto 0;padding:40px;

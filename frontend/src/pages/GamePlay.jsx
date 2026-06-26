@@ -590,7 +590,7 @@ function GamePlay() {
 
         {question.QuestionType === 'listenbuild' && (() => {
           const targetWordCount = getBuildTargetWordCount(question);
-          const canCheckBuild = targetWordCount > 0 && builtWords.length === targetWordCount;
+          const canCheckBuild = builtWords.length > 0;
           const reachedTargetLength = targetWordCount > 0 && builtWords.length >= targetWordCount;
           return (
           <>
