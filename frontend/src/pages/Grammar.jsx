@@ -26,10 +26,12 @@ const getData = (res, fallback) => {
 };
 const getErrorMessage = (err, fallback) => asText(err?.message || err?.error || err?.data?.message, fallback);
 const getId = (item) => item?.Id ?? item?.id;
+const getCategoryId = (item) => item?.CategoryId ?? item?.Categoryid ?? item?.categoryId ?? item?.category_id ?? item?.categoryid;
 const getTopicCount = (category) => Number(category?.TopicCount ?? category?.Topiccount ?? category?.topicCount ?? category?.topic_count ?? category?.topiccount ?? 0);
 const getQuizCount = (topic) => Number(topic?.QuizCount ?? topic?.Quizcount ?? topic?.quizCount ?? topic?.quiz_count ?? topic?.quizcount ?? 0);
 const getCorrectAnswer = (quiz) => quiz?.CorrectAnswer ?? quiz?.Correctanswer ?? quiz?.correctAnswer ?? quiz?.correct_answer ?? quiz?.correctanswer;
 const getQuizOption = (quiz, key) => getField(quiz, '', `Option${key}`, `Option${key.toLowerCase()}`, `option${key}`, `option${key.toLowerCase()}`, `option_${key.toLowerCase()}`);
+const isTopicLocked = (topic) => Boolean(topic?.IsLocked ?? topic?.isLocked ?? topic?.islocked);
 
 function getSafeGrammarHtml(html) {
   if (!html) return '<p>Chưa có nội dung ngữ pháp.</p>';
@@ -93,7 +95,14 @@ function Grammar() {
     setErrorMessage('');
     try {
       const res = await grammarApi.getTopicDetail(topicId);
-      setActiveTopic(getData(res, null));
+      const topic = getData(res, null);
+      setActiveTopic(topic);
+      const categoryId = getCategoryId(topic);
+      if (categoryId && (!activeCategoryId || asArray(topics).length === 0)) {
+        setActiveCategoryId(categoryId);
+        const topicsRes = await grammarApi.getTopicsByCategory(categoryId);
+        setTopics(asArray(getData(topicsRes, [])));
+      }
     } catch (err) {
       setActiveTopic(null);
       setErrorMessage(getErrorMessage(err, 'Không tải được nội dung chủ đề.'));
@@ -135,22 +144,41 @@ function Grammar() {
       });
       if (activeCategoryId) {
         const res = await grammarApi.getTopicsByCategory(activeCategoryId);
-        setTopics(asArray(getData(res, [])));
+        const nextTopics = asArray(getData(res, []));
+        setTopics(nextTopics);
+        return nextTopics;
       }
     } catch {
       setErrorMessage('Đã lưu kết quả trên màn hình, nhưng chưa đồng bộ được tiến độ.');
     }
+    return null;
   };
 
-  const nextQuizQuestion = () => {
+  const nextQuizQuestion = async () => {
     const quizList = asArray(activeTopic?.quizzes);
     if (currentQ + 1 >= quizList.length) {
-      submitQuizAttempt(quizAnswers);
+      await submitQuizAttempt(quizAnswers);
       setQuizFinished(true);
     } else {
       setCurrentQ(prev => prev + 1);
       setSelectedAnswer(null);
     }
+  };
+
+  const findNextTopic = () => {
+    const topicList = asArray(topics);
+    const currentTopicId = String(getId(activeTopic) || '');
+    if (!currentTopicId || topicList.length === 0) return null;
+    const currentIndex = topicList.findIndex((topic) => String(getId(topic) || '') === currentTopicId);
+    if (currentIndex < 0) return null;
+    return topicList.slice(currentIndex + 1).find((topic) => getId(topic) && !isTopicLocked(topic)) || null;
+  };
+
+  const openNextTopic = () => {
+    const nextTopic = findNextTopic();
+    const nextTopicId = getId(nextTopic);
+    if (!nextTopicId) return;
+    loadTopic(nextTopicId);
   };
 
   const goBack = async () => {
@@ -182,6 +210,7 @@ function Grammar() {
     if (quizFinished) {
       const total = asArray(activeTopic.quizzes).length;
       const pct = Math.round((quizScore / total) * 100);
+      const nextTopic = findNextTopic();
       return (
         <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card" style={{ padding: 'var(--space-12)' }}>
@@ -195,10 +224,15 @@ function Grammar() {
             <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-6)' }}>
               {getField(activeTopic, '', 'TitleVI', 'titleVI', 'titlevi', 'title_vi')}
             </p>
-            <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-secondary" onClick={() => { setQuizStarted(false); setQuizFinished(false); }}>
                 <FiBookOpen /> Xem lại lý thuyết
               </button>
+              {nextTopic && (
+                <button type="button" className="btn btn-primary" onClick={openNextTopic}>
+                  Chủ đề tiếp theo <FiChevronRight />
+                </button>
+              )}
               <button type="button" className="btn btn-primary" onClick={startQuiz}>Làm lại</button>
             </div>
           </motion.div>
@@ -342,7 +376,7 @@ function Grammar() {
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {topics.map((topic, i) => {
-            const locked = Boolean(topic.IsLocked ?? topic.isLocked ?? topic.islocked);
+            const locked = isTopicLocked(topic);
             const bestScore = Number(topic.BestScore ?? topic.bestScore ?? topic.best_score ?? topic.bestscore ?? 0);
             return (
             <motion.div key={getId(topic) || i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>

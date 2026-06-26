@@ -34,6 +34,11 @@ import { hasSpeechSupport, speakText, speakTextQueue, stopAllPlayback } from '..
 
 const PASS_SCORE = 70;
 const getInitialListeningVoice = () => localStorage.getItem('listening_voice') || '';
+const getLessonId = (lesson) => lesson?.id ?? lesson?.Id;
+const getNextLesson = (lessons, currentId) => {
+  const index = lessons.findIndex((lesson) => String(getLessonId(lesson)) === String(currentId));
+  return index >= 0 ? lessons[index + 1] || null : null;
+};
 
 const normalizeAnswer = (value) => {
   return String(value ?? '')
@@ -188,8 +193,7 @@ const ReceptiveLesson = ({ skill }) => {
         setLesson(apiLesson);
 
         const lessons = lessonsRes?.data?.lessons || [];
-        const index = lessons.findIndex((item) => String(item.id) === String(id));
-        setNextLesson(index >= 0 ? lessons[index + 1] || null : null);
+        setNextLesson(getNextLesson(lessons, id));
       })
       .catch(() => {
         if (cancelled) return;
@@ -333,6 +337,9 @@ const ReceptiveLesson = ({ skill }) => {
       setExpReward(res.data?.expReward || null);
 
       if (isCompleted) {
+        const lessonsRes = await receptiveApi.getLessons(skill).catch(() => null);
+        const lessons = lessonsRes?.data?.lessons || [];
+        setNextLesson(getNextLesson(lessons, lesson.id));
         setActiveQuestionIndex(Math.max(lesson.questions.length - 1, 0));
         toast.success('Đã hoàn thành bài học!');
       } else {
@@ -702,7 +709,7 @@ const ReceptiveLesson = ({ skill }) => {
               <FiRefreshCw /> Làm lại
             </button>
             {nextLesson && (
-              <button type="button" className="btn btn-primary" onClick={() => navigate(`/${skill}/lessons/${nextLesson.id}`)}>
+              <button type="button" className="btn btn-primary" onClick={() => navigate(`/${skill}/lessons/${getLessonId(nextLesson)}`)}>
                 Bài tiếp theo <FiArrowRight />
               </button>
             )}

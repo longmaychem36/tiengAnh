@@ -32,6 +32,11 @@ import { hasSpeechSupport, speakText, stopAllPlayback } from '../../utils/audioC
 
 const getInitialThreshold = () => parseInt(localStorage.getItem('speaking_threshold'), 10) || 60;
 const getInitialVoice = () => localStorage.getItem('speaking_voice') || '';
+const getLessonId = (lesson) => lesson?.id ?? lesson?.Id;
+const getNextLesson = (lessons, currentId) => {
+  const index = lessons.findIndex((lesson) => String(getLessonId(lesson)) === String(currentId));
+  return index >= 0 ? lessons[index + 1] || null : null;
+};
 
 const getRecordDuration = (text = '') => {
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
@@ -116,8 +121,7 @@ const SpeakingLesson = () => {
         setSentences(res.data.sentences || []);
 
         const lessons = lessonsRes?.data?.lessons || [];
-        const currentLessonIndex = lessons.findIndex((lesson) => String(lesson.id) === String(id));
-        setNextLesson(currentLessonIndex >= 0 ? lessons[currentLessonIndex + 1] || null : null);
+        setNextLesson(getNextLesson(lessons, id));
       })
       .catch((err) => {
         toast.error(isPersonalized ? 'Bài luyện AI đã hết hạn hoặc không tồn tại' : 'Lỗi tải chủ đề');
@@ -277,8 +281,11 @@ const SpeakingLesson = () => {
     }
 
     speakingApi.saveProgress({ lessonId: id, completed: true })
-      .then((res) => {
+      .then(async (res) => {
         setExpReward(res.data?.expReward || null);
+        const lessonsRes = await speakingApi.getLessons().catch(() => null);
+        const lessons = lessonsRes?.data?.lessons || [];
+        setNextLesson(getNextLesson(lessons, id));
         toast.success('Bạn đã hoàn thành chủ đề Speaking.');
         setShowCompletion(true);
       })
@@ -356,7 +363,7 @@ const SpeakingLesson = () => {
               </button>
             )}
             {!isPersonalized && nextLesson && (
-              <button type="button" className="btn btn-primary" onClick={() => navigate(`/speaking/lessons/${nextLesson.id}`)}>
+              <button type="button" className="btn btn-primary" onClick={() => navigate(`/speaking/lessons/${getLessonId(nextLesson)}`)}>
                 Bài tiếp theo <FiArrowRight />
               </button>
             )}

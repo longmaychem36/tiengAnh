@@ -27,6 +27,11 @@ import {
 } from '../common/learning';
 
 const WRITING_PASS_SCORE = 80;
+const getLessonId = (lesson) => lesson?.id ?? lesson?.Id;
+const getNextLesson = (lessons, currentId) => {
+  const index = lessons.findIndex((lesson) => String(getLessonId(lesson)) === String(currentId));
+  return index >= 0 ? lessons[index + 1] || null : null;
+};
 
 const normalizeText = (value) => {
   return String(value || '')
@@ -154,8 +159,7 @@ const WritingLesson = () => {
         setExercises(res.data.exercises || []);
 
         const lessons = lessonsRes?.data?.lessons || [];
-        const currentLessonIndex = lessons.findIndex((lesson) => String(lesson.id) === String(id));
-        setNextLesson(currentLessonIndex >= 0 ? lessons[currentLessonIndex + 1] || null : null);
+        setNextLesson(getNextLesson(lessons, id));
       })
       .catch((err) => {
         toast.error('Lỗi tải bài viết');
@@ -283,8 +287,11 @@ const WritingLesson = () => {
 
     setLoading(true);
     writingApi.saveProgress({ lessonId: id, completed: true })
-      .then((res) => {
+      .then(async (res) => {
         setExpReward(res.data?.expReward || null);
+        const lessonsRes = await writingApi.getLessons().catch(() => null);
+        const lessons = lessonsRes?.data?.lessons || [];
+        setNextLesson(getNextLesson(lessons, id));
         toast.success('Bạn đã hoàn thành chủ đề viết.');
         setShowCompletion(true);
       })
@@ -351,7 +358,7 @@ const WritingLesson = () => {
               <FiArrowLeft /> Về danh sách
             </button>
             {nextLesson && (
-              <button type="button" className="btn btn-primary" onClick={() => navigate(`/writing/lessons/${nextLesson.id}`)}>
+              <button type="button" className="btn btn-primary" onClick={() => navigate(`/writing/lessons/${getLessonId(nextLesson)}`)}>
                 Bài tiếp theo <FiArrowRight />
               </button>
             )}
