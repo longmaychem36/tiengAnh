@@ -140,7 +140,8 @@ function Grammar() {
     try {
       await grammarApi.submitAttempt({
         topicId,
-        answers
+        answers,
+        attemptId: crypto.randomUUID()
       });
       if (activeCategoryId) {
         const res = await grammarApi.getTopicsByCategory(activeCategoryId);

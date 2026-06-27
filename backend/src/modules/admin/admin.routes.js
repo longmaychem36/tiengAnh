@@ -695,6 +695,13 @@ router.get('/users/stats', requireRole('admin'), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.get('/users/:id/detail', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminUserService.getLearnerDetail(req.params.id);
+    return success(res, data);
+  } catch (err) { next(err); }
+});
+
 router.put('/users/:id', requireRole('admin'), async (req, res, next) => {
   try {
     const data = await adminUserService.updateUser(req.params.id, req.body, req.user.id);

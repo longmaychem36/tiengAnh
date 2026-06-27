@@ -92,6 +92,24 @@ const collectionController = {
     }
   },
 
+  async startPublicReview(req, res, next) {
+    try {
+      const result = await collectionService.startPublicReview(req.user.id, req.params.id);
+      return success(res, result, 'Vocabulary review started');
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async submitPublicReview(req, res, next) {
+    try {
+      const result = await collectionService.submitPublicReview(req.user.id, req.params.id, req.body);
+      return success(res, result, 'Vocabulary review completed');
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async addWord(req, res, next) {
     try {
       const result = await collectionService.addWord(req.user.id, req.params.id, req.body);

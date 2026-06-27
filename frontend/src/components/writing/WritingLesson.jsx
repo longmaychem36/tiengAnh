@@ -130,6 +130,7 @@ const WritingLesson = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState(null);
   const [attempts, setAttempts] = useState({});
+  const [firstAttempts, setFirstAttempts] = useState({});
   const [drafts, setDrafts] = useState({});
   const [showCompletion, setShowCompletion] = useState(false);
   const [expReward, setExpReward] = useState(null);
@@ -145,6 +146,7 @@ const WritingLesson = () => {
     setUserText('');
     setResult(null);
     setAttempts({});
+    setFirstAttempts({});
     setDrafts({});
     setShowCompletion(false);
     setExpReward(null);
@@ -239,6 +241,10 @@ const WritingLesson = () => {
           prompt: currentExercise.contentVI
         }
       }));
+      setFirstAttempts((current) => current[currentExerciseKey] ? current : {
+        ...current,
+        [currentExerciseKey]: newResult
+      });
     } catch (err) {
       console.error(err);
       toast.error('Lỗi kiểm tra bài viết');
@@ -286,7 +292,20 @@ const WritingLesson = () => {
     }
 
     setLoading(true);
-    writingApi.saveProgress({ lessonId: id, completed: true })
+    const firstAttemptMap = firstAttempts[currentExerciseKey]
+      ? firstAttempts
+      : { ...firstAttempts, [currentExerciseKey]: result };
+    const firstAttemptScore = exercises.length
+      ? Math.round(exercises.reduce((sum, exercise, index) => (
+        sum + Number(firstAttemptMap[getExerciseKey(exercise, index)]?.score || 0)
+      ), 0) / exercises.length)
+      : 0;
+    writingApi.saveProgress({
+      lessonId: id,
+      completed: true,
+      score: firstAttemptScore,
+      attemptId: crypto.randomUUID()
+    })
       .then(async (res) => {
         setExpReward(res.data?.expReward || null);
         const lessonsRes = await writingApi.getLessons().catch(() => null);

@@ -17,6 +17,8 @@
     "db:migrate-collections": "node scripts/migrate_collections.js",
     "db:migrate-onboarding": "node scripts/migrate_onboarding.js",
     "db:migrate-roles": "node scripts/migrate_roles.js",
+    "db:migrate-spaced-repetition": "node scripts/migrate_spaced_repetition.js",
+    "test:spaced-repetition": "node --test test/spaced-repetition.test.js test/daily-task-selection.test.js",
     "db:drop-dictionary-storage": "node scripts/drop_dictionary_storage.js",
     "db:drop-placement-storage": "node scripts/drop_placement_storage.js",
     "db:insert-minigame-speaking": "node scripts/insert_minigame_speaking_questions.js",

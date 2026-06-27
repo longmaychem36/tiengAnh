@@ -229,6 +229,7 @@ const userService = {
     const summary = {};
     const deleteTargets = [
       ['DailyTasks', 'dailyTasks'],
+      ['SpacedRepetitionItems', 'spacedRepetition'],
       ['StudyTimeDaily', 'studyTime'],
       ['UserGameProgress', 'gameProgress'],
       ['GrammarProgress', 'grammarProgress'],

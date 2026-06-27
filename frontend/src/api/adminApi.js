@@ -26,6 +26,7 @@ export const adminApi = {
   createUser: (data) => axiosClient.post('/admin/users', data),
   getUsers: (params) => axiosClient.get('/admin/users', { params }),
   getUserStats: () => axiosClient.get('/admin/users/stats'),
+  getLearnerDetail: (id) => axiosClient.get(`/admin/users/${id}/detail`),
   updateUser: (id, data) => axiosClient.put(`/admin/users/${id}`, data),
   giftPlusDays: (id, days) => axiosClient.put(`/admin/users/${id}/plus-days`, { days }),
   resetUserPassword: (id, password) => axiosClient.put(`/admin/users/${id}/password`, { password }),

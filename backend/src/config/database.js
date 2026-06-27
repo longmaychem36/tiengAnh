@@ -158,6 +158,7 @@ function getPool() {
     request: () => new PgRequest(pool),
     // Also expose raw pg pool for direct queries if needed
     query: (text, params) => pool.query(text, params),
+    connect: () => pool.connect(),
   };
 }
 

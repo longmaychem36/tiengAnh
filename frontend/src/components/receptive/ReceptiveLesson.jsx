@@ -330,7 +330,8 @@ const ReceptiveLesson = ({ skill }) => {
       const res = await receptiveApi.saveProgress(skill, {
         lessonId: lesson.id,
         score,
-        completed: isCompleted
+        completed: isCompleted,
+        attemptId: crypto.randomUUID()
       });
 
       setResult({ correctCount, score });

@@ -43,6 +43,7 @@ import ReadingLesson from './components/reading/ReadingLesson';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminGames from './pages/admin/AdminGames';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminLearnerDetail from './pages/admin/AdminLearnerDetail';
 import AdminSpeaking from './pages/admin/AdminSpeaking';
 import AdminWriting from './pages/admin/AdminWriting';
 import AdminGrammar from './pages/admin/AdminGrammar';
@@ -130,6 +131,7 @@ function App() {
         <Route path="/admin/vocabulary" element={<AdminVocabulary />} />
         <Route path="/admin/games" element={<AdminGames />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/users/:id" element={<AdminLearnerDetail />} />
         <Route path="/admin/notifications" element={<AdminNotifications />} />
         <Route path="/admin/support" element={<AdminSupport />} />
       </Route>

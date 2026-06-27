@@ -6,6 +6,7 @@ const { success, badRequest } = require('../../utils/responseHelper');
 const { sql, getPool } = require('../../config/database');
 const gamificationService = require('../gamification/gamification.service');
 const dailyService = require('../daily/daily.service');
+const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 const { EXP_REWARDS } = require('../../utils/constants');
 const { ensureOnboardingSchema, getUserPlacementLevel } = require('../onboarding/onboarding.schema');
 
@@ -390,7 +391,7 @@ const writingController = {
 
   async saveProgress(req, res, next) {
     try {
-      const { lessonId, completed } = req.body;
+      const { lessonId, completed, score: rawScore, attemptId } = req.body;
       if (!lessonId) {
         return badRequest(res, 'lessonId is required');
       }
@@ -398,7 +399,7 @@ const writingController = {
       const pool = getPool();
 
       const status = completed === false ? 'in_progress' : 'completed';
-      const score = status === 'completed' ? 100 : null;
+      const score = Math.min(100, Math.max(0, Math.round(Number(rawScore) || 0)));
       const existingResult = await pool.query(`
         SELECT Status
         FROM WritingProgress
@@ -411,10 +412,18 @@ const writingController = {
         VALUES ($1, $2, $3, $4, NOW())
         ON CONFLICT (UserId, LessonId)
         DO UPDATE SET
-          Score = COALESCE(EXCLUDED.Score, WritingProgress.Score),
+          Score = GREATEST(COALESCE(WritingProgress.Score, 0), EXCLUDED.Score),
           Status = EXCLUDED.Status,
           UpdatedAt = NOW()
       `, [req.user.id, lessonId, score, status]);
+
+      const spacedRepetition = await spacedRepetitionService.recordReview({
+        userId: req.user.id,
+        targetType: 'writing_lesson',
+        targetId: lessonId,
+        score,
+        attemptId
+      });
 
       const expReward = status === 'completed' && !wasCompleted
         ? await gamificationService.addExp(
@@ -430,7 +439,12 @@ const writingController = {
         });
       }
         
-      return success(res, { message: 'Progress saved', alreadyCompleted: wasCompleted, expReward });
+      return success(res, {
+        message: 'Progress saved',
+        alreadyCompleted: wasCompleted,
+        expReward,
+        nextReviewDate: spacedRepetitionService.formatDueDate(spacedRepetition.item.duedate || spacedRepetition.item.DueDate)
+      });
     } catch (err) {
       next(err);
     }

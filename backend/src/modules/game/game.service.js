@@ -5,6 +5,7 @@ const { getPool } = require('../../config/database');
 const { EXP_REWARDS } = require('../../utils/constants');
 const gamificationService = require('../gamification/gamification.service');
 const dailyService = require('../daily/daily.service');
+const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 
 const GAME_DIFFICULTY_EXP = {
   easy: 24,
@@ -150,7 +151,7 @@ const gameService = {
   // ==================
   // POST submit answers
   // ==================
-  async submitLevel(userId, levelId, answers, duration, questionIds = []) {
+  async submitLevel(userId, levelId, answers, duration, questionIds = [], attemptId = null) {
     const pool = getPool();
 
     const data = await this.getQuestions(levelId);
@@ -255,7 +256,16 @@ const gameService = {
         );
       } catch (e) { console.error('EXP error (non-fatal):', e.message); }
     }
-    await dailyService.completeMatchingTasks(userId, 'game_level', levelId);
+    const spacedRepetition = await spacedRepetitionService.recordReview({
+      userId,
+      targetType: 'game_level',
+      targetId: levelId,
+      score: scorePercent,
+      attemptId
+    });
+    if (passed) {
+      await dailyService.completeMatchingTasks(userId, 'game_level', levelId);
+    }
 
     return {
       score: scorePercent,
@@ -267,6 +277,7 @@ const gameService = {
       expReward,
       alreadyCompleted,
       duration: duration || 0,
+      nextReviewDate: spacedRepetitionService.formatDueDate(spacedRepetition.item.duedate || spacedRepetition.item.DueDate),
       results
     };
   }

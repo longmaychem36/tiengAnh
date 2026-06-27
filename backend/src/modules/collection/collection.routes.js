@@ -19,6 +19,9 @@ router.post('/', collectionController.createCollection);
 router.put('/:id', collectionController.updateCollection);
 router.delete('/:id', collectionController.deleteCollection);
 
+router.post('/:id/review/start', collectionController.startPublicReview);
+router.post('/:id/review/submit', collectionController.submitPublicReview);
+
 // Collection Words
 router.get('/:id/words', collectionController.getWords);
 router.post('/:id/words', collectionController.addWord);

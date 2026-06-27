@@ -35,6 +35,13 @@ function getMeta(task) {
   return taskMeta[task.targetType] || taskMeta[task.skill] || taskMeta.listening_lesson;
 }
 
+function getTaskModeLabel(task) {
+  if (task.taskMode === 'habit') return 'Thói quen';
+  if (task.taskMode === 'new') return 'Bài mới';
+  if (Number(task.overdueDays || 0) > 0) return `Quá hạn ${task.overdueDays} ngày`;
+  return 'Đến hạn ôn';
+}
+
 function DailyTasks() {
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
@@ -70,7 +77,7 @@ function DailyTasks() {
         <div className="daily-hero-progress">
           <FiStar />
           <strong>{progress}%</strong>
-          <span>{completedCount}/{tasks.length || 4} xong</span>
+          <span>{completedCount}/{tasks.length || 5} xong</span>
         </div>
       </section>
 
@@ -85,7 +92,7 @@ function DailyTasks() {
             </div>
             <div className="daily-progress-pill">
               <FiClock />
-              <strong>{completedCount}/{tasks.length || 4}</strong>
+              <strong>{completedCount}/{tasks.length || 5}</strong>
             </div>
           </div>
 
@@ -114,6 +121,9 @@ function DailyTasks() {
                     <div className="daily-quest-body">
                       <div className="daily-quest-top">
                         <span>{meta.label}</span>
+                        <small className={`daily-task-mode is-${task.taskMode || 'new'}`}>
+                          {getTaskModeLabel(task)}
+                        </small>
                         <strong>+{task.rewardExp || 10} EXP</strong>
                       </div>
                       <h3>{task.title}</h3>

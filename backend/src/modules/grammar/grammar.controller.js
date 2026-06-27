@@ -29,10 +29,10 @@ const grammarController = {
 
   async submitQuizAttempt(req, res, next) {
     try {
-      const { topicId, answers } = req.body;
+      const { topicId, answers, attemptId } = req.body;
       if (!topicId || !Array.isArray(answers)) return badRequest(res, 'topicId and answers are required');
 
-      const result = await grammarService.submitQuizAttempt(req.user.id, topicId, answers);
+      const result = await grammarService.submitQuizAttempt(req.user.id, topicId, answers, attemptId);
       return success(res, result, 'Grammar attempt submitted');
     } catch (err) { next(err); }
   }

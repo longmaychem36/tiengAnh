@@ -3,6 +3,7 @@
 // ============================================
 const { sql, getPool } = require('../../config/database');
 const dailyService = require('../daily/daily.service');
+const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 
 let progressTableReady = false;
 
@@ -141,7 +142,7 @@ const grammarService = {
     return topic;
   },
 
-  async submitQuizAttempt(userId, topicId, answers = []) {
+  async submitQuizAttempt(userId, topicId, answers = [], attemptId = null) {
     const pool = getPool();
     await ensureProgressTable(pool);
     const quizResult = await pool.query(`
@@ -191,14 +192,24 @@ const grammarService = {
         END,
         UpdatedAt = NOW()
     `, [userId, topicId, score, status]);
-    await dailyService.completeMatchingTasks(userId, 'grammar_topic', topicId);
+    const spacedRepetition = await spacedRepetitionService.recordReview({
+      userId,
+      targetType: 'grammar_topic',
+      targetId: topicId,
+      score,
+      attemptId
+    });
+    if (score >= 80) {
+      await dailyService.completeMatchingTasks(userId, 'grammar_topic', topicId);
+    }
 
     return {
       topicId,
       score,
       correctCount,
       total,
-      results
+      results,
+      nextReviewDate: spacedRepetitionService.formatDueDate(spacedRepetition.item.duedate || spacedRepetition.item.DueDate)
     };
   }
 };

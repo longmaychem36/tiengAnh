@@ -62,6 +62,7 @@ const SpeakingLesson = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [attempts, setAttempts] = useState({});
+  const [firstAttempts, setFirstAttempts] = useState({});
 
   const [showSettings, setShowSettings] = useState(false);
   const [passThreshold, setPassThreshold] = useState(getInitialThreshold);
@@ -106,6 +107,7 @@ const SpeakingLesson = () => {
     setSelectedOptionIndex(0);
     setResult(null);
     setAttempts({});
+    setFirstAttempts({});
 
     const request = isPersonalized
       ? speakingApi.getPersonalizedLesson(sessionId)
@@ -219,6 +221,11 @@ const SpeakingLesson = () => {
         ...current,
         [currentSentence.id || currentIndex]: newResult
       }));
+      const attemptKey = getAttemptKey(currentSentence, currentIndex);
+      setFirstAttempts((current) => current[attemptKey] ? current : {
+        ...current,
+        [attemptKey]: newResult
+      });
     } catch (err) {
       console.error(err);
       const errorMsg = err.response?.data?.message || err.message || 'Lỗi nhận diện giọng nói';
@@ -280,7 +287,16 @@ const SpeakingLesson = () => {
       return;
     }
 
-    speakingApi.saveProgress({ lessonId: id, completed: true })
+    const currentKey = getAttemptKey(currentSentence, currentIndex);
+    const firstAttemptMap = firstAttempts[currentKey]
+      ? firstAttempts
+      : { ...firstAttempts, [currentKey]: finalAttempts[currentKey] };
+    speakingApi.saveProgress({
+      lessonId: id,
+      completed: true,
+      score: getAverageScore(firstAttemptMap),
+      attemptId: crypto.randomUUID()
+    })
       .then(async (res) => {
         setExpReward(res.data?.expReward || null);
         const lessonsRes = await speakingApi.getLessons().catch(() => null);

@@ -26,6 +26,7 @@ const dedupeVocabulary = (items = []) => {
 
   return items
     .map((item) => ({
+      id: String(item.id || item.Id || `${normalize(item.word || item.term)}:${normalize(item.meaning || item.definition || item.translation)}`),
       word: String(item.word || item.term || '').trim(),
       meaning: String(item.meaning || item.definition || item.translation || '').trim(),
       example: String(item.example || '').trim()
@@ -62,6 +63,9 @@ function VocabularyGate({
   const [submitted, setSubmitted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnswerChecked, setIsAnswerChecked] = useState(false);
+  const [firstAnswers, setFirstAnswers] = useState({});
+  const [latestAnswers, setLatestAnswers] = useState({});
+  const [savingCompletion, setSavingCompletion] = useState(false);
 
   useEffect(() => {
     setRetryVocabulary(null);
@@ -70,6 +74,9 @@ function VocabularyGate({
     setSubmitted(false);
     setCurrentIndex(0);
     setIsAnswerChecked(false);
+    setFirstAnswers({});
+    setLatestAnswers({});
+    setSavingCompletion(false);
   }, [allowStudy, fullVocabulary]);
 
   const correctCount = vocabulary.filter((item, index) => normalize(answers[index]) === normalize(item.word)).length;
@@ -111,6 +118,21 @@ function VocabularyGate({
     vocabulary.filter((item, index) => normalize(answers[index]) !== normalize(item.word))
   );
 
+  const rememberAnswers = (items, answerMap) => {
+    const roundAnswers = items.reduce((result, item, index) => ({
+      ...result,
+      [item.id]: String(answerMap[index] || '').trim()
+    }), {});
+    setFirstAnswers((current) => {
+      const next = { ...current };
+      Object.entries(roundAnswers).forEach(([key, answer]) => {
+        if (next[key] === undefined) next[key] = answer;
+      });
+      return next;
+    });
+    setLatestAnswers((current) => ({ ...current, ...roundAnswers }));
+  };
+
   const handleSubmit = () => {
     if (!isComplete) {
       toast.error('Bạn cần gõ lại tất cả từ trước khi kiểm tra.');
@@ -118,6 +140,7 @@ function VocabularyGate({
       return;
     }
 
+    rememberAnswers(vocabulary, answers);
     setSubmitted(true);
     playSound(score === 100 ? 'success' : 'error');
   };
@@ -132,6 +155,7 @@ function VocabularyGate({
 
     const item = vocabulary[currentIndex];
     const isCorrect = normalize(currentAnswer) === normalize(item.word);
+    rememberAnswers([item], { 0: currentAnswer });
     setIsAnswerChecked(true);
     speakText(item.word, { lang: 'en-US', rate: 0.92 });
     playSound(isCorrect ? 'success' : 'error');
@@ -175,10 +199,28 @@ function VocabularyGate({
     playSound('tap');
   };
 
-  const handleContinue = () => {
-    if (gateKey) localStorage.setItem(gateKey, 'passed');
-    playSound('confirm');
-    onPassed?.();
+  const handleContinue = async () => {
+    const payload = {
+      firstAnswers: fullVocabulary.map((item) => ({
+        wordId: item.id,
+        answer: firstAnswers[item.id] ?? latestAnswers[item.id] ?? ''
+      })),
+      finalAnswers: fullVocabulary.map((item) => ({
+        wordId: item.id,
+        answer: latestAnswers[item.id] ?? firstAnswers[item.id] ?? ''
+      }))
+    };
+
+    setSavingCompletion(true);
+    try {
+      await onPassed?.(payload);
+      if (gateKey) localStorage.setItem(gateKey, 'passed');
+      playSound('confirm');
+    } catch (error) {
+      toast.error(error?.message || 'Không thể lưu kết quả ôn tập.');
+    } finally {
+      setSavingCompletion(false);
+    }
   };
 
   const handleExit = async () => {
@@ -288,8 +330,8 @@ function VocabularyGate({
                   <FiRefreshCw /> Làm lại từ sai
                 </button>
               ) : (
-                <button type="button" className="btn btn-primary" onClick={handleContinue}>
-                  {continueLabel} <FiArrowRight />
+                <button type="button" className="btn btn-primary" onClick={handleContinue} disabled={savingCompletion}>
+                  {savingCompletion ? 'Đang lưu...' : continueLabel} {!savingCompletion && <FiArrowRight />}
                 </button>
               )}
             </div>

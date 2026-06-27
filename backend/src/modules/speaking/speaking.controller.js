@@ -10,6 +10,7 @@ const FormData = require('form-data');
 const billingService = require('../billing/billing.service');
 const gamificationService = require('../gamification/gamification.service');
 const dailyService = require('../daily/daily.service');
+const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 const { EXP_REWARDS } = require('../../utils/constants');
 const { ensureOnboardingSchema, getUserPlacementLevel } = require('../onboarding/onboarding.schema');
 
@@ -633,8 +634,11 @@ const speakingController = {
 
   async saveProgress(req, res, next) {
     try {
-      const { sql, getPool } = require('../../config/database');
-      const { lessonId, completed } = req.body;
+      const { getPool } = require('../../config/database');
+      const { lessonId, completed, score: rawScore, attemptId } = req.body;
+      if (!lessonId) return badRequest(res, 'lessonId is required');
+      const score = Math.min(100, Math.max(0, Math.round(Number(rawScore) || 0)));
+      const status = completed === false ? 'in_progress' : 'completed';
       const pool = getPool();
       const existingResult = await pool.query(`
         SELECT Status
@@ -646,12 +650,23 @@ const speakingController = {
       // PostgreSQL UPSERT — insert or update on conflict
       await pool.query(`
         INSERT INTO SpeakingProgress (UserId, LessonId, Score, Status, UpdatedAt)
-        VALUES ($1, $2, 100, 'completed', NOW())
+        VALUES ($1, $2, $3, $4, NOW())
         ON CONFLICT (UserId, LessonId)
-        DO UPDATE SET Status = 'completed', UpdatedAt = NOW()
-      `, [req.user.id, lessonId]);
+        DO UPDATE SET
+          Score = GREATEST(COALESCE(SpeakingProgress.Score, 0), EXCLUDED.Score),
+          Status = EXCLUDED.Status,
+          UpdatedAt = NOW()
+      `, [req.user.id, lessonId, score, status]);
+
+      const spacedRepetition = await spacedRepetitionService.recordReview({
+        userId: req.user.id,
+        targetType: 'speaking_lesson',
+        targetId: lessonId,
+        score,
+        attemptId
+      });
         
-      const expReward = !wasCompleted
+      const expReward = status === 'completed' && !wasCompleted
         ? await gamificationService.addExp(
           req.user.id,
           EXP_REWARDS.SPEAKING_LESSON_COMPLETE,
@@ -659,11 +674,18 @@ const speakingController = {
         )
         : null;
 
-      dailyService.completeMatchingTasks(req.user.id, 'speaking_lesson', lessonId).catch((err) => {
-        console.error('[daily] failed to complete speaking task:', err.message);
-      });
+      if (status === 'completed') {
+        dailyService.completeMatchingTasks(req.user.id, 'speaking_lesson', lessonId).catch((err) => {
+          console.error('[daily] failed to complete speaking task:', err.message);
+        });
+      }
 
-      return success(res, { message: 'Progress saved', alreadyCompleted: wasCompleted, expReward });
+      return success(res, {
+        message: 'Progress saved',
+        alreadyCompleted: wasCompleted,
+        expReward,
+        nextReviewDate: spacedRepetitionService.formatDueDate(spacedRepetition.item.duedate || spacedRepetition.item.DueDate)
+      });
     } catch (err) {
       next(err);
     }

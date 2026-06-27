@@ -13,6 +13,8 @@ export const collectionApi = {
   deletePublicSubmission: (id) => axiosClient.delete(`/collections/submissions/${id}`),
   
   getWords: (collectionId) => axiosClient.get(`/collections/${collectionId}/words`),
+  startReview: (collectionId) => axiosClient.post(`/collections/${collectionId}/review/start`),
+  submitReview: (collectionId, data) => axiosClient.post(`/collections/${collectionId}/review/submit`, data),
   addWord: (collectionId, data) => axiosClient.post(`/collections/${collectionId}/words`, data),
   updateWord: (collectionId, wordId, data) => axiosClient.put(`/collections/${collectionId}/words/${wordId}`, data),
   removeWord: (collectionId, wordId) => axiosClient.delete(`/collections/${collectionId}/words/${wordId}`)

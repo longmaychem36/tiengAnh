@@ -4,6 +4,7 @@
 const bcrypt = require('bcryptjs');
 const { sql, getPool } = require('../../config/database');
 const notificationService = require('../notification/notification.service');
+const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 
 function httpError(message, statusCode = 400) {
   const error = new Error(message);
@@ -164,6 +165,234 @@ const adminUserService = {
     `);
 
     return { users: dataRes.recordset, total, page: safePage, limit: safeLimit, totalPages: Math.max(1, Math.ceil(total / safeLimit)) };
+  },
+
+  async getLearnerDetail(userId) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(userId || ''))) {
+      throw httpError('Invalid learner id', 400);
+    }
+
+    await spacedRepetitionService.ensureSchema();
+    const pool = getPool();
+    const learnerResult = await pool.query(`
+      SELECT u.Id, u.Username, u.Email, u.Role, u.AvatarUrl,
+             COALESCE(u.IsActive, true) AS IsActive, u.Plan, u.PlusExpiresAt,
+             CASE
+               WHEN u.Plan = 'plus' AND u.PlusExpiresAt IS NOT NULL AND u.PlusExpiresAt > NOW()
+                 THEN CEIL(EXTRACT(EPOCH FROM (u.PlusExpiresAt - NOW())) / 86400)::int
+               ELSE 0
+             END AS PlusDaysRemaining,
+             u.OnboardingCompleted, u.PlacementLevel, u.PlacementSource,
+             u.PlacementCompletedAt, u.CreatedAt,
+             COALESCE(us.Exp, 0)::int AS Exp,
+             COALESCE(us.Level, 1)::int AS Level,
+             COALESCE(us.StreakDays, 0)::int AS StreakDays,
+             us.LastLogin
+      FROM Users u
+      LEFT JOIN UserStats us ON us.UserId = u.Id
+      WHERE u.Id = $1 AND u.Role = 'user'
+    `, [userId]);
+    if (!learnerResult.rows[0]) throw httpError('Learner not found', 404);
+
+    const skillConfigs = [
+      ['listening', 'ListeningLessons', 'ListeningProgress'],
+      ['speaking', 'SpeakingLessons', 'SpeakingProgress'],
+      ['reading', 'ReadingLessons', 'ReadingProgress'],
+      ['writing', 'WritingLessons', 'WritingProgress']
+    ];
+
+    const skillProgress = [];
+    for (const [key, lessonTable, progressTable] of skillConfigs) {
+      const result = await pool.query(`
+        SELECT COUNT(l.Id)::int AS Total,
+               COUNT(p.LessonId)::int AS Started,
+               COUNT(p.LessonId) FILTER (WHERE p.Status = 'completed')::int AS Completed,
+               COALESCE(ROUND(AVG(p.Score))::int, 0) AS AverageScore,
+               MAX(p.UpdatedAt) AS LastActivityAt
+        FROM ${lessonTable} l
+        LEFT JOIN ${progressTable} p ON p.LessonId = l.Id AND p.UserId = $1
+      `, [userId]);
+      const row = result.rows[0] || {};
+      const total = Number(row.total || 0);
+      const completed = Number(row.completed || 0);
+      skillProgress.push({
+        key,
+        total,
+        started: Number(row.started || 0),
+        completed,
+        averageScore: Number(row.averagescore || 0),
+        completionPercent: total > 0 ? Math.round((completed / total) * 100) : 0,
+        lastActivityAt: row.lastactivityat || null
+      });
+    }
+
+    const [grammarResult, gameResult, vocabularyResult, overviewResult, srSummaryResult, srTypesResult, recentReviewsResult, recentLessonsResult, dailyActivityResult] = await Promise.all([
+      pool.query(`
+        SELECT COUNT(gt.Id)::int AS Total,
+               COUNT(gp.TopicId)::int AS Started,
+               COUNT(gp.TopicId) FILTER (WHERE gp.Status = 'completed')::int AS Completed,
+               COALESCE(ROUND(AVG(gp.BestScore))::int, 0) AS AverageScore,
+               COALESCE(SUM(gp.Attempts), 0)::int AS Attempts,
+               MAX(gp.UpdatedAt) AS LastActivityAt
+        FROM GrammarTopics gt
+        LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = $1
+      `, [userId]),
+      pool.query(`
+        SELECT COUNT(gl.Id)::int AS Total,
+               COUNT(ugp.LevelId)::int AS Started,
+               COUNT(ugp.LevelId) FILTER (WHERE ugp.IsCompleted = true)::int AS Completed,
+               COALESCE(ROUND(AVG(ugp.Score))::int, 0) AS AverageScore,
+               COALESCE(SUM(ugp.Attempts), 0)::int AS Attempts,
+               MAX(ugp.CompletedAt) AS LastActivityAt
+        FROM GameLevels gl
+        LEFT JOIN UserGameProgress ugp ON ugp.LevelId = gl.Id AND ugp.UserId = $1
+      `, [userId]),
+      pool.query(`
+        SELECT COUNT(*)::int AS Total,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS Completed,
+               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS Due,
+               COALESCE(ROUND(AVG(LastScore))::int, 0) AS AverageScore,
+               MAX(LastReviewedAt) AS LastActivityAt
+        FROM SpacedRepetitionItems
+        WHERE UserId = $1 AND TargetType = 'vocabulary_review'
+      `, [userId]),
+      pool.query(`
+        SELECT
+          COALESCE((SELECT COUNT(*) FROM StudyTimeDaily WHERE UserId = $1), 0)::int AS ActiveDays,
+          COALESCE((SELECT SUM(ActiveSeconds) FROM StudyTimeDaily WHERE UserId = $1), 0)::int AS TotalStudySeconds,
+          COALESCE((SELECT SUM(ActiveSeconds) FROM StudyTimeDaily WHERE UserId = $1 AND ActivityDate >= CURRENT_DATE - 6), 0)::int AS StudySeconds7d,
+          COALESCE((SELECT COUNT(*) FROM DailyTasks WHERE UserId = $1 AND Status = 'completed'), 0)::int AS CompletedDailyTasks,
+          COALESCE((SELECT COUNT(*) FROM UserCollections WHERE UserId = $1), 0)::int AS OwnedCollections
+      `, [userId]),
+      pool.query(`
+        SELECT COUNT(*)::int AS TotalItems,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS ReviewedItems,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NULL)::int AS NewItems,
+               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS DueItems,
+               COUNT(*) FILTER (WHERE DueDate < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS OverdueItems,
+               COALESCE(ROUND(AVG(EaseFactor), 2), 0) AS AverageEaseFactor,
+               COALESCE(SUM(Lapses), 0)::int AS TotalLapses,
+               MIN(DueDate) AS NextDueDate,
+               MAX(LastReviewedAt) AS LastReviewedAt
+        FROM SpacedRepetitionItems
+        WHERE UserId = $1
+      `, [userId]),
+      pool.query(`
+        SELECT TargetType,
+               COUNT(*)::int AS Total,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS Reviewed,
+               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS Due,
+               COUNT(*) FILTER (WHERE DueDate < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS Overdue,
+               COALESCE(ROUND(AVG(LastScore))::int, 0) AS AverageScore,
+               COALESCE(SUM(Lapses), 0)::int AS Lapses
+        FROM SpacedRepetitionItems
+        WHERE UserId = $1
+        GROUP BY TargetType
+        ORDER BY TargetType
+      `, [userId]),
+      pool.query(`
+        SELECT r.Score, r.Quality, r.PreviousIntervalDays, r.NextIntervalDays, r.ReviewedAt,
+               i.TargetType, i.TargetId, i.DueDate,
+               COALESCE(wl.Title, sl.Title, ll.Title, rl.Title, gt.TitleVI, gt.Title, gl.Name, uc.Name, 'Nội dung đã xóa') AS TargetTitle
+        FROM SpacedRepetitionReviews r
+        INNER JOIN SpacedRepetitionItems i ON i.Id = r.ItemId
+        LEFT JOIN WritingLessons wl ON i.TargetType = 'writing_lesson' AND wl.Id::text = i.TargetId
+        LEFT JOIN SpeakingLessons sl ON i.TargetType = 'speaking_lesson' AND sl.Id::text = i.TargetId
+        LEFT JOIN ListeningLessons ll ON i.TargetType = 'listening_lesson' AND ll.Id::text = i.TargetId
+        LEFT JOIN ReadingLessons rl ON i.TargetType = 'reading_lesson' AND rl.Id::text = i.TargetId
+        LEFT JOIN GrammarTopics gt ON i.TargetType = 'grammar_topic' AND gt.Id::text = i.TargetId
+        LEFT JOIN GameLevels gl ON i.TargetType = 'game_level' AND gl.Id::text = i.TargetId
+        LEFT JOIN UserCollections uc ON i.TargetType = 'vocabulary_review' AND uc.Id::text = i.TargetId
+        WHERE r.UserId = $1
+        ORDER BY r.ReviewedAt DESC
+        LIMIT 15
+      `, [userId]),
+      pool.query(`
+        SELECT * FROM (
+          SELECT 'listening' AS Skill, l.Id, l.Title, p.Score, p.Status, p.UpdatedAt FROM ListeningProgress p INNER JOIN ListeningLessons l ON l.Id = p.LessonId WHERE p.UserId = $1
+          UNION ALL
+          SELECT 'speaking' AS Skill, l.Id, l.Title, p.Score, p.Status, p.UpdatedAt FROM SpeakingProgress p INNER JOIN SpeakingLessons l ON l.Id = p.LessonId WHERE p.UserId = $1
+          UNION ALL
+          SELECT 'reading' AS Skill, l.Id, l.Title, p.Score, p.Status, p.UpdatedAt FROM ReadingProgress p INNER JOIN ReadingLessons l ON l.Id = p.LessonId WHERE p.UserId = $1
+          UNION ALL
+          SELECT 'writing' AS Skill, l.Id, l.Title, p.Score, p.Status, p.UpdatedAt FROM WritingProgress p INNER JOIN WritingLessons l ON l.Id = p.LessonId WHERE p.UserId = $1
+        ) activity
+        ORDER BY UpdatedAt DESC NULLS LAST
+        LIMIT 30
+      `, [userId]),
+      pool.query(`
+        SELECT TaskDate,
+               COUNT(*)::int AS Assigned,
+               COUNT(*) FILTER (WHERE Status = 'completed')::int AS Completed,
+               COALESCE(SUM(RewardExp) FILTER (WHERE Status = 'completed'), 0)::int AS EarnedExp
+        FROM DailyTasks
+        WHERE UserId = $1 AND TaskDate >= CURRENT_DATE - 6
+        GROUP BY TaskDate
+        ORDER BY TaskDate DESC
+      `, [userId])
+    ]);
+
+    const moduleFromAggregate = (key, row) => {
+      const total = Number(row.total || 0);
+      const completed = Number(row.completed || 0);
+      return {
+        key,
+        total,
+        started: Number(row.started ?? row.total ?? 0),
+        completed,
+        averageScore: Number(row.averagescore || 0),
+        attempts: Number(row.attempts || 0),
+        due: Number(row.due || 0),
+        completionPercent: total > 0 ? Math.round((completed / total) * 100) : 0,
+        lastActivityAt: row.lastactivityat || null
+      };
+    };
+
+    const grammar = grammarResult.rows[0] || {};
+    const game = gameResult.rows[0] || {};
+    const vocabulary = vocabularyResult.rows[0] || {};
+    const overview = overviewResult.rows[0] || {};
+    const sr = srSummaryResult.rows[0] || {};
+
+    return {
+      learner: learnerResult.rows[0],
+      overview: {
+        activeDays: Number(overview.activedays || 0),
+        totalStudySeconds: Number(overview.totalstudyseconds || 0),
+        studySeconds7d: Number(overview.studyseconds7d || 0),
+        completedDailyTasks: Number(overview.completeddailytasks || 0),
+        ownedCollections: Number(overview.ownedcollections || 0)
+      },
+      modules: [
+        ...skillProgress,
+        moduleFromAggregate('grammar', grammar),
+        moduleFromAggregate('game', game),
+        moduleFromAggregate('vocabulary', vocabulary)
+      ],
+      spacedRepetition: {
+        summary: {
+          totalItems: Number(sr.totalitems || 0),
+          reviewedItems: Number(sr.revieweditems || 0),
+          newItems: Number(sr.newitems || 0),
+          dueItems: Number(sr.dueitems || 0),
+          overdueItems: Number(sr.overdueitems || 0),
+          averageEaseFactor: Number(sr.averageeasefactor || 0),
+          totalLapses: Number(sr.totallapses || 0),
+          nextDueDate: spacedRepetitionService.formatDueDate(sr.nextduedate),
+          lastReviewedAt: sr.lastreviewedat || null
+        },
+        byType: srTypesResult.rows,
+        recentReviews: recentReviewsResult.rows.map((row) => ({
+          ...row,
+          duedate: spacedRepetitionService.formatDueDate(row.duedate)
+        }))
+      },
+      recentLessons: recentLessonsResult.rows,
+      dailyActivity: dailyActivityResult.rows.map((row) => ({
+        ...row,
+        taskdate: spacedRepetitionService.formatDueDate(row.taskdate)
+      }))
+    };
   },
 
   async updateUser(userId, data = {}, currentUserId) {

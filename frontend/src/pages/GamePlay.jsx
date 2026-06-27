@@ -298,7 +298,13 @@ function GamePlay() {
     const duration = Math.round((Date.now() - (startTimeRef.current || Date.now())) / 1000);
     try {
       const questionIds = levelData?.questions?.map(question => question.Id) || [];
-      const res = await gameApi.submit({ levelId, answers: answersRef.current, questionIds, duration });
+      const res = await gameApi.submit({
+        levelId,
+        answers: answersRef.current,
+        questionIds,
+        duration,
+        attemptId: crypto.randomUUID()
+      });
       setResult(res.data);
     } catch {
       toast.error('Lỗi gửi kết quả');

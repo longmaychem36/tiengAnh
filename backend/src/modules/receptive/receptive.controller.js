@@ -2,6 +2,7 @@ const receptiveService = require('./receptive.service');
 const dailyService = require('../daily/daily.service');
 const { success, badRequest, notFound } = require('../../utils/responseHelper');
 const gamificationService = require('../gamification/gamification.service');
+const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 const { EXP_REWARDS } = require('../../utils/constants');
 
 function createReceptiveController(skill) {
@@ -27,7 +28,7 @@ function createReceptiveController(skill) {
 
     async saveProgress(req, res, next) {
       try {
-        const { lessonId, score = 0, completed = false } = req.body;
+        const { lessonId, score = 0, completed = false, attemptId } = req.body;
         if (!lessonId) return badRequest(res, 'lessonId is required');
 
         const pool = require('../../config/database').getPool();
@@ -41,6 +42,13 @@ function createReceptiveController(skill) {
         const wasCompleted = existingResult.rows[0]?.status === 'completed';
 
         await receptiveService.saveProgress(skill, req.user.id, lessonId, Number(score || 0), Boolean(completed));
+        const spacedRepetition = await spacedRepetitionService.recordReview({
+          userId: req.user.id,
+          targetType: `${skill}_lesson`,
+          targetId: lessonId,
+          score,
+          attemptId
+        });
         
         let expReward = null;
         if (completed && !wasCompleted) {
@@ -57,7 +65,12 @@ function createReceptiveController(skill) {
           });
         }
 
-        return success(res, { message: 'Progress saved', alreadyCompleted: wasCompleted, expReward });
+        return success(res, {
+          message: 'Progress saved',
+          alreadyCompleted: wasCompleted,
+          expReward,
+          nextReviewDate: spacedRepetitionService.formatDueDate(spacedRepetition.item.duedate || spacedRepetition.item.DueDate)
+        });
       } catch (err) {
         next(err);
       }

@@ -2,6 +2,7 @@
 // Vocabulary Page - My Decks + Public Decks
 // ============================================
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FiArrowLeft,
@@ -53,6 +54,9 @@ function statusLabel(status) {
 
 function Vocabulary() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const linkedCollectionId = searchParams.get('collectionId');
+  const linkedPractice = searchParams.get('practice') === '1';
   const [activeTab, setActiveTab] = useState('mine');
   const [myDecks, setMyDecks] = useState([]);
   const [publicDecks, setPublicDecks] = useState([]);
@@ -64,6 +68,7 @@ function Vocabulary() {
   const [submissionsUnavailable, setSubmissionsUnavailable] = useState(false);
   const [deckSearch, setDeckSearch] = useState('');
   const [deckPage, setDeckPage] = useState(1);
+  const [handledDeepLink, setHandledDeepLink] = useState('');
 
   const [showDeckModal, setShowDeckModal] = useState(false);
   const [editingDeck, setEditingDeck] = useState(null);
@@ -117,6 +122,30 @@ function Vocabulary() {
     if (deckPage > totalDeckPages) setDeckPage(totalDeckPages);
   }, [deckPage, totalDeckPages]);
 
+  useEffect(() => {
+    if (loading || !linkedCollectionId || handledDeepLink === linkedCollectionId) return;
+    if (activeTab !== 'public') {
+      setActiveTab('public');
+      return;
+    }
+
+    const deck = publicDecks.find((item) => String(item.Id || item.id) === String(linkedCollectionId));
+    if (!deck) return;
+    setHandledDeepLink(linkedCollectionId);
+    setSelectedDeck(deck);
+    setWords([]);
+    Promise.all([
+      collectionApi.getWords(deck.Id),
+      linkedPractice ? collectionApi.startReview(deck.Id) : Promise.resolve(null)
+    ])
+      .then(([wordsRes]) => {
+        const nextWords = getData(wordsRes, []);
+        setWords(nextWords);
+        if (linkedPractice && nextWords.length > 0) setPracticeMode(true);
+      })
+      .catch((err) => toast.error(getErrorMessage(err, 'Không mở được nhiệm vụ từ vựng.')));
+  }, [activeTab, handledDeepLink, linkedCollectionId, linkedPractice, loading, publicDecks]);
+
   const loadAll = async () => {
     setLoading(true);
     try {
@@ -152,6 +181,16 @@ function Vocabulary() {
       setWords(getData(res, []));
     } catch (err) {
       toast.error(getErrorMessage(err, 'Không tải được từ vựng.'));
+    }
+  };
+
+  const beginPractice = async () => {
+    if (!selectedDeck || vocabularyItems.length === 0) return;
+    try {
+      if (activeTab === 'public') await collectionApi.startReview(selectedDeck.Id);
+      setPracticeMode(true);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Không bắt đầu được lượt ôn tập.'));
     }
   };
 
@@ -305,7 +344,15 @@ function Vocabulary() {
         oneByOne={true}
         passMessage="Đã hoàn thành ôn từ vựng."
         continueLabel="Tiếp tục học bài khác"
-        onPassed={() => {
+        onPassed={async ({ firstAnswers, finalAnswers }) => {
+          if (activeTab === 'public') {
+            const res = await collectionApi.submitReview(selectedDeck.Id, {
+              attemptId: crypto.randomUUID(),
+              firstAnswers,
+              finalAnswers
+            });
+            toast.success(`Đã lưu lịch ôn: ${res.data?.score ?? 0}% ở lượt đầu.`);
+          }
           setPracticeMode(false);
           setSelectedDeck(null);
           setWords([]);
@@ -377,7 +424,7 @@ function Vocabulary() {
                     <FiSend /> Gửi duyệt
                   </button>
                 )}
-                <button type="button" className="btn btn-primary btn-sm" disabled={vocabularyItems.length === 0} onClick={() => setPracticeMode(true)}>
+                <button type="button" className="btn btn-primary btn-sm" disabled={vocabularyItems.length === 0} onClick={beginPractice}>
                   <FiCheckCircle /> Ôn luyện
                 </button>
               </div>

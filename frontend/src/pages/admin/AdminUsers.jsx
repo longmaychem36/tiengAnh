@@ -2,6 +2,7 @@
 // Admin User Management
 // ============================================
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -105,6 +106,7 @@ function UserTable({
   currentUserId,
   showLearnerColumns = false,
   onEdit,
+  onOpenLearner,
   onToggle,
   onResetPassword,
   onDelete
@@ -143,7 +145,13 @@ function UserTable({
 
               return (
                 <tr key={id}>
-                  <td><strong>{getField(item, 'Username', 'username') || 'Chưa có tên'}</strong></td>
+                  <td>
+                    {role === 'user' ? (
+                      <button type="button" className="admin-user-name-link" onClick={() => onOpenLearner(item)}>
+                        {getField(item, 'Username', 'username') || 'Chưa có tên'}
+                      </button>
+                    ) : <strong>{getField(item, 'Username', 'username') || 'Chưa có tên'}</strong>}
+                  </td>
                   <td>{getField(item, 'Email', 'email')}</td>
                   <td>
                     <span className="admin-role-chip" style={{ background: colors.bg, color: colors.color }}>
@@ -161,7 +169,7 @@ function UserTable({
                   </td>
                   <td>
                     <div className="admin-inline-actions admin-user-row-actions">
-                      <button type="button" className="btn btn-icon btn-sm" title="Chi tiết" aria-label="Chi tiết account" onClick={() => onEdit(item)}>
+                      <button type="button" className="btn btn-icon btn-sm" title="Chi tiết" aria-label="Chi tiết account" onClick={() => role === 'user' ? onOpenLearner(item) : onEdit(item)}>
                         <FiEdit2 />
                       </button>
                       {role === 'admin' && (
@@ -191,6 +199,7 @@ function UserTable({
 }
 
 function AdminUsers() {
+  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const [admins, setAdmins] = useState([]);
   const [learners, setLearners] = useState([]);
@@ -424,6 +433,7 @@ function AdminUsers() {
         loading={loading}
         currentUserId={currentUser?.id}
         onEdit={openEdit}
+        onOpenLearner={(item) => navigate(`/admin/users/${getUserId(item)}`)}
         onToggle={toggleActive}
         onResetPassword={openResetPassword}
         onDelete={deleteAccount}
@@ -437,6 +447,7 @@ function AdminUsers() {
         currentUserId={currentUser?.id}
         showLearnerColumns
         onEdit={openEdit}
+        onOpenLearner={(item) => navigate(`/admin/users/${getUserId(item)}`)}
         onToggle={toggleActive}
         onResetPassword={openResetPassword}
         onDelete={deleteAccount}

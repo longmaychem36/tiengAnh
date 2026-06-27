@@ -1,8 +1,10 @@
 const { getPool } = require('../../config/database');
 const gamificationService = require('../gamification/gamification.service');
 const billingService = require('../billing/billing.service');
+const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 
-const DAILY_TASK_COUNT = 4;
+const PLAN_VERSION = 2;
+const DAILY_LEARNING_TASK_COUNT = 4;
 const DAILY_TASK_REWARDS = {
   daily_login: 10,
   listening_lesson: 20,
@@ -18,17 +20,34 @@ const DAILY_TASK_REWARDS = {
 let schemaReady = false;
 
 function getSaigonDate() {
-  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return spacedRepetitionService.getSaigonDate();
 }
 
 function safeString(value, fallback = '') {
   return String(value ?? fallback).trim();
 }
 
+function toDateString(value) {
+  if (!value) return null;
+  if (typeof value === 'string') return value.slice(0, 10);
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return spacedRepetitionService.formatDueDate(value);
+  return String(value).slice(0, 10);
+}
+
+function daysBetween(fromDate, toDate) {
+  const from = new Date(`${fromDate}T00:00:00.000Z`);
+  const to = new Date(`${toDate}T00:00:00.000Z`);
+  return Math.max(0, Math.floor((to - from) / 86400000));
+}
+
 function shapeTask(row) {
   const targetType = row.targettype || row.TargetType;
   const targetId = row.targetid || row.TargetId;
   const status = row.status || row.Status || 'pending';
+  const taskMode = row.taskmode || row.TaskMode || (targetType === 'daily_login' ? 'habit' : 'new');
+  const planVersion = Number(row.planversion || row.PlanVersion || 1);
+  const dueDate = toDateString(row.duedate || row.DueDate);
+  const today = getSaigonDate();
   const urlByType = {
     daily_login: '/daily-tasks',
     writing_lesson: `/writing/lessons/${targetId}`,
@@ -37,12 +56,14 @@ function shapeTask(row) {
     reading_lesson: `/reading/lessons/${targetId}`,
     grammar_topic: `/grammar?topicId=${targetId}`,
     game_level: `/games/play/${targetId}`,
-    vocabulary_review: '/vocabulary'
+    vocabulary_review: planVersion >= PLAN_VERSION
+      ? `/vocabulary?collectionId=${targetId}&practice=1`
+      : '/vocabulary'
   };
 
   return {
     id: row.id || row.Id,
-    taskDate: row.taskdate || row.TaskDate,
+    taskDate: toDateString(row.taskdate || row.TaskDate),
     skill: row.skill || row.Skill,
     targetType,
     targetId,
@@ -54,14 +75,17 @@ function shapeTask(row) {
     aiRationale: row.airationale || row.AiRationale || '',
     completedAt: row.completedat || row.CompletedAt || null,
     url: urlByType[targetType] || '/dashboard',
-    rewardExp: Number(row.rewardexp || row.RewardExp || DAILY_TASK_REWARDS[targetType] || DAILY_TASK_REWARDS.default)
+    rewardExp: Number(row.rewardexp || row.RewardExp || DAILY_TASK_REWARDS[targetType] || DAILY_TASK_REWARDS.default),
+    planVersion,
+    taskMode,
+    dueDate,
+    overdueDays: taskMode === 'review' && dueDate ? daysBetween(dueDate, today) : 0
   };
 }
 
 async function ensureInsightsSchema() {
   if (schemaReady) return;
   const pool = getPool();
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS DailyTasks (
       Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -77,270 +101,324 @@ async function ensureInsightsSchema() {
       OrderIndex INTEGER NOT NULL DEFAULT 0,
       AiRationale TEXT,
       RewardExp INTEGER NOT NULL DEFAULT 10,
-      CompletedAt TIMESTAMP,
-      CreatedAt TIMESTAMP NOT NULL DEFAULT NOW()
+      CompletedAt TIMESTAMPTZ,
+      CreatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PlanVersion SMALLINT NOT NULL DEFAULT 1,
+      TaskMode VARCHAR(20) NOT NULL DEFAULT 'new',
+      DueDate DATE
     )
   `);
-
   await pool.query('ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS RewardExp INTEGER NOT NULL DEFAULT 10');
-
+  await pool.query('ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS PlanVersion SMALLINT NOT NULL DEFAULT 1');
+  await pool.query("ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS TaskMode VARCHAR(20) NOT NULL DEFAULT 'new'");
+  await pool.query('ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS DueDate DATE');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_daily_tasks_user_date ON DailyTasks (UserId, TaskDate, OrderIndex)');
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_tasks_user_date_order ON DailyTasks (UserId, TaskDate, OrderIndex)');
-
+  await spacedRepetitionService.ensureSchema();
+  await spacedRepetitionService.backfillExistingProgress();
   schemaReady = true;
 }
 
-function addCandidate(list, candidate) {
-  if (!candidate.targetId) return;
-  const targetType = candidate.targetType;
-  const targetId = String(candidate.targetId);
-  const id = `${targetType}:${targetId}`;
-  if (list.some((item) => item.id === id)) return;
-
-  list.push({
-    id,
-    targetType,
-    targetId,
-    skill: candidate.skill,
-    title: safeString(candidate.title, 'Nhiệm vụ học tập').slice(0, 255),
-    description: safeString(candidate.description),
-    reasonSeed: safeString(candidate.reasonSeed || candidate.description || candidate.title)
-  });
+function candidateFromRow(row, config) {
+  const dueDate = toDateString(row.duedate);
+  const today = getSaigonDate();
+  const reviewed = Boolean(row.lastreviewedat) || Number(row.repetitions || 0) > 0;
+  const overdueDays = dueDate ? daysBetween(dueDate, today) : 0;
+  const taskMode = reviewed ? 'review' : 'new';
+  return {
+    targetType: config.targetType,
+    targetId: String(row.targetid || row.id),
+    skill: config.skill,
+    title: safeString(config.title(row)).slice(0, 255),
+    description: safeString(config.description(row)),
+    taskMode,
+    dueDate: dueDate || today,
+    overdueDays,
+    easeFactor: Number(row.easefactor || 2.5),
+    lastAssignedAt: row.lastassignedat || null,
+    reason: taskMode === 'new'
+      ? 'Nội dung mới phù hợp với tiến độ hiện tại của bạn.'
+      : overdueDays > 0
+        ? `Đã quá hạn ôn ${overdueDays} ngày theo lịch ghi nhớ SM-2.`
+        : 'Đến hạn ôn lại theo lịch ghi nhớ SM-2.',
+    aiRationale: taskMode === 'new' ? 'sm2_new' : overdueDays > 0 ? 'sm2_overdue' : 'sm2_due',
+    rewardExp: DAILY_TASK_REWARDS[config.targetType] || DAILY_TASK_REWARDS.default
+  };
 }
 
-async function collectCandidateTargets(userId, { includePlusSkills = false } = {}) {
+async function collectDueCandidates(userId, { includePlusSkills }) {
   const pool = getPool();
-  const candidates = [];
-
-  const collectors = [
-    async () => {
-      const result = await pool.query(`
-        SELECT l.Id, l.Title, l.Description, COALESCE(wp.Status, 'pending') AS Status
-        FROM WritingLessons l
-        LEFT JOIN WritingProgress wp ON wp.LessonId = l.Id AND wp.UserId = $1
-        ORDER BY CASE WHEN wp.Status = 'completed' THEN 1 ELSE 0 END, l.OrderIndex ASC
-        LIMIT 8
-      `, [userId]);
-      result.rows.forEach((row) => addCandidate(candidates, {
-        skill: 'writing',
-        targetType: 'writing_lesson',
-        targetId: row.id,
-        title: `Writing: ${row.title}`,
-        description: row.description || 'Luyện viết lại câu và sửa lỗi ngữ pháp.',
-        reasonSeed: 'Improve writing accuracy and grammar.'
-      }));
+  const today = getSaigonDate();
+  const specs = [
+    {
+      targetType: 'writing_lesson', skill: 'writing', table: 'WritingLessons', alias: 'l',
+      title: (row) => `Writing: ${row.title}`,
+      description: (row) => row.description || 'Luyện viết lại câu và sửa lỗi ngữ pháp.'
     },
-    Object.assign(async () => {
-      const result = await pool.query(`
-        SELECT l.Id, l.Title
-        FROM SpeakingLessons l
-        LEFT JOIN SpeakingProgress sp ON sp.LessonId = l.Id AND sp.UserId = $1
-        ORDER BY CASE WHEN sp.Status = 'completed' THEN 1 ELSE 0 END, l.OrderIndex ASC
-        LIMIT 8
-      `, [userId]);
-      result.rows.forEach((row) => addCandidate(candidates, {
-        skill: 'speaking',
-        targetType: 'speaking_lesson',
-        targetId: row.id,
-        title: `Speaking: ${row.title}`,
-        description: 'Nghe mẫu và luyện nói lại các câu trọng tâm.',
-        reasonSeed: 'Improve speaking accuracy and missing words.'
-      }));
-    }, { plusOnly: true }),
-    async () => {
-      const result = await pool.query(`
-        SELECT gt.Id, gt.Title, gt.TitleVI, gc.NameVI AS CategoryNameVI
-        FROM GrammarTopics gt
-        LEFT JOIN GrammarCategories gc ON gc.Id = gt.CategoryId
-        ORDER BY gt.OrderIndex ASC, gt.Title ASC
-        LIMIT 10
-      `);
-      result.rows.forEach((row) => addCandidate(candidates, {
-        skill: 'grammar',
-        targetType: 'grammar_topic',
-        targetId: row.id,
-        title: `Grammar: ${row.titlevi || row.title}`,
-        description: row.categorynamevi ? `Ôn ${row.categorynamevi}.` : 'Ôn lý thuyết và làm quiz ngữ pháp.',
-        reasonSeed: 'Fix repeated grammar mistakes.'
-      }));
+    {
+      targetType: 'speaking_lesson', skill: 'speaking', table: 'SpeakingLessons', alias: 'l', plusOnly: true,
+      title: (row) => `Speaking: ${row.title}`,
+      description: () => 'Nghe mẫu và luyện nói lại các câu trọng tâm.'
     },
-    Object.assign(async () => {
-      const result = await pool.query(`
-        SELECT l.Id, l.Title, l.Topic, COALESCE(lp.Status, 'pending') AS Status
-        FROM ListeningLessons l
-        LEFT JOIN ListeningProgress lp ON lp.LessonId = l.Id AND lp.UserId = $1
-        ORDER BY CASE WHEN lp.Status = 'completed' THEN 1 ELSE 0 END, l.OrderIndex ASC
-        LIMIT 8
-      `, [userId]);
-      result.rows.forEach((row) => addCandidate(candidates, {
-        skill: 'listening',
-        targetType: 'listening_lesson',
-        targetId: row.id,
-        title: `Listening: ${row.title}`,
-        description: row.topic ? `Luyện nghe chủ đề ${row.topic}.` : 'Luyện nghe và trả lời câu hỏi.',
-        reasonSeed: 'Improve listening comprehension.'
-      }));
-    }, { plusOnly: true }),
-    async () => {
-      const result = await pool.query(`
-        SELECT l.Id, l.Title, l.Topic, COALESCE(rp.Status, 'pending') AS Status
-        FROM ReadingLessons l
-        LEFT JOIN ReadingProgress rp ON rp.LessonId = l.Id AND rp.UserId = $1
-        ORDER BY CASE WHEN rp.Status = 'completed' THEN 1 ELSE 0 END, l.OrderIndex ASC
-        LIMIT 8
-      `, [userId]);
-      result.rows.forEach((row) => addCandidate(candidates, {
-        skill: 'reading',
-        targetType: 'reading_lesson',
-        targetId: row.id,
-        title: `Reading: ${row.title}`,
-        description: row.topic ? `Đọc hiểu chủ đề ${row.topic}.` : 'Đọc bài và trả lời câu hỏi.',
-        reasonSeed: 'Improve reading comprehension.'
-      }));
+    {
+      targetType: 'listening_lesson', skill: 'listening', table: 'ListeningLessons', alias: 'l', plusOnly: true,
+      title: (row) => `Listening: ${row.title}`,
+      description: (row) => row.topic ? `Luyện nghe chủ đề ${row.topic}.` : 'Luyện nghe và trả lời câu hỏi.'
     },
-    async () => {
-      const result = await pool.query(`
-        SELECT gl.Id, gl.Name, gl.Difficulty, COALESCE(ugp.IsCompleted, false) AS IsCompleted
-        FROM GameLevels gl
-        LEFT JOIN UserGameProgress ugp ON ugp.LevelId = gl.Id AND ugp.UserId = $1
-        ORDER BY COALESCE(ugp.IsCompleted, false) ASC, gl.LevelNumber ASC
-        LIMIT 8
-      `, [userId]);
-      result.rows.forEach((row) => addCandidate(candidates, {
-        skill: 'game',
-        targetType: 'game_level',
-        targetId: row.id,
-        title: `Game: ${row.name}`,
-        description: `Mini game - ${row.difficulty || 'practice'}`,
-        reasonSeed: 'Review mistakes through quick games.'
-      }));
+    {
+      targetType: 'reading_lesson', skill: 'reading', table: 'ReadingLessons', alias: 'l',
+      title: (row) => `Reading: ${row.title}`,
+      description: (row) => row.topic ? `Đọc hiểu chủ đề ${row.topic}.` : 'Đọc bài và trả lời câu hỏi.'
     },
-    async () => {
-      const result = await pool.query(`
-        SELECT ucw.Id,
-               ucw.CustomWord AS Word,
-               ucw.CustomMeaning AS Meaning,
-               uc.Name AS CollectionName
-        FROM UserCollectionWords ucw
-        INNER JOIN UserCollections uc ON uc.Id = ucw.CollectionId
-        WHERE uc.UserId = $1
-        ORDER BY ucw.AddedAt DESC
-        LIMIT 6
-      `, [userId]);
-      result.rows.forEach((row) => addCandidate(candidates, {
-        skill: 'vocabulary',
-        targetType: 'vocabulary_review',
-        targetId: row.id,
-        title: `Vocabulary: ${row.word}`,
-        description: row.meaning || row.collectionname || 'Ôn từ đã lưu trong bộ sưu tập.',
-        reasonSeed: 'Review saved vocabulary.'
-      }));
+    {
+      targetType: 'grammar_topic', skill: 'grammar', table: 'GrammarTopics', alias: 'l',
+      title: (row) => `Grammar: ${row.titlevi || row.title}`,
+      description: () => 'Ôn lý thuyết và làm quiz ngữ pháp.'
+    },
+    {
+      targetType: 'game_level', skill: 'game', table: 'GameLevels', alias: 'l',
+      title: (row) => `Game: ${row.name}`,
+      description: (row) => `Mini game - ${row.difficulty || 'practice'}`
+    },
+    {
+      targetType: 'vocabulary_review', skill: 'vocabulary', table: 'UserCollections', alias: 'l',
+      extraWhere: "AND l.IsPublic = true AND l.ReviewStatus = 'approved' AND EXISTS (SELECT 1 FROM UserCollectionWords w WHERE w.CollectionId = l.Id)",
+      title: (row) => `Vocabulary: ${row.name}`,
+      description: (row) => row.description || 'Ôn học phần từ vựng công khai.'
     }
   ];
+  const candidates = [];
 
-  const activeCollectors = includePlusSkills
-    ? collectors
-    : collectors.filter((collect) => !collect.plusOnly);
-
-  for (const collect of activeCollectors) {
+  for (const spec of specs) {
+    if (spec.plusOnly && !includePlusSkills) continue;
     try {
-      await collect();
-    } catch (err) {
-      console.warn('[daily] candidate collector skipped:', err.message);
+      const result = await pool.query(`
+        SELECT sri.TargetId, sri.EaseFactor, sri.Repetitions, sri.LastReviewedAt,
+               sri.DueDate, sri.LastAssignedAt, ${spec.alias}.*
+        FROM SpacedRepetitionItems sri
+        INNER JOIN ${spec.table} ${spec.alias} ON ${spec.alias}.Id::text = sri.TargetId
+        WHERE sri.UserId = $1
+          AND sri.TargetType = $2
+          AND sri.DueDate <= $3
+          ${spec.extraWhere || ''}
+        ORDER BY sri.DueDate ASC, sri.EaseFactor ASC, sri.LastAssignedAt ASC NULLS FIRST
+        LIMIT 30
+      `, [userId, spec.targetType, today]);
+      result.rows.forEach((row) => candidates.push(candidateFromRow(row, spec)));
+    } catch (error) {
+      console.warn(`[daily] due collector ${spec.targetType} skipped:`, error.message);
     }
+  }
+  return candidates;
+}
+
+function newCandidate(row, config) {
+  return {
+    targetType: config.targetType,
+    targetId: String(row.id),
+    skill: config.skill,
+    title: safeString(config.title(row)).slice(0, 255),
+    description: safeString(config.description(row)),
+    taskMode: 'new',
+    dueDate: getSaigonDate(),
+    overdueDays: 0,
+    easeFactor: 2.5,
+    lastAssignedAt: null,
+    reason: 'Nội dung mới phù hợp với tiến độ hiện tại của bạn.',
+    aiRationale: 'sm2_new',
+    rewardExp: DAILY_TASK_REWARDS[config.targetType] || DAILY_TASK_REWARDS.default
+  };
+}
+
+async function findNewSequentialLesson(userId, config, placementLevel) {
+  const result = await getPool().query(`
+    SELECT l.*, p.Status, sri.Id AS ReviewItemId
+    FROM ${config.table} l
+    LEFT JOIN ${config.progressTable} p ON p.LessonId = l.Id AND p.UserId = $1
+    LEFT JOIN SpacedRepetitionItems sri
+      ON sri.UserId = $1 AND sri.TargetType = $2 AND sri.TargetId = l.Id::text
+    ORDER BY l.OrderIndex ASC, l.CreatedAt ASC
+  `, [userId, config.targetType]);
+  const visible = placementLevel === 'basic'
+    ? result.rows.filter((row) => !row.isfoundation)
+    : result.rows;
+
+  for (let index = 0; index < visible.length; index += 1) {
+    const row = visible[index];
+    const unlocked = index === 0 || visible[index - 1].status === 'completed';
+    if (!unlocked) break;
+    if (!row.reviewitemid) return newCandidate(row, config);
+    if (row.status !== 'completed') break;
+  }
+  return null;
+}
+
+async function collectNewCandidates(userId, { includePlusSkills }) {
+  const pool = getPool();
+  const userResult = await pool.query('SELECT PlacementLevel FROM Users WHERE Id = $1', [userId]);
+  const placementLevel = String(userResult.rows[0]?.placementlevel || 'new').toLowerCase();
+  const lessonSpecs = [
+    { targetType: 'writing_lesson', skill: 'writing', table: 'WritingLessons', progressTable: 'WritingProgress', title: (r) => `Writing: ${r.title}`, description: (r) => r.description || 'Luyện viết lại câu và sửa lỗi ngữ pháp.' },
+    { targetType: 'reading_lesson', skill: 'reading', table: 'ReadingLessons', progressTable: 'ReadingProgress', title: (r) => `Reading: ${r.title}`, description: (r) => r.topic ? `Đọc hiểu chủ đề ${r.topic}.` : 'Đọc bài và trả lời câu hỏi.' },
+    { targetType: 'speaking_lesson', skill: 'speaking', table: 'SpeakingLessons', progressTable: 'SpeakingProgress', plusOnly: true, title: (r) => `Speaking: ${r.title}`, description: () => 'Nghe mẫu và luyện nói lại các câu trọng tâm.' },
+    { targetType: 'listening_lesson', skill: 'listening', table: 'ListeningLessons', progressTable: 'ListeningProgress', plusOnly: true, title: (r) => `Listening: ${r.title}`, description: (r) => r.topic ? `Luyện nghe chủ đề ${r.topic}.` : 'Luyện nghe và trả lời câu hỏi.' }
+  ];
+  const candidates = [];
+
+  for (const spec of lessonSpecs) {
+    if (spec.plusOnly && !includePlusSkills) continue;
+    try {
+      const candidate = await findNewSequentialLesson(userId, spec, placementLevel);
+      if (candidate) candidates.push(candidate);
+    } catch (error) {
+      console.warn(`[daily] new collector ${spec.targetType} skipped:`, error.message);
+    }
+  }
+
+  try {
+    const grammarResult = await pool.query(`
+      SELECT gt.*, gp.Status, sri.Id AS ReviewItemId
+      FROM GrammarTopics gt
+      LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = $1
+      LEFT JOIN SpacedRepetitionItems sri
+        ON sri.UserId = $1 AND sri.TargetType = 'grammar_topic' AND sri.TargetId = gt.Id::text
+      ORDER BY gt.CategoryId, gt.OrderIndex ASC, gt.Id ASC
+    `, [userId]);
+    const byCategory = new Map();
+    grammarResult.rows.forEach((row) => {
+      const key = String(row.categoryid);
+      if (!byCategory.has(key)) byCategory.set(key, []);
+      byCategory.get(key).push(row);
+    });
+    for (const rows of byCategory.values()) {
+      for (let index = 0; index < rows.length; index += 1) {
+        const row = rows[index];
+        const unlocked = index === 0 || rows[index - 1].status === 'completed';
+        if (!unlocked) break;
+        if (!row.reviewitemid) {
+          candidates.push(newCandidate(row, {
+            targetType: 'grammar_topic', skill: 'grammar',
+            title: (item) => `Grammar: ${item.titlevi || item.title}`,
+            description: () => 'Ôn lý thuyết và làm quiz ngữ pháp.'
+          }));
+          break;
+        }
+        if (row.status !== 'completed') break;
+      }
+      if (candidates.some((item) => item.targetType === 'grammar_topic')) break;
+    }
+  } catch (error) {
+    console.warn('[daily] new collector grammar_topic skipped:', error.message);
+  }
+
+  try {
+    const gameResult = await pool.query(`
+      SELECT gl.*, ugp.IsCompleted, sri.Id AS ReviewItemId
+      FROM GameLevels gl
+      LEFT JOIN UserGameProgress ugp ON ugp.LevelId = gl.Id AND ugp.UserId = $1
+      LEFT JOIN SpacedRepetitionItems sri
+        ON sri.UserId = $1 AND sri.TargetType = 'game_level' AND sri.TargetId = gl.Id::text
+      ORDER BY gl.LevelNumber ASC
+    `, [userId]);
+    for (let index = 0; index < gameResult.rows.length; index += 1) {
+      const row = gameResult.rows[index];
+      const unlocked = index === 0 || gameResult.rows[index - 1].iscompleted === true;
+      if (!unlocked) break;
+      if (!row.reviewitemid) {
+        candidates.push(newCandidate(row, {
+          targetType: 'game_level', skill: 'game',
+          title: (item) => `Game: ${item.name}`,
+          description: (item) => `Mini game - ${item.difficulty || 'practice'}`
+        }));
+        break;
+      }
+      if (row.iscompleted !== true) break;
+    }
+  } catch (error) {
+    console.warn('[daily] new collector game_level skipped:', error.message);
   }
 
   return candidates;
 }
 
+function sortDueCandidates(candidates) {
+  return [...candidates].sort((a, b) => (
+    b.overdueDays - a.overdueDays ||
+    a.easeFactor - b.easeFactor ||
+    String(a.lastAssignedAt || '').localeCompare(String(b.lastAssignedAt || '')) ||
+    a.targetType.localeCompare(b.targetType)
+  ));
+}
+
+function selectDiverseTasks(dueCandidates, newCandidates, count = DAILY_LEARNING_TASK_COUNT, excluded = new Set()) {
+  const selected = [];
+  const usedTargets = new Set(excluded);
+  const usedSkills = new Set();
+  const due = sortDueCandidates(dueCandidates).filter((item) => !usedTargets.has(`${item.targetType}:${item.targetId}`));
+
+  for (const candidate of due) {
+    if (usedSkills.has(candidate.skill)) continue;
+    selected.push(candidate);
+    usedSkills.add(candidate.skill);
+    usedTargets.add(`${candidate.targetType}:${candidate.targetId}`);
+    if (selected.length >= count) return selected;
+  }
+  for (const candidate of due) {
+    const key = `${candidate.targetType}:${candidate.targetId}`;
+    if (usedTargets.has(key)) continue;
+    selected.push(candidate);
+    usedTargets.add(key);
+    if (selected.length >= count) return selected;
+  }
+  for (const candidate of newCandidates) {
+    const key = `${candidate.targetType}:${candidate.targetId}`;
+    if (usedTargets.has(key) || usedSkills.has(candidate.skill)) continue;
+    selected.push(candidate);
+    usedSkills.add(candidate.skill);
+    usedTargets.add(key);
+    if (selected.length >= count) return selected;
+  }
+  for (const candidate of newCandidates) {
+    const key = `${candidate.targetType}:${candidate.targetId}`;
+    if (usedTargets.has(key)) continue;
+    selected.push(candidate);
+    usedTargets.add(key);
+    if (selected.length >= count) return selected;
+  }
+  return selected;
+}
+
 function getStarterTask() {
   return {
-    id: 'daily_login:today',
-    targetType: 'daily_login',
-    targetId: 'today',
-    skill: 'habit',
+    targetType: 'daily_login', targetId: 'today', skill: 'habit',
     title: 'Đăng nhập hôm nay',
     description: 'Mở hệ thống học tập để giữ nhịp học mỗi ngày.',
     reason: 'Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.',
-    aiRationale: 'habit',
+    aiRationale: 'habit', taskMode: 'habit', dueDate: getSaigonDate(),
     rewardExp: DAILY_TASK_REWARDS.daily_login
   };
-}
-
-function getTaskReason(targetType) {
-  const reasons = {
-    listening_lesson: 'Luyện nghe một bài ngắn để làm nóng khả năng phản xạ.',
-    speaking_lesson: 'Nói vài câu mẫu để giữ nhịp phát âm mỗi ngày.',
-    reading_lesson: 'Đọc một bài ngắn và trả lời câu hỏi để tăng vốn hiểu ngữ cảnh.',
-    writing_lesson: 'Viết một vài câu để rèn cách diễn đạt tự nhiên hơn.',
-    game_level: 'Ôn nhanh bằng mini game để giữ động lực học.',
-    vocabulary_review: 'Ôn lại từ đã lưu để biến từ vựng thành trí nhớ dài hạn.',
-    grammar_topic: 'Ôn một điểm ngữ pháp nhỏ để dùng câu chắc hơn.'
-  };
-  return reasons[targetType] || 'Một hoạt động học ngắn để duy trì tiến độ hôm nay.';
 }
 
 function isPlusTaskType(targetType) {
   return targetType === 'listening_lesson' || targetType === 'speaking_lesson';
 }
 
-function buildDefaultDailyTasks(candidates, { includePlusSkills = false } = {}) {
-  const selected = [getStarterTask()];
-  const preferredTypes = includePlusSkills
-    ? ['listening_lesson', 'speaking_lesson', 'reading_lesson', 'writing_lesson', 'game_level', 'vocabulary_review', 'grammar_topic']
-    : ['reading_lesson', 'writing_lesson', 'game_level', 'vocabulary_review', 'grammar_topic'];
-  const used = new Set(selected.map((task) => `${task.targetType}:${task.targetId}`));
-
-  for (const targetType of preferredTypes) {
-    const candidate = candidates.find((item) => item.targetType === targetType && !used.has(`${item.targetType}:${item.targetId}`));
-    if (!candidate) continue;
-    selected.push({
-      ...candidate,
-      reason: getTaskReason(candidate.targetType),
-      aiRationale: 'daily_plan',
-      rewardExp: DAILY_TASK_REWARDS[candidate.targetType] || DAILY_TASK_REWARDS.default
-    });
-    used.add(`${candidate.targetType}:${candidate.targetId}`);
-    if (selected.length >= DAILY_TASK_COUNT) break;
-  }
-
-  return selected.slice(0, DAILY_TASK_COUNT);
-}
-
-async function insertDailyTasks(userId, taskDate, tasks) {
-  const pool = getPool();
-  await pool.query('DELETE FROM DailyTasks WHERE UserId = $1 AND TaskDate = $2', [userId, taskDate]);
-
+async function insertTaskRows(client, userId, taskDate, tasks, startOrder = 0) {
   for (let index = 0; index < tasks.length; index += 1) {
     const task = tasks[index];
-    await pool.query(`
+    await client.query(`
       INSERT INTO DailyTasks (
-        UserId, TaskDate, Skill, TargetType, TargetId, Title, Description, Reason, Status, OrderIndex, AiRationale, RewardExp
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11)
+        UserId, TaskDate, Skill, TargetType, TargetId, Title, Description, Reason,
+        Status, OrderIndex, AiRationale, RewardExp, PlanVersion, TaskMode, DueDate
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11, $12, $13, $14)
+      ON CONFLICT (UserId, TaskDate, OrderIndex) DO NOTHING
     `, [
-      userId,
-      taskDate,
-      task.skill,
-      task.targetType,
-      String(task.targetId),
-      task.title,
-      task.description,
-      task.reason,
-      index,
-      task.aiRationale,
-      task.rewardExp || DAILY_TASK_REWARDS[task.targetType] || DAILY_TASK_REWARDS.default
+      userId, taskDate, task.skill, task.targetType, String(task.targetId), task.title,
+      task.description, task.reason, startOrder + index, task.aiRationale,
+      task.rewardExp || DAILY_TASK_REWARDS[task.targetType] || DAILY_TASK_REWARDS.default,
+      PLAN_VERSION, task.taskMode || 'new', task.dueDate || taskDate
     ]);
   }
-
-  const result = await pool.query(`
-    SELECT *
-    FROM DailyTasks
-    WHERE UserId = $1 AND TaskDate = $2
-    ORDER BY OrderIndex ASC
-  `, [userId, taskDate]);
-
-  return result.rows.map(shapeTask);
 }
 
 async function completeTaskById(userId, taskId) {
@@ -349,24 +427,20 @@ async function completeTaskById(userId, taskId) {
     'SELECT TargetType FROM DailyTasks WHERE Id = $1 AND UserId = $2',
     [taskId, userId]
   );
-  const targetType = existing.rows[0]?.targettype || existing.rows[0]?.TargetType;
-  if (isPlusTaskType(targetType)) {
-    const isPlus = await billingService.isPlusUser(userId);
-    if (!isPlus) {
-      const error = new Error('Vui lòng nâng cấp Plus để hoàn thành nhiệm vụ Listening/Speaking.');
-      error.statusCode = 403;
-      throw error;
-    }
+  const targetType = existing.rows[0]?.targettype;
+  if (!targetType) return null;
+  if (targetType !== 'daily_login') {
+    const error = new Error('Nhiệm vụ học chỉ được hoàn thành sau khi đạt điểm yêu cầu trong bài.');
+    error.statusCode = 400;
+    throw error;
   }
 
   const result = await pool.query(`
     UPDATE DailyTasks
-    SET Status = 'completed',
-        CompletedAt = COALESCE(CompletedAt, NOW())
+    SET Status = 'completed', CompletedAt = COALESCE(CompletedAt, NOW())
     WHERE Id = $1 AND UserId = $2 AND Status <> 'completed'
     RETURNING *
   `, [taskId, userId]);
-
   if (!result.rows[0]) return null;
   const task = shapeTask(result.rows[0]);
   const expReward = await gamificationService.addExp(userId, task.rewardExp, `daily_task_${task.targetType}`);
@@ -376,14 +450,20 @@ async function completeTaskById(userId, taskId) {
 async function autoCompleteLoginTask(userId, tasks) {
   const loginTask = tasks.find((task) => task.targetType === 'daily_login' && task.status !== 'completed');
   if (!loginTask) return { tasks, expReward: null };
-
   const completed = await completeTaskById(userId, loginTask.id);
   if (!completed?.task) return { tasks, expReward: null };
-
   return {
     tasks: tasks.map((task) => (task.id === completed.task.id ? completed.task : task)),
     expReward: completed.expReward
   };
+}
+
+async function buildLearningPlan(userId, includePlusSkills, count, excluded = new Set()) {
+  const [dueCandidates, newCandidates] = await Promise.all([
+    collectDueCandidates(userId, { includePlusSkills }),
+    collectNewCandidates(userId, { includePlusSkills })
+  ]);
+  return selectDiverseTasks(dueCandidates, newCandidates, count, excluded);
 }
 
 const dailyService = {
@@ -394,35 +474,68 @@ const dailyService = {
     await ensureInsightsSchema();
     const taskDate = getSaigonDate();
     const includePlusSkills = await billingService.isPlusUser(user.id);
+    const client = await getPool().connect();
+    let rows;
 
-    const pool = getPool();
-    const existing = await pool.query(`
-      SELECT *
-      FROM DailyTasks
-      WHERE UserId = $1 AND TaskDate = $2
-      ORDER BY OrderIndex ASC
-    `, [user.id, taskDate]);
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`${user.id}:${taskDate}`]);
+      let existing = await client.query(`
+        SELECT * FROM DailyTasks
+        WHERE UserId = $1 AND TaskDate = $2
+        ORDER BY OrderIndex ASC
+      `, [user.id, taskDate]);
 
-    const hasLockedPlusTask = !includePlusSkills && existing.rows.some((row) => {
-      const type = row.targettype || row.TargetType;
-      return type === 'listening_lesson' || type === 'speaking_lesson';
-    });
+      if (existing.rows.length > 0 && existing.rows.some((row) => Number(row.planversion || 1) < PLAN_VERSION)) {
+        rows = existing.rows;
+      } else {
+        if (existing.rows.length > 0 && !includePlusSkills) {
+          await client.query(`
+            DELETE FROM DailyTasks
+            WHERE UserId = $1 AND TaskDate = $2 AND Status = 'pending'
+              AND TargetType IN ('listening_lesson', 'speaking_lesson')
+          `, [user.id, taskDate]);
+          existing = await client.query(`
+            SELECT * FROM DailyTasks
+            WHERE UserId = $1 AND TaskDate = $2
+            ORDER BY OrderIndex ASC
+          `, [user.id, taskDate]);
+        }
 
-    if (existing.rows.some((row) => (row.targettype || row.TargetType) === 'daily_login') && !hasLockedPlusTask) {
-      const shapedTasks = existing.rows.map(shapeTask);
-      const completed = await autoCompleteLoginTask(user.id, shapedTasks);
-      return {
-        locked: false,
-        taskDate,
-        tasks: completed.tasks,
-        expReward: completed.expReward
-      };
+        if (existing.rows.length === 0) {
+          const learningTasks = await buildLearningPlan(user.id, includePlusSkills, DAILY_LEARNING_TASK_COUNT);
+          await spacedRepetitionService.markAssigned(user.id, learningTasks);
+          await insertTaskRows(client, user.id, taskDate, [getStarterTask(), ...learningTasks], 0);
+        } else {
+          const learningRows = existing.rows.filter((row) => row.targettype !== 'daily_login');
+          const missing = Math.max(0, DAILY_LEARNING_TASK_COUNT - learningRows.length);
+          if (missing > 0) {
+            const excluded = new Set(existing.rows.map((row) => `${row.targettype}:${row.targetid}`));
+            const replacements = await buildLearningPlan(user.id, includePlusSkills, missing, excluded);
+            await spacedRepetitionService.markAssigned(user.id, replacements);
+            const maxOrder = existing.rows.reduce((max, row) => Math.max(max, Number(row.orderindex || 0)), -1);
+            await insertTaskRows(client, user.id, taskDate, replacements, maxOrder + 1);
+          }
+        }
+
+        const refreshed = await client.query(`
+          SELECT * FROM DailyTasks
+          WHERE UserId = $1 AND TaskDate = $2
+          ORDER BY OrderIndex ASC
+        `, [user.id, taskDate]);
+        rows = refreshed.rows;
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
 
-    const candidates = await collectCandidateTargets(user.id, { includePlusSkills });
-    const selected = buildDefaultDailyTasks(candidates, { includePlusSkills });
-    const tasks = await insertDailyTasks(user.id, taskDate, selected);
-    const completed = await autoCompleteLoginTask(user.id, tasks);
+    const shapedTasks = rows.map(shapeTask);
+    const completed = await autoCompleteLoginTask(user.id, shapedTasks);
     return { locked: false, taskDate, tasks: completed.tasks, expReward: completed.expReward };
   },
 
@@ -438,12 +551,8 @@ const dailyService = {
     const taskDate = getSaigonDate();
     const result = await pool.query(`
       UPDATE DailyTasks
-      SET Status = 'completed',
-          CompletedAt = COALESCE(CompletedAt, NOW())
-      WHERE UserId = $1
-        AND TaskDate = $2
-        AND TargetType = $3
-        AND TargetId = $4
+      SET Status = 'completed', CompletedAt = COALESCE(CompletedAt, NOW())
+      WHERE UserId = $1 AND TaskDate = $2 AND TargetType = $3 AND TargetId = $4
         AND Status <> 'completed'
       RETURNING *
     `, [userId, taskDate, targetType, String(targetId)]);
@@ -454,9 +563,10 @@ const dailyService = {
       const expReward = await gamificationService.addExp(userId, task.rewardExp, `daily_task_${task.targetType}`);
       completed.push({ task, expReward });
     }
-
     return completed;
-  }
+  },
+
+  selectDiverseTasks
 };
 
 module.exports = dailyService;

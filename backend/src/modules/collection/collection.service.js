@@ -1,4 +1,6 @@
 const collectionRepo = require('../../repositories/CollectionRepository');
+const dailyService = require('../daily/daily.service');
+const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 
 function createHttpError(message, statusCode = 400) {
   const error = new Error(message);
@@ -28,6 +30,14 @@ function isPublicCollection(collection) {
 
 function hasText(value) {
   return String(value || '').trim().length > 0;
+}
+
+function normalizeAnswer(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[.,!?;:]/g, '')
+    .replace(/\s+/g, ' ');
 }
 
 const collectionService = {
@@ -126,6 +136,71 @@ const collectionService = {
     }
 
     return await collectionRepo.getWords(collectionId);
+  },
+
+  async startPublicReview(userId, collectionId) {
+    const collection = await collectionRepo.getById(collectionId);
+    if (!collection || !isApprovedPublic(collection)) {
+      throw createHttpError('Public vocabulary collection not found', 404);
+    }
+
+    const words = await collectionRepo.getWords(collectionId);
+    if (!words.length) throw createHttpError('Học phần chưa có từ vựng để ôn.', 400);
+    const item = await spacedRepetitionService.registerItem(
+      userId,
+      'vocabulary_review',
+      collectionId
+    );
+    return {
+      collectionId: String(collectionId),
+      wordCount: words.length,
+      dueDate: spacedRepetitionService.formatDueDate(item.duedate || item.DueDate)
+    };
+  },
+
+  async submitPublicReview(userId, collectionId, data = {}) {
+    const collection = await collectionRepo.getById(collectionId);
+    if (!collection || !isApprovedPublic(collection)) {
+      throw createHttpError('Public vocabulary collection not found', 404);
+    }
+
+    const words = await collectionRepo.getWords(collectionId);
+    if (!words.length) throw createHttpError('Học phần chưa có từ vựng để ôn.', 400);
+    const firstAnswers = Array.isArray(data.firstAnswers) ? data.firstAnswers : [];
+    const finalAnswers = Array.isArray(data.finalAnswers) ? data.finalAnswers : [];
+    const firstMap = new Map(firstAnswers.map((item) => [String(item.wordId || ''), item.answer]));
+    const finalMap = new Map(finalAnswers.map((item) => [String(item.wordId || ''), item.answer]));
+
+    let firstCorrect = 0;
+    let finalCorrect = 0;
+    for (const word of words) {
+      const wordId = getIdValue(word, 'Id', 'id');
+      const expected = normalizeAnswer(pickValue(word, 'CustomWord', 'customword'));
+      if (normalizeAnswer(firstMap.get(wordId)) === expected) firstCorrect += 1;
+      if (normalizeAnswer(finalMap.get(wordId)) === expected) finalCorrect += 1;
+    }
+
+    const score = Math.round((firstCorrect / words.length) * 100);
+    const passed = finalCorrect === words.length;
+    if (!passed) throw createHttpError('Bạn cần sửa đúng toàn bộ từ trước khi hoàn thành.', 400);
+
+    const spacedRepetition = await spacedRepetitionService.recordReview({
+      userId,
+      targetType: 'vocabulary_review',
+      targetId: collectionId,
+      score,
+      attemptId: data.attemptId
+    });
+    await dailyService.completeMatchingTasks(userId, 'vocabulary_review', collectionId);
+
+    return {
+      collectionId: String(collectionId),
+      score,
+      correctCount: firstCorrect,
+      total: words.length,
+      passed,
+      nextReviewDate: spacedRepetitionService.formatDueDate(spacedRepetition.item.duedate || spacedRepetition.item.DueDate)
+    };
   },
 
   async addWord(userId, collectionId, data) {
