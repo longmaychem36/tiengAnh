@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiArrowLeft, FiCheck, FiClock, FiLock, FiStar, FiTarget } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
@@ -13,17 +13,60 @@ const difficultyLabels = {
   hard: 'Khó'
 };
 
+const LEVELS_PER_LOAD = 8;
+
 function Games() {
   const navigate = useNavigate();
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const loadMoreRef = useRef(null);
+
+  const loadLevelsPage = useCallback(async (nextPage = 1) => {
+    if (nextPage === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    try {
+      const res = await gameApi.getLevels({ page: nextPage, limit: LEVELS_PER_LOAD });
+      const payload = res.data || {};
+      const nextLevels = payload.levels || [];
+      setLevels((current) => (nextPage === 1 ? nextLevels : [...current, ...nextLevels]));
+      setPage(payload.page || nextPage);
+      setHasMore(Boolean(payload.hasMore));
+    } catch {
+      if (nextPage === 1) setLevels([]);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, []);
 
   useEffect(() => {
-    gameApi.getLevels()
-      .then((res) => setLevels(res.data || []))
-      .catch(() => setLevels([]))
-      .finally(() => setLoading(false));
-  }, []);
+    loadLevelsPage(1);
+  }, [loadLevelsPage]);
+
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || !hasMore || loading || loadingMore) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadLevelsPage(page + 1);
+        }
+      },
+      { rootMargin: '320px 0px' }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore, loadLevelsPage, page]);
 
   const currentLevelIndex = useMemo(() => {
     const nextLevel = levels.findIndex((level) => !level.IsLocked && !level.UserCompleted);
@@ -74,9 +117,9 @@ function Games() {
               <motion.article
                 key={level.Id}
                 className={`duo-path-step ${position} ${locked ? 'is-locked' : ''} ${completed ? 'is-complete' : ''} ${isCurrent ? 'is-current' : ''}`}
-                initial={{ opacity: 0, y: 18, scale: .92 }}
+                initial={{ opacity: 0, y: 18, scale: 0.92 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ delay: Math.min(index * .06, .5), type: 'spring', stiffness: 210, damping: 18 }}
+                transition={{ delay: Math.min(index * 0.06, 0.5), type: 'spring', stiffness: 210, damping: 18 }}
               >
                 {isCurrent && <span className="duo-start-label">Bắt đầu</span>}
 
@@ -114,6 +157,12 @@ function Games() {
               </motion.article>
             );
           })}
+
+          {(hasMore || loadingMore) && (
+            <div className="duo-path-loader" ref={loadMoreRef}>
+              {loadingMore ? 'Đang tải thêm level...' : 'Cuộn xuống để tải thêm level'}
+            </div>
+          )}
         </section>
       )}
     </main>

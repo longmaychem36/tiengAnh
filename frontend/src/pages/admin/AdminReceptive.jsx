@@ -613,7 +613,7 @@ function AdminReceptive({ skill }) {
                 <div>
                   <strong>{lesson.Title}</strong>
                   <span>{lesson.Level || 'Chưa đặt cấp độ'} · {lesson.Topic || 'Chưa có chủ đề'} · {lesson.Duration || 'Chưa đặt thời lượng'}</span>
-                  <p className="admin-order-badge">STT {lesson.OrderIndex || index + 1}</p>
+                  <p className="admin-order-badge">STT {index + 1}</p>
                 </div>
               </button>
               <div className="admin-inline-actions">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -16,6 +16,8 @@ import { receptiveApi } from '../../api/receptiveApi';
 import Loading from '../common/Loading';
 import { receptiveSkillMeta } from './receptiveMeta';
 
+const LESSONS_PER_PAGE = 9;
+
 const normalizeLesson = (lesson, skill) => ({
   ...lesson,
   level: lesson.level || '',
@@ -32,6 +34,7 @@ const ReceptiveLessonList = ({ skill }) => {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [page, setPage] = useState(1);
   const SkillIcon = skill === 'listening' ? FiHeadphones : FiBookOpen;
 
   useEffect(() => {
@@ -44,6 +47,7 @@ const ReceptiveLessonList = ({ skill }) => {
         if (cancelled) return;
         const apiLessons = res.data?.lessons || [];
         setLessons(apiLessons.map((lesson) => normalizeLesson(lesson, skill)));
+        setPage(1);
       })
       .catch(() => {
         if (cancelled) return;
@@ -60,6 +64,16 @@ const ReceptiveLessonList = ({ skill }) => {
   }, [skill]);
 
   const completedCount = lessons.filter((lesson) => lesson.isCompleted).length;
+  const pageCount = Math.max(1, Math.ceil(lessons.length / LESSONS_PER_PAGE));
+  const pageStart = (page - 1) * LESSONS_PER_PAGE;
+  const visibleLessons = useMemo(
+    () => lessons.slice(pageStart, pageStart + LESSONS_PER_PAGE),
+    [lessons, pageStart]
+  );
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
 
   if (loading) return <Loading />;
 
@@ -101,11 +115,13 @@ const ReceptiveLessonList = ({ skill }) => {
             </p>
           </div>
         ) : (
-          <div className="receptive-lesson-grid">
-            {lessons.map((lesson, index) => {
+          <>
+            <div className="receptive-lesson-grid">
+              {visibleLessons.map((lesson, index) => {
               const score = Number(lesson.score || 0);
               const completed = Boolean(lesson.isCompleted);
               const locked = Boolean(lesson.isLocked);
+              const lessonNumber = pageStart + index + 1;
 
               return (
                 <motion.button
@@ -121,7 +137,7 @@ const ReceptiveLessonList = ({ skill }) => {
                   <span className="receptive-level">{lesson.level || 'Chưa đặt cấp độ'}</span>
                   <div className="receptive-card-top">
                     <span className="receptive-card-index">
-                      {completed ? <FiCheck /> : index + 1}
+                      {completed ? <FiCheck /> : lessonNumber}
                     </span>
                     <span className="receptive-topic">{lesson.topic || 'Chưa có chủ đề'}</span>
                   </div>
@@ -140,8 +156,21 @@ const ReceptiveLessonList = ({ skill }) => {
                   </div>
                 </motion.button>
               );
-            })}
-          </div>
+              })}
+            </div>
+
+            {pageCount > 1 && (
+              <div className="lesson-pagination" aria-label="Phân trang bài học">
+                <button type="button" className="btn btn-secondary btn-sm" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+                  Trước
+                </button>
+                <span>Trang {page}/{pageCount}</span>
+                <button type="button" className="btn btn-secondary btn-sm" disabled={page === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
+                  Tiếp
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

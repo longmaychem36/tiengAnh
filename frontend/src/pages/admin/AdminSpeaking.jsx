@@ -257,7 +257,7 @@ const AdminSpeaking = () => {
                 <span className="admin-expand-label">{selectedLesson?.Id === lesson.Id ? 'Đóng' : 'Mở'}</span>
                 <div>
                   <strong>{lesson.Title}</strong>
-                  <span>STT {lesson.OrderIndex || index + 1}{lesson.IsFoundation ? ' · Nền tảng' : ''}</span>
+                  <span>STT {index + 1}{lesson.IsFoundation ? ' · Nền tảng' : ''}</span>
                 </div>
               </button>
               <div className="admin-inline-actions">

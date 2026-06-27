@@ -93,7 +93,8 @@ async function findUserByEmail(email) {
   const result = await pool.request()
     .input('email', sql.NVarChar, normalizeEmail(email))
     .query(`
-      SELECT u.Id, u.Username, u.Email, u.PasswordHash, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.AvatarUrl,
+      SELECT u.Id, u.Username, u.Email, u.PasswordHash, u.Role, COALESCE(u.IsActive, true) AS IsActive,
+             u.Plan, u.PlusExpiresAt, u.LevelId, u.AvatarUrl,
              u.OnboardingCompleted, u.PlacementLevel, u.PlacementSource, u.PlacementCompletedAt, u.CreatedAt,
              ll.Code as LevelCode, ll.Name as LevelName,
              us.Exp, us.Level as GameLevel, us.StreakDays, us.LastLogin
@@ -244,6 +245,13 @@ const authService = {
     const isMatch = await bcrypt.compare(password, user.PasswordHash || '');
     if (!isMatch) {
       return { error: 'Invalid email or password.' };
+    }
+
+    if (user.IsActive === false || user.isactive === false) {
+      return {
+        error: 'Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.',
+        statusCode: 403
+      };
     }
 
     return createSession(user);

@@ -3,6 +3,7 @@
 // ============================================
 const bcrypt = require('bcryptjs');
 const { sql, getPool } = require('../../config/database');
+const notificationService = require('../notification/notification.service');
 
 function httpError(message, statusCode = 400) {
   const error = new Error(message);
@@ -32,6 +33,13 @@ function validateUsername(username) {
 
 function validateEmail(email) {
   if (!/^\S+@\S+\.\S+$/.test(email)) throw httpError('Invalid email address', 400);
+}
+
+function pick(row = {}, ...keys) {
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null) return row[key];
+  }
+  return undefined;
 }
 
 async function ensureUniqueIdentity(pool, { id = null, username, email }) {
@@ -121,7 +129,12 @@ const adminUserService = {
     if (['user', 'admin'].includes(safeRole)) req2.input('role', sql.NVarChar, safeRole);
 
     const dataRes = await req2.query(`
-      SELECT u.Id, u.Username, u.Email, u.Role, u.IsActive, u.Plan, u.PlusExpiresAt,
+      SELECT u.Id, u.Username, u.Email, u.Role, COALESCE(u.IsActive, true) AS IsActive, u.Plan, u.PlusExpiresAt,
+             CASE
+               WHEN u.Plan = 'plus' AND u.PlusExpiresAt IS NOT NULL AND u.PlusExpiresAt > NOW()
+                 THEN CEIL(EXTRACT(EPOCH FROM (u.PlusExpiresAt - NOW())) / 86400)::int
+               ELSE 0
+             END AS PlusDaysRemaining,
              u.OnboardingCompleted, u.PlacementLevel, u.PlacementSource, u.PlacementCompletedAt, u.CreatedAt,
              us.Exp, us.Level, us.StreakDays, us.LastLogin,
              COALESCE(std.ActiveDays, 0) AS ActiveDays,
@@ -157,36 +170,48 @@ const adminUserService = {
     const pool = getPool();
     const existing = await pool.request()
       .input('id', sql.UniqueIdentifier, userId)
-      .query('SELECT Id, Username, Email, Role, IsActive FROM Users WHERE Id = @id');
+      .query('SELECT Id, Username, Email, Role, IsActive, Plan, PlusExpiresAt, OnboardingCompleted, PlacementLevel FROM Users WHERE Id = @id');
     if (existing.recordset.length === 0) throw httpError('User not found', 404);
 
     const current = existing.recordset[0];
-    const safeUsername = normalizeUsername(data.username ?? current.Username);
-    const safeEmail = normalizeEmail(data.email ?? current.Email);
-    const currentRole = normalizeRole(current.Role);
+    const currentUsername = normalizeUsername(pick(current, 'Username', 'username'));
+    const currentEmail = normalizeEmail(pick(current, 'Email', 'email'));
+    const requestedUsername = data.username !== undefined ? normalizeUsername(data.username) : currentUsername;
+    const requestedEmail = data.email !== undefined ? normalizeEmail(data.email) : currentEmail;
+    if (requestedUsername !== currentUsername || requestedEmail !== currentEmail) {
+      throw httpError('Username and email cannot be changed from admin account management', 403);
+    }
+    const currentRole = normalizeRole(pick(current, 'Role', 'role'));
     if (data.role !== undefined && normalizeRole(data.role) !== currentRole) {
       throw httpError('Role cannot be changed from account management', 400);
     }
     const nextRole = currentRole;
-    const nextIsActive = data.isActive !== undefined ? Boolean(data.isActive) : current.IsActive !== false;
+    const nextIsActive = data.isActive !== undefined ? Boolean(data.isActive) : pick(current, 'IsActive', 'isactive') !== false;
     const isLearner = nextRole === 'user';
-    const nextPlan = isLearner && String(data.plan || 'free').toLowerCase() === 'plus' ? 'plus' : 'free';
-    const nextOnboarding = isLearner ? Boolean(data.onboardingCompleted ?? false) : true;
-    const nextPlacement = isLearner && data.placementLevel ? String(data.placementLevel) : null;
-
-    validateUsername(safeUsername);
-    validateEmail(safeEmail);
-    await ensureUniqueIdentity(pool, { id: userId, username: safeUsername, email: safeEmail });
+    const currentPlan = String(pick(current, 'Plan', 'plan') || 'free').toLowerCase() === 'plus' ? 'plus' : 'free';
+    const nextPlan = isLearner
+      ? data.plan !== undefined
+        ? (String(data.plan || 'free').toLowerCase() === 'plus' ? 'plus' : 'free')
+        : currentPlan
+      : 'free';
+    const nextOnboarding = isLearner
+      ? data.onboardingCompleted !== undefined
+        ? Boolean(data.onboardingCompleted)
+        : Boolean(pick(current, 'OnboardingCompleted', 'onboardingcompleted'))
+      : true;
+    const nextPlacement = isLearner
+      ? data.placementLevel !== undefined
+        ? (data.placementLevel ? String(data.placementLevel) : null)
+        : (pick(current, 'PlacementLevel', 'placementlevel') || null)
+      : null;
 
     if (String(userId) === String(currentUserId)) {
-      if (nextRole !== current.Role) throw httpError('Cannot change your own role', 400);
+      if (nextRole !== currentRole) throw httpError('Cannot change your own role', 400);
       if (!nextIsActive) throw httpError('Cannot lock your own account', 400);
     }
 
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, userId)
-      .input('username', sql.NVarChar, safeUsername)
-      .input('email', sql.NVarChar, safeEmail)
       .input('role', sql.NVarChar, nextRole)
       .input('isActive', sql.Bit, nextIsActive)
       .input('plan', sql.NVarChar, nextPlan)
@@ -194,20 +219,86 @@ const adminUserService = {
       .input('placementLevel', sql.NVarChar, nextPlacement)
       .query(`
         UPDATE Users
-        SET Username = @username,
-            Email = @email,
-            Role = @role,
+        SET Role = @role,
             IsActive = @isActive,
             Plan = @plan,
+            PlusExpiresAt = CASE WHEN @plan = 'free' THEN NULL ELSE PlusExpiresAt END,
             OnboardingCompleted = @onboardingCompleted,
             PlacementLevel = @placementLevel,
             PlacementSource = CASE WHEN @placementLevel IS NULL THEN NULL ELSE COALESCE(PlacementSource, 'admin') END,
             PlacementCompletedAt = CASE WHEN @placementLevel IS NULL THEN NULL ELSE COALESCE(PlacementCompletedAt, NOW()) END
         WHERE Id = @id
-        RETURNING Id, Username, Email, Role, IsActive, Plan, OnboardingCompleted, PlacementLevel, CreatedAt
+        RETURNING Id, Username, Email, Role, IsActive, Plan, PlusExpiresAt,
+          CASE
+            WHEN Plan = 'plus' AND PlusExpiresAt IS NOT NULL AND PlusExpiresAt > NOW()
+              THEN CEIL(EXTRACT(EPOCH FROM (PlusExpiresAt - NOW())) / 86400)::int
+            ELSE 0
+          END AS PlusDaysRemaining,
+          OnboardingCompleted, PlacementLevel, CreatedAt
       `);
 
     return result.recordset[0];
+  },
+
+  async giftPlusDays(userId, days, adminId = null) {
+    const safeDays = Math.floor(Number(days));
+    if (!Number.isFinite(safeDays) || safeDays < 1 || safeDays > 3650) {
+      throw httpError('Plus gift days must be between 1 and 3650', 400);
+    }
+
+    const pool = getPool();
+    const existing = await pool.query(`
+      SELECT Id, Username, Email, Role, Plan, PlusExpiresAt
+      FROM Users
+      WHERE Id = $1
+    `, [userId]);
+
+    if (existing.rows.length === 0) throw httpError('User not found', 404);
+    if (String(existing.rows[0].role || '').toLowerCase() !== 'user') {
+      throw httpError('Plus can only be gifted to learner accounts', 400);
+    }
+
+    const result = await pool.query(`
+      UPDATE Users
+      SET Plan = 'plus',
+          PlusExpiresAt = GREATEST(COALESCE(PlusExpiresAt, NOW()), NOW()) + ($2 || ' days')::INTERVAL
+      WHERE Id = $1
+      RETURNING Id, Username, Email, Role, IsActive, Plan, PlusExpiresAt,
+        CASE
+          WHEN PlusExpiresAt IS NOT NULL AND PlusExpiresAt > NOW()
+            THEN CEIL(EXTRACT(EPOCH FROM (PlusExpiresAt - NOW())) / 86400)::int
+          ELSE 0
+        END AS PlusDaysRemaining,
+        OnboardingCompleted, PlacementLevel, CreatedAt
+    `, [userId, safeDays]);
+
+    const updated = result.rows[0];
+    notificationService.createNotification({
+      title: `Bạn được tặng thêm ${safeDays} ngày Plus`,
+      message: `Admin đã tặng thêm ${safeDays} ngày Plus cho tài khoản của bạn. Gói Plus hiện có hiệu lực đến ${new Date(updated.plusexpiresat).toLocaleDateString('vi-VN')}.`,
+      type: 'plus_gifted',
+      linkUrl: '/settings',
+      audience: 'selected',
+      userIds: [userId],
+      createdBy: adminId,
+      sendEmail: true
+    }).catch((error) => {
+      console.warn('Plus gift notification failed:', error.message);
+    });
+
+    return {
+      Id: updated.id,
+      Username: updated.username,
+      Email: updated.email,
+      Role: updated.role,
+      IsActive: updated.isactive,
+      Plan: updated.plan,
+      PlusExpiresAt: updated.plusexpiresat,
+      PlusDaysRemaining: Number(updated.plusdaysremaining || 0),
+      OnboardingCompleted: updated.onboardingcompleted,
+      PlacementLevel: updated.placementlevel,
+      CreatedAt: updated.createdat
+    };
   },
 
   async resetPassword(userId, password) {
@@ -262,9 +353,16 @@ const adminUserService = {
   async toggleUserActive(userId, currentUserId) {
     if (String(userId) === String(currentUserId)) throw httpError('Cannot lock your own account', 400);
     const pool = getPool();
-    await pool.request()
+    const result = await pool.request()
       .input('id', sql.UniqueIdentifier, userId)
-      .query('UPDATE Users SET IsActive = NOT IsActive WHERE Id = @id');
+      .query(`
+        UPDATE Users
+        SET IsActive = NOT COALESCE(IsActive, true)
+        WHERE Id = @id
+        RETURNING Id, Username, Email, Role, IsActive
+      `);
+    if (result.recordset.length === 0) throw httpError('User not found', 404);
+    return result.recordset[0];
   },
 
   async getUserStats() {

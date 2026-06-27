@@ -10,6 +10,22 @@ const gameController = {
     try {
       const userId = req.user?.id || null;
       const levels = await gameService.getLevels(userId);
+      const hasPaging = req.query.page !== undefined || req.query.limit !== undefined;
+
+      if (hasPaging) {
+        const page = Math.max(1, Number(req.query.page) || 1);
+        const limit = Math.min(30, Math.max(1, Number(req.query.limit) || 8));
+        const offset = (page - 1) * limit;
+        const pagedLevels = levels.slice(offset, offset + limit);
+        return success(res, {
+          levels: pagedLevels,
+          total: levels.length,
+          page,
+          limit,
+          hasMore: offset + pagedLevels.length < levels.length
+        });
+      }
+
       return success(res, levels);
     } catch (err) { next(err); }
   },

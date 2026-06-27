@@ -15,14 +15,20 @@ import toast from 'react-hot-toast';
 import { speakingApi } from '../../api/speakingApi';
 import Loading from '../common/Loading';
 
+const LESSONS_PER_PAGE = 9;
+
 const SpeakingList = () => {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     speakingApi.getLessons()
-      .then((res) => setLessons(res.data.lessons || []))
+      .then((res) => {
+        setLessons(res.data.lessons || []);
+        setPage(1);
+      })
       .catch((err) => {
         console.error(err);
         toast.error('Lỗi tải danh sách chủ đề nói');
@@ -35,6 +41,17 @@ const SpeakingList = () => {
     const questionCount = lessons.reduce((sum, lesson) => sum + Number(lesson.questionCount || 0), 0);
     return { completed, questionCount };
   }, [lessons]);
+
+  const pageCount = Math.max(1, Math.ceil(lessons.length / LESSONS_PER_PAGE));
+  const pageStart = (page - 1) * LESSONS_PER_PAGE;
+  const visibleLessons = useMemo(
+    () => lessons.slice(pageStart, pageStart + LESSONS_PER_PAGE),
+    [lessons, pageStart]
+  );
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
 
   if (loading) return <Loading />;
 
@@ -73,10 +90,12 @@ const SpeakingList = () => {
             <p>Quản trị viên cần thêm dữ liệu Speaking trước khi người học bắt đầu.</p>
           </div>
         ) : (
-          <div className="receptive-lesson-grid">
-            {lessons.map((lesson, index) => {
+          <>
+            <div className="receptive-lesson-grid">
+              {visibleLessons.map((lesson, index) => {
               const isLocked = lesson.isLocked;
               const isCompleted = lesson.isCompleted;
+              const lessonNumber = pageStart + index + 1;
 
               return (
                 <motion.button
@@ -92,7 +111,7 @@ const SpeakingList = () => {
                   <span className="receptive-level">{lesson.level || 'Chưa đặt cấp độ'}</span>
                   <div className="receptive-card-top">
                     <span className="receptive-card-index">
-                      {isLocked ? <FiLock /> : isCompleted ? <FiCheck /> : index + 1}
+                      {isLocked ? <FiLock /> : isCompleted ? <FiCheck /> : lessonNumber}
                     </span>
                     <span className="receptive-topic">Nói</span>
                   </div>
@@ -111,8 +130,21 @@ const SpeakingList = () => {
                   </div>
                 </motion.button>
               );
-            })}
-          </div>
+              })}
+            </div>
+
+            {pageCount > 1 && (
+              <div className="lesson-pagination" aria-label="Phân trang bài nói">
+                <button type="button" className="btn btn-secondary btn-sm" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+                  Trước
+                </button>
+                <span>Trang {page}/{pageCount}</span>
+                <button type="button" className="btn btn-secondary btn-sm" disabled={page === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
+                  Tiếp
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

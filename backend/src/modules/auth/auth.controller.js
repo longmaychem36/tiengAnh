@@ -32,7 +32,7 @@ const authController = {
       const result = await authService.login({ email, password });
 
       if (result.error) {
-        return error(res, result.error, 401);
+        return error(res, result.error, result.statusCode || 401);
       }
 
       return success(res, result, 'Login successful');

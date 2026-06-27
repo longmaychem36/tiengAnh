@@ -2,12 +2,13 @@
 // JWT Authentication Middleware
 // ============================================
 const { verifyToken } = require('../config/jwt');
+const { sql, getPool } = require('../config/database');
 
 /**
  * Middleware to verify JWT token from Authorization header
  * Attaches decoded user info to req.user
  */
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -20,11 +21,34 @@ function authMiddleware(req, res, next) {
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
 
+    const result = await getPool().request()
+      .input('id', sql.UniqueIdentifier, decoded.id)
+      .query(`
+        SELECT Username, Role, COALESCE(IsActive, true) AS IsActive
+        FROM Users
+        WHERE Id = @id
+      `);
+    const account = result.recordset[0];
+
+    if (!account) {
+      return res.status(401).json({
+        success: false,
+        message: 'Tài khoản không còn tồn tại.'
+      });
+    }
+
+    if (account.IsActive === false || account.isactive === false) {
+      return res.status(401).json({
+        success: false,
+        message: 'Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.'
+      });
+    }
+
     req.user = {
       id: decoded.id,
-      username: decoded.username,
+      username: account.Username || account.username,
       // Keep already-issued legacy tokens usable while roles are migrated.
-      role: decoded.role === 'superadmin' ? 'admin' : decoded.role
+      role: (account.Role || account.role) === 'superadmin' ? 'admin' : (account.Role || account.role)
     };
 
     next();

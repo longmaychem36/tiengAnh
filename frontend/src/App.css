@@ -10691,6 +10691,56 @@ body.lesson-focus-mode {
   filter: saturate(.92) brightness(1.05);
 }
 
+.duo-path-loader {
+  position: relative;
+  z-index: 2;
+  width: min(280px, 100%);
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  margin-top: 4px;
+  padding: 13px 16px;
+  border: 2px solid #e5e5e5;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #777777;
+  font-size: .86rem;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 3px 0 #cecece;
+}
+
+.lesson-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 4px;
+}
+
+.lesson-pagination span {
+  min-width: 112px;
+  color: #64748b;
+  font-weight: 900;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .lesson-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lesson-pagination .btn {
+    width: 100%;
+  }
+
+  .lesson-pagination span {
+    min-width: 0;
+  }
+}
+
 .course-skill-row.is-plus-locked,
 .lingo-course-card.is-plus-locked {
   border-color: #fde68a;

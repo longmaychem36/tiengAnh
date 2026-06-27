@@ -6,6 +6,7 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiEdit2,
+  FiGift,
   FiLock,
   FiRefreshCw,
   FiSearch,
@@ -24,11 +25,7 @@ const initialAccountForm = {
   username: '',
   email: '',
   password: '',
-  role: 'admin',
-  isActive: true,
-  plan: 'free',
-  onboardingCompleted: false,
-  placementLevel: ''
+  isActive: true
 };
 
 const roleLabels = {
@@ -60,9 +57,24 @@ function getUserId(row) {
   return String(getField(row, 'Id', 'id') || '');
 }
 
+function getRole(row) {
+  return String(getField(row, 'Role', 'role') || 'user').toLowerCase();
+}
+
 function formatDate(value) {
   if (!value) return '-';
   return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
+}
+
+function formatPlusDays(row) {
+  const plan = String(getField(row, 'Plan', 'plan') || 'free').toLowerCase();
+  if (plan !== 'plus') return '-';
+  const days = Number(getField(row, 'PlusDaysRemaining', 'plusdaysremaining') || 0);
+  return days > 0 ? `${days} ngày` : 'Hết hạn';
+}
+
+function formatPlacement(row) {
+  return getField(row, 'PlacementLevel', 'placementlevel') || '-';
 }
 
 function normalizeUserForForm(user) {
@@ -70,11 +82,9 @@ function normalizeUserForForm(user) {
     id: getUserId(user),
     username: getField(user, 'Username', 'username') || '',
     email: getField(user, 'Email', 'email') || '',
-    role: getField(user, 'Role', 'role') || 'user',
-    isActive: getField(user, 'IsActive', 'isactive') !== false,
-    plan: getField(user, 'Plan', 'plan') || 'free',
-    onboardingCompleted: Boolean(getField(user, 'OnboardingCompleted', 'onboardingcompleted')),
-    placementLevel: getField(user, 'PlacementLevel', 'placementlevel') || ''
+    role: getRole(user),
+    plusDaysToAdd: '',
+    raw: user
   };
 }
 
@@ -87,7 +97,18 @@ function MetricCard({ label, value, tone }) {
   );
 }
 
-function UserTable({ title, icon, users, loading, currentUserId, showLearnerColumns = false, onEdit, onToggle, onResetPassword, onDelete }) {
+function UserTable({
+  title,
+  icon,
+  users,
+  loading,
+  currentUserId,
+  showLearnerColumns = false,
+  onEdit,
+  onToggle,
+  onResetPassword,
+  onDelete
+}) {
   return (
     <section className="admin-content-card admin-users-list-panel">
       <div className="admin-subpanel-head">
@@ -105,6 +126,7 @@ function UserTable({ title, icon, users, loading, currentUserId, showLearnerColu
               <th>Email</th>
               <th>Role</th>
               {showLearnerColumns && <th>Plan</th>}
+              {showLearnerColumns && <th>Plus còn lại</th>}
               {showLearnerColumns && <th>Placement</th>}
               <th>Login cuối</th>
               <th>Trạng thái</th>
@@ -114,7 +136,7 @@ function UserTable({ title, icon, users, loading, currentUserId, showLearnerColu
           <tbody>
             {users.map((item) => {
               const id = getUserId(item);
-              const role = getField(item, 'Role', 'role') || 'user';
+              const role = getRole(item);
               const colors = roleColors[role] || roleColors.user;
               const isActive = getField(item, 'IsActive', 'isactive') !== false;
               const isSelf = id === String(currentUserId || '');
@@ -129,7 +151,8 @@ function UserTable({ title, icon, users, loading, currentUserId, showLearnerColu
                     </span>
                   </td>
                   {showLearnerColumns && <td>{getField(item, 'Plan', 'plan') || 'free'}</td>}
-                  {showLearnerColumns && <td>{getField(item, 'PlacementLevel', 'placementlevel') || '-'}</td>}
+                  {showLearnerColumns && <td>{formatPlusDays(item)}</td>}
+                  {showLearnerColumns && <td>{formatPlacement(item)}</td>}
                   <td>{formatDate(getField(item, 'LastLogin', 'lastlogin'))}</td>
                   <td>
                     <span className={`admin-status-chip ${isActive ? 'is-active' : 'is-locked'}`}>
@@ -138,7 +161,7 @@ function UserTable({ title, icon, users, loading, currentUserId, showLearnerColu
                   </td>
                   <td>
                     <div className="admin-inline-actions admin-user-row-actions">
-                      <button type="button" className="btn btn-icon btn-sm" title="Sửa" aria-label="Sửa account" onClick={() => onEdit(item)}>
+                      <button type="button" className="btn btn-icon btn-sm" title="Chi tiết" aria-label="Chi tiết account" onClick={() => onEdit(item)}>
                         <FiEdit2 />
                       </button>
                       {role === 'admin' && (
@@ -177,7 +200,7 @@ function AdminUsers() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [giftingPlus, setGiftingPlus] = useState(false);
   const [accountForm, setAccountForm] = useState(initialAccountForm);
   const [editingUser, setEditingUser] = useState(null);
   const [editForm, setEditForm] = useState(null);
@@ -192,10 +215,6 @@ function AdminUsers() {
     { label: 'Bị khóa', value: getNumberField(stats, 'locked'), color: '#a13b4b' },
     { label: 'Tạo mới 7 ngày', value: getNumberField(stats, 'newUsers7d', 'newusers7d'), color: '#b45309' }
   ]), [stats]);
-
-  useEffect(() => {
-    loadAll();
-  }, [page]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -215,6 +234,10 @@ function AdminUsers() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadAll();
+  }, [page]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -262,33 +285,41 @@ function AdminUsers() {
     setEditForm(null);
   };
 
-  const saveEdit = async (e) => {
-    e.preventDefault();
-    if (!editForm?.id) return;
-    setSaving(true);
+  const submitInlinePlusGift = async () => {
+    if (!editForm?.id || editForm.role !== 'user') return;
+    const days = Math.floor(Number(editForm.plusDaysToAdd));
+    if (!Number.isFinite(days) || days < 1) {
+      toast.error('Số ngày Plus phải lớn hơn 0');
+      return;
+    }
+
+    setGiftingPlus(true);
     try {
-      const isLearner = editForm.role === 'user';
-      await adminApi.updateUser(editForm.id, {
-        username: editForm.username.trim(),
-        email: editForm.email.trim(),
-        isActive: editForm.isActive,
-        plan: isLearner ? editForm.plan : 'free',
-        onboardingCompleted: isLearner ? editForm.onboardingCompleted : true,
-        placementLevel: isLearner ? editForm.placementLevel || null : null
-      });
-      toast.success('Đã cập nhật account');
-      closeEdit();
+      const res = await adminApi.giftPlusDays(editForm.id, days);
+      toast.success(`Đã tặng thêm ${days} ngày Plus`);
+      setEditForm((current) => ({
+        ...current,
+        plusDaysToAdd: '',
+        raw: { ...current.raw, ...(res.data || {}) }
+      }));
+      setEditingUser((current) => ({ ...current, ...(res.data || {}) }));
       await loadAll();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Không cập nhật được account'));
+      toast.error(getErrorMessage(err, 'Không tặng được ngày Plus'));
     } finally {
-      setSaving(false);
+      setGiftingPlus(false);
     }
   };
 
   const toggleActive = async (userId) => {
     try {
-      await adminApi.toggleUserActive(userId);
+      const res = await adminApi.toggleUserActive(userId);
+      const updated = res.data;
+      if (updated) {
+        const mergeUser = (item) => (getUserId(item) === String(userId) ? { ...item, ...updated } : item);
+        setAdmins((current) => current.map(mergeUser));
+        setLearners((current) => current.map(mergeUser));
+      }
       toast.success('Đã cập nhật trạng thái account');
       await loadAll();
     } catch (err) {
@@ -297,7 +328,7 @@ function AdminUsers() {
   };
 
   const openResetPassword = (target) => {
-    const role = getField(target, 'Role', 'role') || 'user';
+    const role = getRole(target);
     if (role !== 'admin') {
       toast.error('Không thể đổi mật khẩu learner từ trang admin');
       return;
@@ -425,31 +456,65 @@ function AdminUsers() {
 
       {editingUser && editForm && (
         <div className="admin-modal-backdrop" role="presentation">
-          <form className="admin-modal-panel" onSubmit={saveEdit}>
+          <div className="admin-modal-panel">
             <div className="admin-subpanel-head">
               <div>
-                <h3>Sửa account</h3>
+                <h3>Chi tiết account</h3>
                 <p>{getField(editingUser, 'Email', 'email')}</p>
               </div>
               <button type="button" className="btn btn-icon" onClick={closeEdit}><FiX /></button>
             </div>
+
             <div className="admin-form-grid">
-              <label><span>Username</span><input className="form-input" value={editForm.username} onChange={(e) => updateEditForm('username', e.target.value)} required /></label>
-              <label><span>Email</span><input className="form-input" type="email" value={editForm.email} onChange={(e) => updateEditForm('email', e.target.value)} required /></label>
+              <div className="admin-account-detail-grid is-wide">
+                <section className="admin-account-detail-card">
+                  <span>Username</span>
+                  <strong>{editForm.username || '-'}</strong>
+                  <small>Định danh đăng nhập, không chỉnh sửa từ trang admin.</small>
+                </section>
+                <section className="admin-account-detail-card">
+                  <span>Email</span>
+                  <strong>{editForm.email || '-'}</strong>
+                  <small>Email tài khoản, chỉ người dùng tự thay đổi trong hồ sơ.</small>
+                </section>
+              </div>
+
               {editForm.role === 'user' && (
                 <>
-                  <label><span>Plan</span><select className="form-input" value={editForm.plan} onChange={(e) => updateEditForm('plan', e.target.value)}><option value="free">Free</option><option value="plus">Plus</option></select></label>
-                  <label><span>Placement</span><select className="form-input" value={editForm.placementLevel} onChange={(e) => updateEditForm('placementLevel', e.target.value)}><option value="">Chưa đặt</option><option value="new">New</option><option value="basic">Basic</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></label>
-                  <label className="admin-check-row"><input type="checkbox" checked={editForm.onboardingCompleted} onChange={(e) => updateEditForm('onboardingCompleted', e.target.checked)} /> Đã onboarding</label>
+                  <div className="admin-account-detail-grid is-wide">
+                    <section className="admin-account-detail-card">
+                      <span>Gói học tập</span>
+                      <strong>{String(getField(editForm.raw, 'Plan', 'plan') || 'free').toUpperCase()}</strong>
+                      <small>
+                        {String(getField(editForm.raw, 'Plan', 'plan') || 'free').toLowerCase() === 'plus'
+                          ? `Còn lại ${formatPlusDays(editForm.raw)} · Hết hạn ${formatDate(getField(editForm.raw, 'PlusExpiresAt', 'plusexpiresat'))}`
+                          : 'Chưa kích hoạt Plus'}
+                      </small>
+                    </section>
+                    <section className="admin-account-detail-card">
+                      <span>Trình độ đầu vào</span>
+                      <strong>{formatPlacement(editForm.raw)}</strong>
+                      <small>{getField(editForm.raw, 'OnboardingCompleted', 'onboardingcompleted') ? 'Đã hoàn tất onboarding' : 'Chưa hoàn tất onboarding'}</small>
+                    </section>
+                  </div>
+                  <div className="admin-plus-gift-box is-wide">
+                    <div>
+                      <strong>Tặng thêm Plus</strong>
+                      <span>Số ngày nhập vào sẽ được cộng vào hạn Plus hiện tại.</span>
+                    </div>
+                    <input className="form-input" type="number" min="1" max="3650" value={editForm.plusDaysToAdd} onChange={(e) => updateEditForm('plusDaysToAdd', e.target.value)} placeholder="30" />
+                    <button type="button" className="btn btn-secondary" disabled={giftingPlus || !editForm.plusDaysToAdd} onClick={submitInlinePlusGift}>
+                      <FiGift /> {giftingPlus ? 'Đang tặng...' : 'Tặng Plus'}
+                    </button>
+                  </div>
                 </>
               )}
-              <label className="admin-check-row"><input type="checkbox" checked={editForm.isActive} onChange={(e) => updateEditForm('isActive', e.target.checked)} /> Active</label>
+
               <div className="admin-form-actions is-wide">
-                <button type="submit" className="btn btn-primary" disabled={saving}>Lưu</button>
-                <button type="button" className="btn btn-ghost" onClick={closeEdit}>Hủy</button>
+                <button type="button" className="btn btn-ghost" onClick={closeEdit}>Đóng</button>
               </div>
             </div>
-          </form>
+          </div>
         </div>
       )}
 

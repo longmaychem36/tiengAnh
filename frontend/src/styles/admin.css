@@ -754,6 +754,83 @@
   accent-color: var(--admin-primary);
 }
 
+.admin-form-info {
+  display: grid;
+  gap: 5px;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.admin-form-info strong {
+  color: var(--admin-text);
+  font-weight: 950;
+}
+
+.admin-form-info span,
+.admin-form-info small {
+  color: var(--admin-muted);
+  font-weight: 800;
+}
+
+.admin-account-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-account-detail-card,
+.admin-plus-gift-box {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.admin-account-detail-card {
+  display: grid;
+  gap: 5px;
+}
+
+.admin-account-detail-card > span,
+.admin-plus-gift-box span {
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.admin-account-detail-card strong,
+.admin-plus-gift-box strong {
+  color: var(--admin-text);
+  font-weight: 950;
+}
+
+.admin-account-detail-card small {
+  color: var(--admin-muted);
+  font-weight: 750;
+}
+
+.admin-plus-gift-box {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 160px) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-plus-gift-box > div {
+  display: grid;
+  gap: 4px;
+}
+
+@media (max-width: 780px) {
+  .admin-account-detail-grid,
+  .admin-plus-gift-box {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-receptive-list,
 .admin-item-list,
 .admin-chip-list,

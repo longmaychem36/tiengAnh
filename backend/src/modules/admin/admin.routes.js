@@ -702,6 +702,13 @@ router.put('/users/:id', requireRole('admin'), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.put('/users/:id/plus-days', requireRole('admin'), async (req, res, next) => {
+  try {
+    const data = await adminUserService.giftPlusDays(req.params.id, req.body.days, req.user.id);
+    return success(res, data, 'Plus days gifted');
+  } catch (err) { next(err); }
+});
+
 router.put('/users/:id/password', requireRole('admin'), async (req, res, next) => {
   try {
     await adminUserService.resetPassword(req.params.id, req.body.password);
@@ -711,8 +718,8 @@ router.put('/users/:id/password', requireRole('admin'), async (req, res, next) =
 
 router.put('/users/:id/toggle-active', requireRole('admin'), async (req, res, next) => {
   try {
-    await adminUserService.toggleUserActive(req.params.id, req.user.id);
-    return success(res, null, 'User status toggled');
+    const data = await adminUserService.toggleUserActive(req.params.id, req.user.id);
+    return success(res, data, 'User status toggled');
   } catch (err) { next(err); }
 });
 

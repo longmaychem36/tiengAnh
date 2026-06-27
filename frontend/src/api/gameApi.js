@@ -1,7 +1,7 @@
 import axiosClient from './axiosClient';
 
 export const gameApi = {
-  getLevels: () => axiosClient.get('/games/levels'),
+  getLevels: (params) => axiosClient.get('/games/levels', { params }),
   getQuestions: (levelId) => axiosClient.get(`/games/levels/${levelId}/questions`),
   submit: (data) => axiosClient.post('/games/submit', data),
   transcribeAndAnalyze: (audioBlob, targetTexts, context = {}) => {

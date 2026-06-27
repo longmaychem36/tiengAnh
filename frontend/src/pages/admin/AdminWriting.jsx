@@ -319,7 +319,7 @@ const AdminWriting = () => {
                 <span className="admin-expand-label">{selectedLesson?.Id === lesson.Id ? 'Đóng' : 'Mở'}</span>
                 <div>
                   <strong>{lesson.Title}</strong>
-                  <p className="admin-order-badge">STT {lesson.OrderIndex || index + 1}{lesson.IsFoundation ? ' · Nền tảng' : ''}</p>
+                  <p className="admin-order-badge">STT {index + 1}{lesson.IsFoundation ? ' · Nền tảng' : ''}</p>
                   {lesson.PassageEN && (
                     <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 4 }}>
                       {lesson.PassageEN.slice(0, 140)}{lesson.PassageEN.length > 140 ? '...' : ''}
