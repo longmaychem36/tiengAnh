@@ -2,6 +2,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const FormData = require('form-data');
 const { getPool } = require('../../config/database');
+const notificationService = require('../notification/notification.service');
 
 const VALID_STATUSES = new Set(['open', 'in_progress', 'answered', 'resolved', 'closed']);
 let schemaReady = false;
@@ -223,6 +224,31 @@ async function getTicketById(ticketId) {
   return ticket;
 }
 
+function ensureTicketCanReceiveMessage(ticket) {
+  if ((ticket?.status || '').toLowerCase() !== 'closed') return;
+  const err = new Error('Phiếu hỗ trợ đã đóng, không thể gửi thêm tin nhắn.');
+  err.statusCode = 400;
+  throw err;
+}
+
+async function notifyUserAboutAdminReply(ticket, response, status, adminId) {
+  try {
+    const isClosed = status === 'closed';
+    await notificationService.createNotification({
+      title: isClosed ? 'Phiếu hỗ trợ đã được đóng' : 'Admin đã phản hồi phiếu hỗ trợ',
+      message: `${isClosed ? 'Phiếu hỗ trợ của bạn đã được admin phản hồi và đóng.' : 'Admin vừa phản hồi phiếu hỗ trợ của bạn.'}\n\nTiêu đề: ${ticket.title}\n\nNội dung: ${response}`,
+      type: isClosed ? 'support_closed' : 'support_reply',
+      linkUrl: '/support',
+      audience: 'selected',
+      userIds: [ticket.userId],
+      createdBy: adminId,
+      sendEmail: true
+    });
+  } catch (error) {
+    console.warn('Support reply notification failed:', error.message);
+  }
+}
+
 const supportService = {
   ensureSupportSchema,
 
@@ -348,6 +374,7 @@ const supportService = {
     await ensureSupportSchema();
     const existingTicket = await getTicketById(ticketId);
     if (!existingTicket) return null;
+    ensureTicketCanReceiveMessage(existingTicket);
 
     const response = requiredString(data.response, 'Response', 5000);
     const status = optionalString(data.status, 30) || 'answered';
@@ -376,6 +403,7 @@ const supportService = {
     `, [ticketId, response, status, adminId]);
 
     if (!result.rows[0]) return null;
+    await notifyUserAboutAdminReply(existingTicket, response, status, adminId);
     return getTicketById(ticketId);
   },
 
@@ -383,6 +411,7 @@ const supportService = {
     await ensureSupportSchema();
     const ticket = await this.getUserTicket(userId, ticketId);
     if (!ticket) return null;
+    ensureTicketCanReceiveMessage(ticket);
 
     const message = requiredString(data.message, 'Message', 5000);
     const attachment = await uploadAttachment(file, `${ticketId}_${Date.now()}`);

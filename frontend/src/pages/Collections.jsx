@@ -6,10 +6,13 @@ import { motion } from 'framer-motion';
 import {
   FiArrowLeft,
   FiBookOpen,
+  FiChevronLeft,
+  FiChevronRight,
   FiCheckCircle,
   FiEdit2,
   FiGlobe,
   FiPlus,
+  FiSearch,
   FiSend,
   FiTrash2,
   FiVolume2,
@@ -24,6 +27,7 @@ import { useAuth } from '../hooks/useAuth';
 
 const emptyDeckForm = { name: '', description: '' };
 const emptyWordForm = { customWord: '', customMeaning: '', customExample: '' };
+const DECKS_PER_PAGE = 6;
 const getData = (res, fallback) => res?.data ?? fallback;
 const getErrorMessage = (err, fallback) => err?.message || err?.response?.data?.message || fallback;
 const isSubmissionsRouteMissing = (err) => {
@@ -58,6 +62,8 @@ function Vocabulary() {
   const [loading, setLoading] = useState(true);
   const [practiceMode, setPracticeMode] = useState(false);
   const [submissionsUnavailable, setSubmissionsUnavailable] = useState(false);
+  const [deckSearch, setDeckSearch] = useState('');
+  const [deckPage, setDeckPage] = useState(1);
 
   const [showDeckModal, setShowDeckModal] = useState(false);
   const [editingDeck, setEditingDeck] = useState(null);
@@ -68,6 +74,26 @@ function Vocabulary() {
   const [wordForm, setWordForm] = useState(emptyWordForm);
 
   const visibleDecks = activeTab === 'mine' ? myDecks : activeTab === 'submissions' ? submissionDecks : publicDecks;
+  const filteredDecks = useMemo(() => {
+    const keyword = deckSearch.trim().toLowerCase();
+    if (!keyword) return visibleDecks;
+
+    return visibleDecks.filter((deck) => {
+      const searchable = [
+        deck.Name,
+        deck.Description,
+        deck.CreatorName,
+        deck.ReviewStatus,
+        statusLabel(deck.ReviewStatus)
+      ].filter(Boolean).join(' ').toLowerCase();
+      return searchable.includes(keyword);
+    });
+  }, [deckSearch, visibleDecks]);
+  const totalDeckPages = Math.max(1, Math.ceil(filteredDecks.length / DECKS_PER_PAGE));
+  const safeDeckPage = Math.min(deckPage, totalDeckPages);
+  const paginatedDecks = filteredDecks.slice((safeDeckPage - 1) * DECKS_PER_PAGE, safeDeckPage * DECKS_PER_PAGE);
+  const deckStart = filteredDecks.length === 0 ? 0 : (safeDeckPage - 1) * DECKS_PER_PAGE + 1;
+  const deckEnd = Math.min(filteredDecks.length, safeDeckPage * DECKS_PER_PAGE);
   const editable = (activeTab === 'mine' || activeTab === 'submissions') && selectedDeck?.UserId === user?.id;
   const vocabularyItems = useMemo(() => words.map(normalizeWord).filter((item) => item.word && item.meaning), [words]);
 
@@ -79,7 +105,17 @@ function Vocabulary() {
     setSelectedDeck(null);
     setWords([]);
     setPracticeMode(false);
+    setDeckSearch('');
+    setDeckPage(1);
   }, [activeTab]);
+
+  useEffect(() => {
+    setDeckPage(1);
+  }, [deckSearch]);
+
+  useEffect(() => {
+    if (deckPage > totalDeckPages) setDeckPage(totalDeckPages);
+  }, [deckPage, totalDeckPages]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -398,6 +434,22 @@ function Vocabulary() {
         </section>
       ) : (
         <section>
+          <div className="vocabulary-list-tools">
+            <label className="vocabulary-search">
+              <FiSearch />
+              <input
+                value={deckSearch}
+                onChange={(event) => setDeckSearch(event.target.value)}
+                placeholder="Tìm học phần, mô tả hoặc tác giả"
+              />
+            </label>
+            <div className="vocabulary-result-count">
+              {filteredDecks.length === visibleDecks.length
+                ? `${visibleDecks.length} học phần`
+                : `${filteredDecks.length}/${visibleDecks.length} học phần`}
+            </div>
+          </div>
+
           {visibleDecks.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-8)' }}>
               {activeTab === 'mine'
@@ -406,9 +458,14 @@ function Vocabulary() {
                   ? 'Chưa có học phần công khai nào đang gửi duyệt.'
                   : 'Chưa có học phần công khai nào.'}
             </div>
+          ) : filteredDecks.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-8)' }}>
+              Không tìm thấy học phần phù hợp.
+            </div>
           ) : (
+            <>
             <div className="vocabulary-deck-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-3)' }}>
-              {visibleDecks.map((deck, index) => (
+              {paginatedDecks.map((deck, index) => (
                 <motion.article
                   key={deck.Id}
                   initial={{ opacity: 0, y: 6 }}
@@ -446,6 +503,20 @@ function Vocabulary() {
                 </motion.article>
               ))}
             </div>
+
+            <div className="vocabulary-pagination">
+              <span>Hiển thị {deckStart}-{deckEnd} / {filteredDecks.length}</span>
+              <div>
+                <button type="button" className="btn btn-secondary btn-sm" disabled={safeDeckPage <= 1} onClick={() => setDeckPage((page) => Math.max(1, page - 1))}>
+                  <FiChevronLeft /> Trước
+                </button>
+                <strong>Trang {safeDeckPage}/{totalDeckPages}</strong>
+                <button type="button" className="btn btn-secondary btn-sm" disabled={safeDeckPage >= totalDeckPages} onClick={() => setDeckPage((page) => Math.min(totalDeckPages, page + 1))}>
+                  Sau <FiChevronRight />
+                </button>
+              </div>
+            </div>
+            </>
           )}
         </section>
       )}

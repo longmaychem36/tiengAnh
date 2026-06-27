@@ -11080,3 +11080,90 @@ body.lesson-focus-mode {
   line-height: 1.7;
   white-space: pre-wrap;
 }
+
+/* Vocabulary collection list controls */
+.vocabulary-list-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--space-4);
+}
+
+.vocabulary-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(420px, 100%);
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 0 14px;
+  color: var(--color-text-muted);
+}
+
+.vocabulary-search svg {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+}
+
+.vocabulary-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.vocabulary-search input::placeholder {
+  color: #9ca3af;
+}
+
+.vocabulary-result-count {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.vocabulary-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: var(--space-5);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.vocabulary-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vocabulary-pagination strong {
+  color: var(--color-text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .vocabulary-list-tools,
+  .vocabulary-pagination,
+  .vocabulary-pagination > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .vocabulary-search,
+  .vocabulary-pagination .btn {
+    width: 100%;
+  }
+}

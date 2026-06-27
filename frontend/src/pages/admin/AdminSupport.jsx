@@ -58,6 +58,8 @@ function AdminSupport() {
   const [response, setResponse] = useState('');
   const [nextStatus, setNextStatus] = useState('answered');
 
+  const selectedClosed = selected?.status === 'closed';
+
   const stats = useMemo(() => ({
     total: tickets.length,
     open: tickets.filter((ticket) => ticket.status === 'open').length,
@@ -116,6 +118,10 @@ function AdminSupport() {
   const handleRespond = async (e) => {
     e.preventDefault();
     if (!selected) return;
+    if (selectedClosed) {
+      toast.error('Phiếu hỗ trợ đã đóng, không thể gửi thêm phản hồi');
+      return;
+    }
     setSaving(true);
     try {
       const res = await adminSupportApi.respond(selected.id, {
@@ -124,7 +130,7 @@ function AdminSupport() {
       });
       setSelected(res.data);
       setResponse('');
-      toast.success('Đã gửi phản hồi');
+      toast.success(nextStatus === 'closed' ? 'Đã gửi phản hồi và đóng phiếu' : 'Đã gửi phản hồi');
       await loadTickets();
     } catch (err) {
       toast.error(err.message || 'Không gửi được phản hồi');
@@ -134,7 +140,7 @@ function AdminSupport() {
   };
 
   const handleStatusOnly = async (status) => {
-    if (!selected) return;
+    if (!selected || selectedClosed) return;
     setSaving(true);
     try {
       const res = await adminSupportApi.updateStatus(selected.id, status);
@@ -276,34 +282,41 @@ function AdminSupport() {
                 )}
               </div>
 
-              <form className="admin-support-response-form" onSubmit={handleRespond}>
-                <label>
-                  <span>Phản hồi cho người học</span>
-                  <textarea
-                    value={response}
-                    onChange={(e) => setResponse(e.target.value)}
-                    rows={7}
-                    required
-                    placeholder="Nhập nội dung phản hồi..."
-                  />
-                </label>
-                <label>
-                  <span>Trạng thái sau khi gửi</span>
-                  <select value={nextStatus} onChange={(e) => setNextStatus(e.target.value)}>
-                    {statuses.filter((status) => status.value !== 'all').map((status) => (
-                      <option key={status.value} value={status.value}>{status.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <div className="admin-support-actions">
-                  <button className="btn btn-secondary" type="button" disabled={saving} onClick={() => handleStatusOnly('in_progress')}>
-                    Đánh dấu đang xử lý
-                  </button>
-                  <button className="btn btn-primary" type="submit" disabled={saving}>
-                    {saving ? 'Đang gửi...' : 'Gửi phản hồi'} <FiSend />
-                  </button>
+              {selectedClosed ? (
+                <div className="admin-support-closed-note">
+                  <FiCheckCircle />
+                  <span>Phiếu này đã đóng. Admin và người học không thể gửi thêm tin nhắn trong hội thoại này.</span>
                 </div>
-              </form>
+              ) : (
+                <form className="admin-support-response-form" onSubmit={handleRespond}>
+                  <label>
+                    <span>Phản hồi cho người học</span>
+                    <textarea
+                      value={response}
+                      onChange={(e) => setResponse(e.target.value)}
+                      rows={7}
+                      required
+                      placeholder="Nhập nội dung phản hồi..."
+                    />
+                  </label>
+                  <label>
+                    <span>Trạng thái sau khi gửi</span>
+                    <select value={nextStatus} onChange={(e) => setNextStatus(e.target.value)}>
+                      {statuses.filter((status) => status.value !== 'all').map((status) => (
+                        <option key={status.value} value={status.value}>{status.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="admin-support-actions">
+                    <button className="btn btn-secondary" type="button" disabled={saving} onClick={() => handleStatusOnly('in_progress')}>
+                      Đánh dấu đang xử lý
+                    </button>
+                    <button className="btn btn-primary" type="submit" disabled={saving}>
+                      {saving ? 'Đang gửi...' : 'Gửi phản hồi'} <FiSend />
+                    </button>
+                  </div>
+                </form>
+              )}
             </>
           )}
         </aside>

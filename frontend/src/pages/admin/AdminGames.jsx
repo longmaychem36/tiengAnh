@@ -15,41 +15,12 @@ const TYPE_LABELS = {
   truefalse: 'Đúng/Sai',
   speakrepeat: 'Đọc câu'
 };
-
-const FormModal = ({ title, fields, onSave, formData, setFormData, setShowForm }) => (
-  <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowForm(false)}>
-    <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="admin-nested-form" style={{ width: 'min(520px, 100%)', background: 'white !important', padding: '16px' }}>
-      <div className="admin-subpanel-head" style={{ marginBottom: 'var(--space-4)', borderBottom: 0, background: 'transparent' }}>
-        <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800 }}>{title}</h3>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Đóng</button>
-      </div>
-      <div className="admin-form-grid" style={{ gridTemplateColumns: '1fr' }}>
-        {fields.map(f => (
-          <label key={f.key} style={{ display: 'grid', gap: 5 }}>
-            <span className="form-label">{f.label}</span>
-            {f.type === 'select' ? (
-              <select aria-label={f.label} className="form-input" value={formData[f.key] ?? ''} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))}>
-                {f.options.map(o => <option key={o.value || o} value={o.value || o}>{o.label || o}</option>)}
-              </select>
-            ) : f.type === 'textarea' ? (
-              <textarea aria-label={f.label} className="form-input" rows={3} value={formData[f.key] ?? ''} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder || ''} />
-            ) : (
-              <input aria-label={f.label} className="form-input" type={f.type || 'text'} value={formData[f.key] ?? ''} onChange={e => setFormData(p => ({ ...p, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))} placeholder={f.placeholder || ''} />
-            )}
-          </label>
-        ))}
-        <div className="admin-form-actions" style={{ display: 'flex', gap: 8, marginTop: 'var(--space-4)' }}>
-          <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowForm(false)}>Hủy</button>
-          <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={onSave}><FiSave /> Lưu</button>
-        </div>
-      </div>
-    </motion.div>
-  </div>
-);
+const DIFFICULTY_LABELS = { easy: 'Dễ', hard: 'Khó' };
+const PLACEMENT_EASY_TARGET = 2;
+const PLACEMENT_HARD_TARGET = 1;
 
 function normalizeOptions(optionsText) {
   if (Array.isArray(optionsText)) return optionsText;
-
   const rawValue = String(optionsText || '').trim();
   if (!rawValue) return [];
 
@@ -57,24 +28,23 @@ function normalizeOptions(optionsText) {
     const parsed = JSON.parse(rawValue);
     if (Array.isArray(parsed)) return parsed;
   } catch {
-    // Admins normally enter a comma-separated list, not JSON.
+    // Admins normally enter comma-separated text.
   }
 
-  return rawValue
-    .split(',')
-    .map(item => item.trim())
-    .filter(Boolean);
+  return rawValue.split(',').map((item) => item.trim()).filter(Boolean);
 }
 
 function uniqueOptions(options) {
   const seen = new Set();
-  return options.filter((option) => {
-    const value = String(option || '').trim();
-    const key = value.toLocaleLowerCase('vi');
-    if (!value || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).map(option => String(option).trim());
+  return options
+    .filter((option) => {
+      const value = String(option || '').trim();
+      const key = value.toLocaleLowerCase('vi');
+      if (!value || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((option) => String(option).trim());
 }
 
 function optionsToText(options) {
@@ -97,30 +67,22 @@ function prepareQuestionPayload(formData, levelId = null) {
     finalCorrectAnswer = finalContentVI;
     finalOptions = uniqueOptions([finalCorrectAnswer, ...finalOptions]);
   } else if (qType === 'listenbuild') {
-    if (!finalCorrectAnswer && !finalContentEN) {
-      throw new Error('Dạng xếp câu cần có câu tiếng Anh hoàn chỉnh.');
-    }
+    if (!finalCorrectAnswer && !finalContentEN) throw new Error('Dạng xếp câu cần có câu tiếng Anh hoàn chỉnh.');
     finalCorrectAnswer = finalCorrectAnswer || finalContentEN;
     finalContentEN = finalCorrectAnswer;
-    const words = finalCorrectAnswer.split(/\s+/).map(word => word.trim()).filter(Boolean);
+    const words = finalCorrectAnswer.split(/\s+/).map((word) => word.trim()).filter(Boolean);
     finalOptions = uniqueOptions([...words, ...finalOptions]);
   } else if (qType === 'listening') {
-    if (!finalCorrectAnswer && !finalContentEN) {
-      throw new Error('Dạng nghe chọn cần có nội dung được đọc.');
-    }
+    if (!finalCorrectAnswer && !finalContentEN) throw new Error('Dạng nghe chọn cần có nội dung được đọc.');
     finalCorrectAnswer = finalCorrectAnswer || finalContentEN;
     finalContentEN = finalCorrectAnswer;
     finalOptions = uniqueOptions([finalCorrectAnswer, ...finalOptions]);
   } else if (qType === 'truefalse') {
-    if (!finalContentEN || !finalContentVI) {
-      throw new Error('Dạng đúng/sai cần đủ câu tiếng Anh và bản dịch.');
-    }
+    if (!finalContentEN || !finalContentVI) throw new Error('Dạng đúng/sai cần đủ câu tiếng Anh và bản dịch.');
     finalOptions = [];
     finalCorrectAnswer = formData.correctAnswer === 'false' ? 'false' : 'true';
   } else if (qType === 'speakrepeat') {
-    if (!finalCorrectAnswer && !finalContentEN) {
-      throw new Error('Dạng đọc câu cần có câu mẫu.');
-    }
+    if (!finalCorrectAnswer && !finalContentEN) throw new Error('Dạng đọc câu cần có câu mẫu.');
     finalCorrectAnswer = finalCorrectAnswer || finalContentEN;
     finalContentEN = finalCorrectAnswer;
     finalOptions = { passScore: Number(formData.passScore || 70) };
@@ -142,6 +104,45 @@ function prepareQuestionPayload(formData, levelId = null) {
   };
 }
 
+function FormModal({ title, fields, onSave, formData, setFormData, setShowForm }) {
+  return (
+    <div className="admin-modal-backdrop" onClick={() => setShowForm(false)}>
+      <motion.div
+        initial={{ scale: 0.96, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        onClick={(event) => event.stopPropagation()}
+        className="admin-modal-panel"
+        style={{ width: 'min(560px, 100%)' }}
+      >
+        <div className="admin-subpanel-head">
+          <h3>{title}</h3>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Đóng</button>
+        </div>
+        <div className="admin-form-grid" style={{ gridTemplateColumns: '1fr', padding: 16 }}>
+          {fields.map((field) => (
+            <label key={field.key}>
+              <span>{field.label}</span>
+              {field.type === 'select' ? (
+                <select className="form-input" value={formData[field.key] ?? ''} onChange={(event) => setFormData((prev) => ({ ...prev, [field.key]: event.target.value }))}>
+                  {field.options.map((option) => <option key={option.value || option} value={option.value || option}>{option.label || option}</option>)}
+                </select>
+              ) : field.type === 'textarea' ? (
+                <textarea className="form-input" rows={3} value={formData[field.key] ?? ''} onChange={(event) => setFormData((prev) => ({ ...prev, [field.key]: event.target.value }))} placeholder={field.placeholder || ''} />
+              ) : (
+                <input className="form-input" type={field.type || 'text'} value={formData[field.key] ?? ''} onChange={(event) => setFormData((prev) => ({ ...prev, [field.key]: field.type === 'number' ? Number(event.target.value) : event.target.value }))} placeholder={field.placeholder || ''} />
+              )}
+            </label>
+          ))}
+          <div className="admin-form-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Hủy</button>
+            <button type="button" className="btn btn-primary" onClick={onSave}><FiSave /> Lưu</button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function AdminGames() {
   const [view, setView] = useState('levels');
   const [levels, setLevels] = useState([]);
@@ -152,7 +153,10 @@ function AdminGames() {
   const [editItem, setEditItem] = useState(null);
   const [formData, setFormData] = useState({});
 
-  useEffect(() => { loadLevels(); loadPlacementQuestions(); }, []);
+  useEffect(() => {
+    loadLevels();
+    loadPlacementQuestions();
+  }, []);
 
   const loadLevels = async () => {
     try {
@@ -242,8 +246,8 @@ function AdminGames() {
       setShowForm(false);
       setEditItem(null);
       await loadQuestions(activeLevel);
-    } catch (e) {
-      toast.error('Lỗi lưu câu hỏi: ' + e.message);
+    } catch (err) {
+      toast.error(`Lỗi lưu câu hỏi: ${err.message}`);
     }
   };
 
@@ -258,7 +262,7 @@ function AdminGames() {
     }
   };
 
-  const openPlacementForm = (q = null) => {
+  const openPlacementForm = (q = null, difficulty = 'easy') => {
     setEditItem(q);
     setFormData(q
       ? {
@@ -275,7 +279,7 @@ function AdminGames() {
         activeStatus: q.IsActive ? 'active' : 'inactive',
         orderIndex: q.OrderIndex || 0
       }
-      : { questionType: 'matching', contentEN: '', contentVI: '', audioUrl: '', imageUrl: '', correctAnswer: '', options: '', passScore: 70, difficulty: 'easy', pointRatio: 1, activeStatus: 'active', orderIndex: placementQuestions.length + 1 });
+      : { questionType: 'matching', contentEN: '', contentVI: '', audioUrl: '', imageUrl: '', correctAnswer: '', options: '', passScore: 70, difficulty, pointRatio: difficulty === 'hard' ? 1.35 : 1, activeStatus: 'active', orderIndex: placementQuestions.length + 1 });
     setShowForm(true);
   };
 
@@ -288,8 +292,8 @@ function AdminGames() {
       setShowForm(false);
       setEditItem(null);
       await loadPlacementQuestions();
-    } catch (e) {
-      toast.error('Lỗi lưu câu hỏi test: ' + e.message);
+    } catch (err) {
+      toast.error(`Lỗi lưu câu hỏi test: ${err.message}`);
     }
   };
 
@@ -307,16 +311,18 @@ function AdminGames() {
   const getQuestionFields = (includePlacementFields = false) => {
     const qType = formData.questionType || 'matching';
     const fields = [
-      { key: 'questionType', label: 'Loại câu hỏi', type: 'select', options: QUESTION_TYPES },
+      { key: 'questionType', label: 'Loại câu hỏi', type: 'select', options: QUESTION_TYPES.map((type) => ({ value: type, label: TYPE_LABELS[type] })) },
       { key: 'orderIndex', label: 'Thứ tự', type: 'number' }
     ];
+
     if (includePlacementFields) {
       fields.push(
-        { key: 'difficulty', label: 'Độ khó', type: 'select', options: ['easy', 'hard'] },
+        { key: 'difficulty', label: 'Độ khó', type: 'select', options: [{ value: 'easy', label: 'Dễ' }, { value: 'hard', label: 'Khó' }] },
         { key: 'pointRatio', label: 'Tỉ số điểm', type: 'number' },
         { key: 'activeStatus', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] }
       );
     }
+
     if (qType === 'matching') return [...fields, { key: 'contentEN', label: 'Từ tiếng Anh', placeholder: 'apple' }, { key: 'contentVI', label: 'Nghĩa đúng', placeholder: 'quả táo' }, { key: 'options', label: 'Lựa chọn khác, cách nhau bằng dấu phẩy', placeholder: 'quả chuối, quyển sách' }];
     if (qType === 'listening') return [...fields, { key: 'correctAnswer', label: 'Câu sẽ được đọc', placeholder: 'Good morning' }, { key: 'contentVI', label: 'Nghĩa tiếng Việt', placeholder: 'Chào buổi sáng' }, { key: 'options', label: 'Đáp án sai, cách nhau bằng dấu phẩy', placeholder: 'Good night, Good evening' }];
     if (qType === 'listenbuild') return [...fields, { key: 'correctAnswer', label: 'Câu tiếng Anh hoàn chỉnh', placeholder: 'I go to school' }, { key: 'contentVI', label: 'Gợi ý tiếng Việt', placeholder: 'Tôi đi học' }, { key: 'options', label: 'Từ gây nhiễu thêm', placeholder: 'goes, going' }];
@@ -325,10 +331,22 @@ function AdminGames() {
     return fields;
   };
 
-  const activePlacementCount = useMemo(() => placementQuestions.filter(q => q.IsActive).length, [placementQuestions]);
+  const activePlacementCount = useMemo(() => placementQuestions.filter((q) => q.IsActive).length, [placementQuestions]);
+  const placementQuestionGroups = useMemo(() => ({
+    easy: placementQuestions.filter((q) => (q.Difficulty || 'easy') === 'easy'),
+    hard: placementQuestions.filter((q) => (q.Difficulty || 'easy') === 'hard')
+  }), [placementQuestions]);
+  const placementTypeSummary = useMemo(() => QUESTION_TYPES.map((type) => {
+    const easy = placementQuestions.filter((q) => q.IsActive && q.QuestionType === type && (q.Difficulty || 'easy') === 'easy').length;
+    const hard = placementQuestions.filter((q) => q.IsActive && q.QuestionType === type && (q.Difficulty || 'easy') === 'hard').length;
+    return { type, easy, hard, ready: easy >= PLACEMENT_EASY_TARGET && hard >= PLACEMENT_HARD_TARGET };
+  }), [placementQuestions]);
 
   const renderQuestionRow = (q, actions, extra = null) => {
-    const mainText = q.QuestionType === 'truefalse' || q.QuestionType === 'listenbuild' || q.QuestionType === 'speakrepeat' ? q.CorrectAnswer : (q.ContentEN || q.CorrectAnswer);
+    const mainText = q.QuestionType === 'truefalse' || q.QuestionType === 'listenbuild' || q.QuestionType === 'speakrepeat'
+      ? q.CorrectAnswer
+      : (q.ContentEN || q.CorrectAnswer);
+
     return (
       <div key={q.Id} className="admin-list-item">
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -336,7 +354,7 @@ function AdminGames() {
             <span className="badge badge-primary">{TYPE_LABELS[q.QuestionType] || q.QuestionType}</span>
             {extra}
           </div>
-          <strong style={{ color: 'var(--admin-primary)', fontSize: '14px', wordBreak: 'break-word' }}>{mainText}</strong>
+          <strong style={{ color: 'var(--admin-primary)', fontSize: 14, wordBreak: 'break-word' }}>{mainText}</strong>
           {q.ContentVI && <p style={{ fontSize: 13, marginTop: 4 }}>{q.ContentVI}</p>}
           {Array.isArray(q.Options) && q.Options.length > 0 && (
             <div style={{ fontSize: 11, color: 'var(--admin-muted)', marginTop: 4 }}>
@@ -351,17 +369,45 @@ function AdminGames() {
     );
   };
 
+  const renderPlacementColumn = (difficulty) => (
+    <section className="placement-bank-column" key={difficulty}>
+      <div className="placement-bank-column-head">
+        <h4>{DIFFICULTY_LABELS[difficulty]}</h4>
+        <div>
+          <span>{placementQuestionGroups[difficulty].length} câu</span>
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => openPlacementForm(null, difficulty)}>
+            <FiPlus /> Thêm câu {DIFFICULTY_LABELS[difficulty].toLowerCase()}
+          </button>
+        </div>
+      </div>
+      <div className="admin-item-list">
+        {placementQuestionGroups[difficulty].map((q) => renderQuestionRow(
+          q,
+          <>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => openPlacementForm(q)}>Sửa</button>
+            <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deletePlacementQuestion(q.Id)}>Xóa</button>
+          </>,
+          <>
+            <span className={`badge ${q.IsActive ? 'is-active' : 'is-locked'}`} style={{ color: q.IsActive ? 'var(--admin-success)' : 'var(--admin-danger)' }}>{q.IsActive ? 'Active' : 'Inactive'}</span>
+            <span className="badge badge-secondary">{TYPE_LABELS[q.QuestionType] || q.QuestionType}</span>
+            <span className="badge badge-secondary">x{Number(q.PointRatio || 1).toFixed(2)}</span>
+          </>
+        ))}
+        {placementQuestionGroups[difficulty].length === 0 && <div className="admin-empty-inline">Chưa có câu {DIFFICULTY_LABELS[difficulty].toLowerCase()}.</div>}
+      </div>
+    </section>
+  );
+
   return (
     <div className="fade-in admin-receptive-page">
       <div className="admin-receptive-header">
         <div>
           <h1>Quản lý Mini game</h1>
-          <p>Quản lý màn chơi và bộ câu hỏi riêng cho bài test đầu vào.</p>
+          <p>Quản lý màn chơi và ngân hàng câu hỏi riêng cho bài test đầu vào.</p>
         </div>
         <div className="admin-inline-actions">
           {view !== 'levels' && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setView('levels'); setActiveLevel(null); }}><FiArrowLeft /> Levels</button>}
           {view === 'levels' && <button type="button" className="btn btn-primary btn-sm" onClick={() => openLevelForm()}><FiPlus /> Thêm level</button>}
-          {view === 'placement' && <button type="button" className="btn btn-primary btn-sm" onClick={() => openPlacementForm()}><FiPlus /> Thêm câu test</button>}
         </div>
       </div>
 
@@ -373,21 +419,21 @@ function AdminGames() {
       {view === 'levels' && (
         <section className="admin-receptive-list">
           {levels.length === 0 && <div className="admin-empty-inline">Chưa có level mini game nào.</div>}
-          {levels.map(lv => (
-            <div key={lv.Id} className="admin-receptive-card">
+          {levels.map((level) => (
+            <div key={level.Id} className="admin-receptive-card">
               <div className="admin-receptive-card-head" style={{ border: 0 }}>
-                <button type="button" className="admin-receptive-title" onClick={() => loadQuestions(lv)} style={{ cursor: 'pointer' }}>
-                  <strong>Level {lv.LevelNumber}: {lv.Name}</strong>
+                <button type="button" className="admin-receptive-title" onClick={() => loadQuestions(level)} style={{ cursor: 'pointer' }}>
+                  <strong>Level {level.LevelNumber}: {level.Name}</strong>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                    <span className="badge badge-secondary">{lv.QuestionCount} câu</span>
-                    <span className="badge badge-secondary">{lv.TimeLimit}s</span>
-                    <span className="badge badge-secondary">Đạt {lv.PassScore}%</span>
+                    <span className="badge badge-secondary">{level.QuestionCount} câu</span>
+                    <span className="badge badge-secondary">{level.TimeLimit}s</span>
+                    <span className="badge badge-secondary">Đạt {level.PassScore}%</span>
                   </div>
                 </button>
                 <div className="admin-inline-actions">
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLevelForm(lv)}>Sửa</button>
-                  <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteLevel(lv.Id)}>Xóa</button>
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => loadQuestions(lv)}>Câu hỏi</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLevelForm(level)}>Sửa</button>
+                  <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deleteLevel(level.Id)}>Xóa</button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => loadQuestions(level)}>Câu hỏi</button>
                 </div>
               </div>
             </div>
@@ -400,13 +446,12 @@ function AdminGames() {
           <div className="admin-subpanel-head" style={{ margin: '-14px -16px var(--space-4) -16px' }}>
             <div>
               <h3>Level {activeLevel?.LevelNumber}: {activeLevel?.Name}</h3>
-              <p style={{ display: 'block', fontSize: '12px', color: 'var(--admin-muted)', marginTop: 4 }}>Danh sách câu hỏi của màn chơi.</p>
+              <p style={{ display: 'block', fontSize: 12, color: 'var(--admin-muted)', marginTop: 4 }}>Danh sách câu hỏi của màn chơi.</p>
             </div>
             <button type="button" className="btn btn-primary btn-sm" onClick={() => openQuestionForm()}><FiPlus /> Thêm câu hỏi</button>
           </div>
-
           <div className="admin-item-list">
-            {questions.map(q => renderQuestionRow(
+            {questions.map((q) => renderQuestionRow(
               q,
               <>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => openQuestionForm(q)}>Sửa</button>
@@ -423,25 +468,23 @@ function AdminGames() {
           <div className="admin-subpanel-head" style={{ margin: '-14px -16px var(--space-4) -16px' }}>
             <div>
               <h3>Bài test đầu vào</h3>
-              <p style={{ display: 'block', fontSize: '12px', color: 'var(--admin-muted)', marginTop: 4 }}>Các câu active sẽ được đưa vào bài test đầu vào. Point ratio là trọng số điểm khi chấm bài.</p>
+              <p style={{ display: 'block', fontSize: 12, color: 'var(--admin-muted)', marginTop: 4 }}>Mỗi lượt test bốc ngẫu nhiên 2 câu dễ và 1 câu khó cho từng dạng câu hỏi đủ ngân hàng.</p>
             </div>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => openPlacementForm()}><FiPlus /> Thêm câu test</button>
           </div>
 
-          <div className="admin-item-list">
-            {placementQuestions.map(q => renderQuestionRow(
-              q,
-              <>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => openPlacementForm(q)}>Sửa</button>
-                <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deletePlacementQuestion(q.Id)}>Xóa</button>
-              </>,
-              <>
-                <span className={`badge ${q.IsActive ? 'is-active' : 'is-locked'}`} style={{ color: q.IsActive ? 'var(--admin-success)' : 'var(--admin-danger)' }}>{q.IsActive ? 'Active' : 'Inactive'}</span>
-                <span className="badge badge-secondary">{q.Difficulty}</span>
-                <span className="badge badge-secondary">x{Number(q.PointRatio || 1).toFixed(2)}</span>
-              </>
+          <div className="placement-bank-summary">
+            {placementTypeSummary.map((item) => (
+              <article key={item.type} className={item.ready ? 'is-ready' : 'is-missing'}>
+                <strong>{TYPE_LABELS[item.type] || item.type}</strong>
+                <span>Dễ {item.easy}/{PLACEMENT_EASY_TARGET}</span>
+                <span>Khó {item.hard}/{PLACEMENT_HARD_TARGET}</span>
+              </article>
             ))}
-            {placementQuestions.length === 0 && <div className="admin-empty-inline">Chưa có câu hỏi test đầu vào nào.</div>}
+          </div>
+
+          <div className="placement-bank-grid">
+            {renderPlacementColumn('easy')}
+            {renderPlacementColumn('hard')}
           </div>
         </section>
       )}
@@ -455,9 +498,11 @@ function AdminGames() {
           { key: 'passScore', label: 'Điểm đạt (%)', type: 'number' }
         ]} />
       )}
+
       {showForm && view === 'questions' && (
         <FormModal title={editItem ? 'Sửa câu hỏi' : 'Thêm câu hỏi'} onSave={saveQuestion} formData={formData} setFormData={setFormData} setShowForm={setShowForm} fields={getQuestionFields(false)} />
       )}
+
       {showForm && view === 'placement' && (
         <FormModal title={editItem ? 'Sửa câu hỏi test đầu vào' : 'Thêm câu hỏi test đầu vào'} onSave={savePlacementQuestion} formData={formData} setFormData={setFormData} setShowForm={setShowForm} fields={getQuestionFields(true)} />
       )}

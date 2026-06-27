@@ -77,6 +77,8 @@ function Support() {
     []
   );
 
+  const selectedClosed = selected?.status === 'closed';
+
   const loadTickets = async () => {
     setLoading(true);
     try {
@@ -152,6 +154,10 @@ function Support() {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!selected) return;
+    if (selectedClosed) {
+      toast.error('Phiếu hỗ trợ đã đóng, không thể gửi thêm tin nhắn');
+      return;
+    }
     setSending(true);
     try {
       const res = await supportApi.addMessage(selected.id, reply);
@@ -300,30 +306,37 @@ function Support() {
                 ))}
               </div>
 
-              <form className="support-reply-form" onSubmit={handleSendMessage}>
-                <textarea
-                  value={reply.message}
-                  onChange={(e) => setReply({ ...reply, message: e.target.value })}
-                  rows={3}
-                  required
-                  placeholder="Nhập tin nhắn phản hồi..."
-                />
-                <div className="support-reply-actions">
-                  <label className="support-reply-file">
-                    <FiPaperclip />
-                    <span>{reply.attachment ? reply.attachment.name : 'Ảnh đính kèm'}</span>
-                    <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => handleFileChange(e, 'reply')} />
-                  </label>
-                  {reply.attachment && (
-                    <button type="button" onClick={() => setReply({ ...reply, attachment: null })}>
-                      <FiX /> Bỏ ảnh
-                    </button>
-                  )}
-                  <button className="support-submit" type="submit" disabled={sending}>
-                    {sending ? 'Đang gửi...' : 'Gửi tin nhắn'} <FiSend />
-                  </button>
+              {selectedClosed ? (
+                <div className="support-closed-note">
+                  <FiCheckCircle />
+                  <span>Phiếu hỗ trợ này đã đóng. Bạn có thể xem lại hội thoại nhưng không thể gửi thêm tin nhắn.</span>
                 </div>
-              </form>
+              ) : (
+                <form className="support-reply-form" onSubmit={handleSendMessage}>
+                  <textarea
+                    value={reply.message}
+                    onChange={(e) => setReply({ ...reply, message: e.target.value })}
+                    rows={3}
+                    required
+                    placeholder="Nhập tin nhắn phản hồi..."
+                  />
+                  <div className="support-reply-actions">
+                    <label className="support-reply-file">
+                      <FiPaperclip />
+                      <span>{reply.attachment ? reply.attachment.name : 'Ảnh đính kèm'}</span>
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => handleFileChange(e, 'reply')} />
+                    </label>
+                    {reply.attachment && (
+                      <button type="button" onClick={() => setReply({ ...reply, attachment: null })}>
+                        <FiX /> Bỏ ảnh
+                      </button>
+                    )}
+                    <button className="support-submit" type="submit" disabled={sending}>
+                      {sending ? 'Đang gửi...' : 'Gửi tin nhắn'} <FiSend />
+                    </button>
+                  </div>
+                </form>
+              )}
             </>
           )}
         </section>

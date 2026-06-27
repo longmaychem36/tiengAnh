@@ -5,6 +5,8 @@ const { ensureOnboardingSchema } = require('./onboarding.schema');
 const DIRECT_PLACEMENT = new Set(['new', 'basic']);
 const PASS_SCORE = 70;
 const DEFAULT_QUESTION_WEIGHT = 1;
+const EASY_QUESTIONS_PER_TYPE = 2;
+const HARD_QUESTIONS_PER_TYPE = 1;
 const FOUNDATION_QUESTION_WEIGHT = 1;
 const MAIN_ROUTE_QUESTION_WEIGHT = 1.35;
 const SPEAKING_PASS_SCORE = 60;
@@ -562,16 +564,73 @@ function getSkillForMiniGameType(questionType) {
   return 'minigame';
 }
 
+function normalizePlacementDifficulty(value) {
+  return String(value || 'easy').toLowerCase() === 'easy' ? 'easy' : 'hard';
+}
+
+function shuffleItems(items = []) {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const targetIndex = crypto.randomInt(index + 1);
+    [shuffled[index], shuffled[targetIndex]] = [shuffled[targetIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
+function groupPlacementRowsByType(rows = []) {
+  const grouped = new Map();
+  for (const row of rows) {
+    const questionType = row.questiontype || row.QuestionType || 'matching';
+    if (!grouped.has(questionType)) grouped.set(questionType, { easy: [], hard: [] });
+    const difficulty = normalizePlacementDifficulty(row.difficulty || row.Difficulty);
+    grouped.get(questionType)[difficulty].push(row);
+  }
+  return grouped;
+}
+
+function pickPlacementBankRows(rows = []) {
+  const grouped = groupPlacementRowsByType(rows);
+  const selectedRows = [];
+  const skippedTypes = [];
+
+  for (const [questionType, bucket] of grouped.entries()) {
+    if (bucket.easy.length < EASY_QUESTIONS_PER_TYPE || bucket.hard.length < HARD_QUESTIONS_PER_TYPE) {
+      skippedTypes.push({
+        questionType,
+        easyCount: bucket.easy.length,
+        hardCount: bucket.hard.length
+      });
+      continue;
+    }
+
+    selectedRows.push(...shuffleItems(bucket.easy).slice(0, EASY_QUESTIONS_PER_TYPE));
+    selectedRows.push(...shuffleItems(bucket.hard).slice(0, HARD_QUESTIONS_PER_TYPE));
+  }
+
+  return {
+    selectedRows: shuffleItems(selectedRows),
+    skippedTypes
+  };
+}
+
 async function buildPlacementQuestions(pool) {
   const result = await pool.query(`
     SELECT Id, QuestionType, ContentEN, ContentVI, AudioUrl, ImageUrl, CorrectAnswer, Options,
            Difficulty, PointRatio, OrderIndex
     FROM PlacementMiniGameQuestions
     WHERE COALESCE(IsActive, true) = true
-    ORDER BY QuestionType ASC, Difficulty ASC, OrderIndex ASC, CreatedAt ASC
+    ORDER BY QuestionType ASC, Difficulty ASC, random()
   `);
+  const { selectedRows, skippedTypes } = pickPlacementBankRows(result.rows);
 
-  return result.rows.map((row, index) => {
+  if (selectedRows.length === 0) {
+    const err = new Error('Ngân hàng câu hỏi đầu vào cần ít nhất 2 câu dễ và 1 câu khó active cho mỗi loại câu hỏi muốn đưa vào bài test.');
+    err.statusCode = 400;
+    err.details = { skippedTypes };
+    throw err;
+  }
+
+  return selectedRows.map((row, index) => {
     const options = parseOptions(row.options);
     const questionType = row.questiontype || 'matching';
     const targetText = row.correctanswer || row.contenten || '';
@@ -672,7 +731,7 @@ const onboardingService = {
       test: {
         id: attemptId,
         title: 'Bài test đầu vào',
-        description: 'Bài test sử dụng bộ câu hỏi riêng theo các dạng mini game.',
+        description: 'Bài test bốc ngẫu nhiên 2 câu dễ và 1 câu khó cho mỗi dạng câu hỏi đủ ngân hàng.',
         questionMode: 'minigame',
         isActive: true,
         orderIndex: 0,
