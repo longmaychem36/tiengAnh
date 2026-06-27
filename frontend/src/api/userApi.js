@@ -4,6 +4,8 @@ export const userApi = {
   getAll: (params) => axiosClient.get('/users', { params }),
   getById: (id) => axiosClient.get(`/users/${id}`),
   update: (id, data) => axiosClient.put(`/users/${id}`, data),
+  changePassword: (id, data) => axiosClient.put(`/users/${id}/password`, data),
+  resetLearningProgress: (id) => axiosClient.post(`/users/${id}/reset-learning`),
   updateAvatar: (id, file) => {
     const formData = new FormData();
     formData.append('avatar', file);

@@ -70,6 +70,50 @@ const userController = {
   },
 
   /**
+   * PUT /api/v1/users/:id/password
+   */
+  async changePassword(req, res, next) {
+    try {
+      if (req.user.id !== req.params.id && req.user.role !== 'admin') {
+        return badRequest(res, 'You can only change your own password');
+      }
+
+      const result = await userService.changePassword(req.params.id, req.body);
+      return success(res, result, 'Password changed successfully');
+    } catch (err) {
+      if (err.statusCode) {
+        return res.status(err.statusCode).json({
+          success: false,
+          message: err.message
+        });
+      }
+      next(err);
+    }
+  },
+
+  /**
+   * POST /api/v1/users/:id/reset-learning
+   */
+  async resetLearningProgress(req, res, next) {
+    try {
+      if (req.user.id !== req.params.id && req.user.role !== 'admin') {
+        return badRequest(res, 'You can only reset your own learning progress');
+      }
+
+      const result = await userService.resetLearningProgress(req.params.id);
+      return success(res, result, 'Learning progress reset successfully');
+    } catch (err) {
+      if (err.statusCode) {
+        return res.status(err.statusCode).json({
+          success: false,
+          message: err.message
+        });
+      }
+      next(err);
+    }
+  },
+
+  /**
    * GET /api/v1/users/:id/stats
    */
   async getStats(req, res, next) {

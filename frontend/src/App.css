@@ -10863,3 +10863,220 @@ body.lesson-focus-mode {
     grid-template-columns: 1fr;
   }
 }
+
+/* Learner notifications */
+.lingo-notification-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.lingo-notification-button {
+  position: relative;
+}
+
+.lingo-notification-button > span {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #ff4b4b;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.lingo-notification-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 50;
+  width: min(360px, calc(100vw - 28px));
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
+}
+
+.lingo-notification-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lingo-notification-head strong {
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.lingo-notification-head button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.lingo-notification-list {
+  display: grid;
+  max-height: 390px;
+  overflow-y: auto;
+}
+
+.lingo-notification-item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: #ffffff;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.lingo-notification-item:hover {
+  background: #f8fbff;
+}
+
+.lingo-notification-item.is-unread {
+  background: #eff8ff;
+}
+
+.lingo-notification-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: 999px;
+  background: #d1d5db;
+}
+
+.lingo-notification-dot.is-unread {
+  background: var(--color-primary);
+}
+
+.lingo-notification-item strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.lingo-notification-item p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.lingo-notification-item time {
+  display: block;
+  margin-top: 6px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.lingo-notification-empty {
+  padding: 24px 16px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.lingo-notification-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.lingo-notification-modal {
+  width: min(520px, 100%);
+  max-height: min(680px, calc(100dvh - 36px));
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+}
+
+.lingo-notification-modal header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lingo-notification-modal header span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.lingo-notification-modal h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.lingo-notification-modal time {
+  display: block;
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.lingo-notification-modal header button {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--color-text-muted);
+}
+
+.lingo-notification-modal > p {
+  margin: 0;
+  padding: 18px 20px 22px;
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}

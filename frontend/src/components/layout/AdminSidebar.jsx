@@ -1,12 +1,14 @@
 import { NavLink } from 'react-router-dom';
 import {
   FiBookOpen,
+  FiBell,
   FiCommand,
   FiEdit3,
   FiGrid,
   FiHeadphones,
   FiLayers,
   FiLogOut,
+  FiLifeBuoy,
   FiMic,
   FiPlay,
   FiUsers,
@@ -23,6 +25,8 @@ const adminItems = [
   { to: '/admin/vocabulary', label: 'Vocabulary', icon: FiGrid },
   { to: '/admin/games', label: 'Mini games', icon: FiPlay },
   { to: '/admin/users', label: 'Accounts', icon: FiUsers },
+  { to: '/admin/notifications', label: 'Notifications', icon: FiBell },
+  { to: '/admin/support', label: 'Support', icon: FiLifeBuoy },
 ];
 
 function NavItem({ to, label, icon: Icon, exact }) {

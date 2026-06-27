@@ -12,7 +12,7 @@ const navItems = [
   { to: '/grammar', label: 'Ngữ pháp', icon: 'grammar' },
   { to: '/dictionary', label: 'Từ điển', icon: 'dictionary' },
   { to: '/vocabulary', label: 'Từ vựng', icon: 'vocabulary' },
-  { to: '/profile', label: 'Hồ sơ', icon: 'profile' }
+  { to: '/settings', label: 'Xem thêm', icon: 'more', activePaths: ['/profile', '/support'] }
 ];
 
 function NavItem({ to, label, icon, isAdminLink, activePaths = [] }) {

@@ -4,6 +4,7 @@
 const crypto = require('crypto');
 const axios = require('axios');
 const { getPool } = require('../../config/database');
+const notificationService = require('../notification/notification.service');
 
 const PLUS_PRICE_VND = Number.parseInt(process.env.PLUS_PRICE_VND || '2000', 10);
 const PLUS_DURATION_DAYS = Number.parseInt(process.env.PLUS_DURATION_DAYS || '30', 10);
@@ -90,6 +91,17 @@ function normalizePayment(row = {}) {
   };
 }
 
+function normalizeQrText(value = '') {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .trim()
+    .slice(0, 80);
+}
+
 function buildQrUrl({ amount, content }) {
   if (!sepayConfig.bankCode || !sepayConfig.accountNumber) return null;
 
@@ -97,16 +109,26 @@ function buildQrUrl({ amount, content }) {
     acc: sepayConfig.accountNumber,
     bank: sepayConfig.bankCode,
     amount: String(amount),
-    des: content
+    des: normalizeQrText(content),
+    template: 'compact',
+    showinfo: 'true'
   });
 
-  return `https://qr.sepay.vn/img?${params.toString()}`;
+  if (sepayConfig.accountName) {
+    params.set('holder', normalizeQrText(sepayConfig.accountName));
+  }
+
+  return `https://vietqr.app/img?${params.toString()}`;
 }
 
 function createTransferContent(userId) {
   const userSuffix = String(userId || '').replace(/-/g, '').slice(0, 6).toUpperCase();
   const randomSuffix = crypto.randomBytes(3).toString('hex').toUpperCase();
-  return `SEVQRPLUS${userSuffix}${randomSuffix}`;
+  return `SEVQR${userSuffix}${randomSuffix}`;
+}
+
+function isValidSepayTransferContent(content) {
+  return /^SEVQR/i.test(String(content || '').trim());
 }
 
 function extractWebhookApiKey(req) {
@@ -120,15 +142,20 @@ function extractWebhookApiKey(req) {
     || '';
 }
 
+function parseAmount(value = 0) {
+  const normalized = String(value).replace(/[^\d.-]/g, '');
+  return Number(normalized || 0);
+}
+
 function getWebhookAmount(payload = {}) {
   const raw = payload.transferAmount || payload.amount || payload.transfer_amount || payload.money || 0;
-  const normalized = String(raw).replace(/[^\d.-]/g, '');
-  return Number(normalized || 0);
+  return parseAmount(raw);
 }
 
 function getWebhookContent(payload = {}) {
   return String(
     payload.content
+    || payload.code
     || payload.transferContent
     || payload.description
     || payload.transactionContent
@@ -143,11 +170,13 @@ function getWebhookTransactionId(payload = {}) {
 }
 
 function normalizeSepayApiTransaction(row = {}) {
+  const amount = row.transferAmount || row.amount_in || row.amountIn || row.amount || 0;
   return {
     id: String(row.id || row.referenceCode || row.reference_code || row.code || ''),
-    content: String(row.content || row.transaction_content || row.transactionContent || row.description || ''),
-    amount: Number(row.transferAmount || row.amount_in || row.amountIn || row.amount || 0),
-    accountNumber: String(row.accountNumber || row.account_number || ''),
+    content: String(row.content || row.transaction_content || row.transactionContent || row.description || row.code || ''),
+    amount: parseAmount(amount),
+    accountNumber: String(row.accountNumber || row.account_number || '').trim(),
+    transferType: String(row.transferType || row.transfer_type || (parseAmount(row.amount_out || 0) > 0 ? 'out' : 'in')).toLowerCase(),
     raw: row
   };
 }
@@ -171,7 +200,12 @@ async function activatePlusForPayment(payment, payload) {
     WHERE Id = $1
   `, [payment.id, getWebhookTransactionId(payload) || null, JSON.stringify(payload)]);
 
-  return userResult.rows[0];
+  const user = userResult.rows[0];
+  notificationService.notifyPlusActivated(user.id || user.Id, user.plusexpiresat || user.PlusExpiresAt).catch((err) => {
+    console.error('[Notification] Failed to send Plus notification:', err.message);
+  });
+
+  return user;
 }
 
 async function fetchSepayTransactions() {
@@ -183,7 +217,8 @@ async function fetchSepayTransactions() {
       'Content-Type': 'application/json'
     },
     params: {
-      limit: 100
+      limit: 100,
+      ...(sepayConfig.accountNumber ? { account_number: sepayConfig.accountNumber } : {})
     },
     timeout: 20000
   });
@@ -194,6 +229,66 @@ async function fetchSepayTransactions() {
   if (Array.isArray(body?.data)) return body.data;
   if (Array.isArray(body?.data?.transactions)) return body.data.transactions;
   return [];
+}
+
+function payloadToTransaction(payload = {}) {
+  return {
+    id: getWebhookTransactionId(payload) || String(payload.id || payload.code || ''),
+    content: getWebhookContent(payload),
+    amount: getWebhookAmount(payload),
+    accountNumber: String(payload.accountNumber || payload.account_number || '').trim(),
+    transferType: String(payload.transferType || payload.transfer_type || 'in').toLowerCase(),
+    raw: payload
+  };
+}
+
+async function findPendingPaymentForTransaction(transaction) {
+  const pool = getPool();
+  const result = await pool.query(`
+    SELECT Id, UserId, Amount, Status, TransferContent
+    FROM PaymentRequests
+    WHERE Status = 'pending'
+      AND $1 ILIKE '%' || TransferContent || '%'
+      AND Amount <= $2
+    ORDER BY CreatedAt ASC
+    LIMIT 1
+  `, [transaction.content, transaction.amount]);
+
+  return result.rows[0] || null;
+}
+
+async function activatePlusFromTransaction(transaction) {
+  if (!transaction || transaction.transferType === 'out') {
+    return { ignored: true, reason: 'not incoming transaction' };
+  }
+
+  if (sepayConfig.accountNumber && transaction.accountNumber && transaction.accountNumber !== sepayConfig.accountNumber) {
+    return { ignored: true, reason: 'account number mismatch' };
+  }
+
+  const payment = await findPendingPaymentForTransaction(transaction);
+  if (!payment) {
+    console.log('[SePay] no pending payment matches transaction:', transaction.content);
+    return { ignored: true, reason: 'no matching pending payment' };
+  }
+
+  const payload = {
+    id: transaction.id || `sepay-${payment.id}`,
+    transferType: 'in',
+    transferAmount: transaction.amount,
+    content: transaction.content,
+    accountNumber: transaction.accountNumber,
+    source: transaction.raw?.source || 'sepay',
+    raw: transaction.raw
+  };
+
+  const user = await activatePlusForPayment(payment, payload);
+  return {
+    success: true,
+    paymentId: payment.id,
+    userId: payment.userid,
+    subscription: normalizePlan(user)
+  };
 }
 
 const billingService = {
@@ -246,7 +341,18 @@ const billingService = {
       LIMIT 1
     `, [userId]);
 
-    const payment = existing.rows[0] || (await pool.query(`
+    let payment = existing.rows[0] || null;
+
+    if (payment && !isValidSepayTransferContent(payment.transfercontent || payment.TransferContent)) {
+      await pool.query(`
+        UPDATE PaymentRequests
+        SET Status = 'expired'
+        WHERE Id = $1
+      `, [payment.id || payment.Id]);
+      payment = null;
+    }
+
+    payment = payment || (await pool.query(`
       INSERT INTO PaymentRequests (UserId, Plan, Amount, Status, TransferContent, Gateway)
       VALUES ($1, 'plus', $2, 'pending', $3, 'sepay')
       RETURNING Id, Amount, Status, TransferContent, Gateway, SePayTransactionId, CreatedAt, CompletedAt
@@ -322,7 +428,8 @@ const billingService = {
     const match = transactions
       .map(normalizeSepayApiTransaction)
       .find((tx) => (
-        tx.content.includes(payment.transfercontent)
+        tx.transferType !== 'out'
+        && tx.content.toUpperCase().includes(String(payment.transfercontent).toUpperCase())
         && tx.amount >= payment.amount
         && (!sepayConfig.accountNumber || !tx.accountNumber || tx.accountNumber === sepayConfig.accountNumber)
       ));
@@ -359,8 +466,7 @@ const billingService = {
   async handleSepayWebhook(payload = {}) {
     await ensureBillingSchema();
     console.log('[SePay webhook] payload:', JSON.stringify(payload));
-    console.log('[SePay webhook] acknowledged only. Plus activation is handled by manual reconciliation.');
-    return { success: true, acknowledgedOnly: true };
+    return activatePlusFromTransaction(payloadToTransaction(payload));
   }
 };
 

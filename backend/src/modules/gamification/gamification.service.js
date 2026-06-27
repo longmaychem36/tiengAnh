@@ -3,6 +3,7 @@
 // ============================================
 const { sql, getPool } = require('../../config/database');
 const { LEVEL_THRESHOLDS, MAX_LEVEL } = require('../../utils/constants');
+const notificationService = require('../notification/notification.service');
 
 function getLevelForExp(exp = 0) {
   const safeExp = Math.max(0, Number.parseInt(exp, 10) || 0);
@@ -118,6 +119,11 @@ const gamificationService = {
 
     const current = shapeStats(result.rows[0]);
     const levelsGained = Math.max(0, current.Level - before.Level);
+    if (levelsGained > 0) {
+      notificationService.notifyLevelUp(userId, current.Level).catch((err) => {
+        console.error('[Notification] Failed to send level up notification:', err.message);
+      });
+    }
 
     return {
       amount: safeAmount,

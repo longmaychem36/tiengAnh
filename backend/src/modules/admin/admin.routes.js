@@ -7,10 +7,17 @@ const { requireRole } = require('../../middlewares/roleMiddleware');
 const adminGameService = require('./admin.game.service');
 const adminUserService = require('./admin.user.service');
 const adminContentService = require('./admin.content.service');
+const supportController = require('../support/support.controller');
 const { success, badRequest } = require('../../utils/responseHelper');
 
 // All admin routes require at least admin role
 router.use(authMiddleware);
+
+// ========== SUPPORT MANAGEMENT ==========
+router.get('/support/tickets', requireRole('admin'), supportController.getAdminTickets);
+router.get('/support/tickets/:id', requireRole('admin'), supportController.getAdminTicket);
+router.put('/support/tickets/:id/respond', requireRole('admin'), supportController.respondToTicket);
+router.put('/support/tickets/:id/status', requireRole('admin'), supportController.updateTicketStatus);
 
 // ========== SPEAKING MANAGEMENT ==========
 router.get('/speaking/lessons', requireRole('admin'), async (req, res, next) => {

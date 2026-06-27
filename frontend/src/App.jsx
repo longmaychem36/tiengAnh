@@ -12,18 +12,20 @@ import { installSoundEffects } from './utils/soundEffects';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Dictionary from './pages/Dictionary';
 import Collections from './pages/Collections';
 import Games from './pages/Games';
 import GamePlay from './pages/GamePlay';
-import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import Grammar from './pages/Grammar';
 import CoursesHub from './pages/CoursesHub';
 import SkillCourse from './pages/SkillCourse';
 import DailyTasks from './pages/DailyTasks';
 import Onboarding from './pages/Onboarding';
+import Support from './pages/Support';
 
 // New Speaking Module
 import SpeakingList from './components/speaking/SpeakingList';
@@ -46,14 +48,13 @@ import AdminWriting from './pages/admin/AdminWriting';
 import AdminGrammar from './pages/admin/AdminGrammar';
 import AdminReceptive from './pages/admin/AdminReceptive';
 import AdminVocabulary from './pages/admin/AdminVocabulary';
+import AdminSupport from './pages/admin/AdminSupport';
+import AdminNotifications from './pages/admin/AdminNotifications';
 
 function App() {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const isAdmin = user?.role === 'admin';
-  const homePath = user
-    ? (isAdmin ? '/admin' : (user.onboardingCompleted === false ? '/onboarding' : '/dashboard'))
-    : '/login';
 
   useEffect(() => {
     stopAllPlayback();
@@ -79,7 +80,7 @@ function App() {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/" element={<Navigate to={homePath} replace />} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <Login />} />
       <Route path="/register" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <Register />} />
       <Route path="/forgot-password" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <ForgotPassword />} />
@@ -111,7 +112,9 @@ function App() {
         <Route path="/collections" element={<Navigate to="/vocabulary" replace />} />
         <Route path="/games" element={<Games />} />
         <Route path="/games/play/:levelId" element={<GamePlay />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile" element={<Navigate to="/settings" replace />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/support" element={<Support />} />
         <Route path="/progress" element={<Navigate to="/profile" replace />} />
         <Route path="/grammar" element={<Grammar />} />
       </Route>
@@ -127,6 +130,8 @@ function App() {
         <Route path="/admin/vocabulary" element={<AdminVocabulary />} />
         <Route path="/admin/games" element={<AdminGames />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/notifications" element={<AdminNotifications />} />
+        <Route path="/admin/support" element={<AdminSupport />} />
       </Route>
 
       {/* 404 */}

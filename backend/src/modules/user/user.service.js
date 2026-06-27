@@ -2,6 +2,7 @@
 // User Module — Service
 // ============================================
 const axios = require('axios');
+const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const FormData = require('form-data');
 const { sql, getPool } = require('../../config/database');
@@ -9,6 +10,12 @@ const { parsePagination } = require('../../utils/pagination');
 const { ensureOnboardingSchema } = require('../onboarding/onboarding.schema');
 
 let profileSchemaReady = false;
+
+function httpError(message, statusCode = 400) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
 
 async function ensureProfileSchema() {
   if (profileSchemaReady) return;
@@ -180,6 +187,75 @@ const userService = {
       `);
 
     return result.recordset[0] || null;
+  },
+
+  async changePassword(userId, { currentPassword, newPassword }) {
+    if (!currentPassword || !newPassword) {
+      throw httpError('Current password and new password are required', 400);
+    }
+
+    if (String(newPassword).length < 6) {
+      throw httpError('New password must be at least 6 characters', 400);
+    }
+
+    const pool = getPool();
+    const result = await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .query('SELECT Id, PasswordHash FROM Users WHERE Id = @userId');
+
+    const user = result.recordset[0];
+    if (!user) throw httpError('User not found', 404);
+
+    const isMatch = await bcrypt.compare(String(currentPassword), user.PasswordHash || '');
+    if (!isMatch) throw httpError('Current password is incorrect', 400);
+
+    const passwordHash = await bcrypt.hash(String(newPassword), 10);
+    await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .input('passwordHash', sql.NVarChar, passwordHash)
+      .query('UPDATE Users SET PasswordHash = @passwordHash WHERE Id = @userId');
+
+    return { changed: true };
+  },
+
+  async resetLearningProgress(userId) {
+    const pool = getPool();
+    const existing = await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .query('SELECT Id FROM Users WHERE Id = @userId');
+
+    if (existing.recordset.length === 0) throw httpError('User not found', 404);
+
+    const summary = {};
+    const deleteTargets = [
+      ['DailyTasks', 'dailyTasks'],
+      ['StudyTimeDaily', 'studyTime'],
+      ['UserGameProgress', 'gameProgress'],
+      ['GrammarProgress', 'grammarProgress'],
+      ['SpeakingProgress', 'speakingProgress'],
+      ['WritingProgress', 'writingProgress'],
+      ['ListeningProgress', 'listeningProgress'],
+      ['ReadingProgress', 'readingProgress']
+    ];
+
+    for (const [table, key] of deleteTargets) {
+      try {
+        const result = await pool.query(`DELETE FROM ${table} WHERE UserId = $1`, [userId]);
+        summary[key] = result.rowCount || 0;
+      } catch (err) {
+        if (err.code !== '42P01') throw err;
+        summary[key] = 0;
+      }
+    }
+
+    await pool.query(`
+      INSERT INTO UserStats (UserId, Exp, Level, StreakDays, LastLogin)
+      VALUES ($1, 0, 1, 0, NULL)
+      ON CONFLICT (UserId)
+      DO UPDATE SET Exp = 0, Level = 1, StreakDays = 0, LastLogin = NULL
+    `, [userId]);
+
+    return { reset: true, summary };
   },
 
   async getStats(userId) {

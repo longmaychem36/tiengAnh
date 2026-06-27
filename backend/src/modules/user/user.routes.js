@@ -26,6 +26,8 @@ router.use(authMiddleware);
 
 router.get('/', authorize('admin'), userController.getAll);
 router.put('/:id/avatar', learnerOnly(), avatarUpload.single('avatar'), userController.updateAvatar);
+router.put('/:id/password', learnerOnly(), userController.changePassword);
+router.post('/:id/reset-learning', learnerOnly(), userController.resetLearningProgress);
 router.get('/:id', learnerOnly(), userController.getById);
 router.put('/:id', learnerOnly(), userController.update);
 router.get('/:id/stats', learnerOnly(), userController.getStats);

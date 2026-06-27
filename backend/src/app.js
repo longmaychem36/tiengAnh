@@ -27,6 +27,8 @@ const dailyRoutes = require('./modules/daily/daily.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const studyTimeRoutes = require('./modules/study-time/study-time.routes');
 const onboardingRoutes = require('./modules/onboarding/onboarding.routes');
+const supportRoutes = require('./modules/support/support.routes');
+const notificationRoutes = require('./modules/notification/notification.routes');
 const app = express();
 
 // ==================
@@ -72,9 +74,13 @@ app.use('/api/v1/daily-tasks', dailyRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/study-time', studyTimeRoutes);
 app.use('/api/v1/onboarding', onboardingRoutes);
+app.use('/api/v1/support', supportRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 // Admin routes (role-guarded internally)
 const adminRoutes = require('./modules/admin/admin.routes');
+const adminNotificationRoutes = require('./modules/notification/admin.notification.routes');
+app.use('/api/v1/admin/notifications', adminNotificationRoutes);
 app.use('/api/v1/admin', adminRoutes);
 
 // Alias routes: GET /user/stats and POST /user/exp

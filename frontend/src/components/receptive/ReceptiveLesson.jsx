@@ -482,7 +482,7 @@ const ReceptiveLesson = ({ skill }) => {
     <LessonCard
       className="listening-player-card"
       title="Audio"
-      action={allAnswered ? (
+      action={checked ? (
         <SecondaryButton onClick={() => setShowTranscript((current) => !current)}>
           {showTranscript ? <FiEyeOff /> : <FiEye />}
           {showTranscript ? 'Ẩn' : 'Text'}
@@ -495,7 +495,7 @@ const ReceptiveLesson = ({ skill }) => {
         </button>
         <div className="audio-player-copy">
           <strong>Đoạn {seekValue + 1}</strong>
-          <span>{lesson.transcript?.[seekValue]?.text || ''}</span>
+          {checked && <span>{lesson.transcript?.[seekValue]?.text || ''}</span>}
         </div>
       </div>
 
@@ -528,7 +528,7 @@ const ReceptiveLesson = ({ skill }) => {
         </label>
       </div>
 
-      {showTranscript && (
+      {checked && showTranscript && (
         <div className="transcript-chat">
           {lesson.transcript.map((line, index) => (
             <div key={`${line.speaker}-${index}`} className={`transcript-bubble-row ${activeLineIndex === index ? 'is-active' : ''}`}>

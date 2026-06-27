@@ -6,6 +6,7 @@ const palettes = {
   dictionary: ['#ecfbff', '#1cb0f6', '#2dd4bf', '#ffc800'],
   vocabulary: ['#fff8df', '#ffc800', '#ff9600', '#58cc02'],
   profile: ['#f3f0ff', '#8b5cf6', '#1cb0f6', '#ff7a59'],
+  more: ['#f3f0ff', '#b86cff', '#1cb0f6', '#ffb020'],
   admin: ['#e8f7ff', '#1cb0f6', '#58cc02', '#ffc800'],
   listening: ['#e8f7ff', '#1cb0f6', '#7dd3fc', '#ff7a59'],
   reading: ['#f1edff', '#8b5cf6', '#c4b5fd', '#ffc800'],
@@ -13,6 +14,7 @@ const palettes = {
   writing: ['#eafbea', '#58cc02', '#22c55e', '#ffb020'],
   games: ['#fff4dc', '#ff9600', '#58cc02', '#1cb0f6'],
   users: ['#f3f0ff', '#8b5cf6', '#1cb0f6', '#58cc02'],
+  support: ['#ecfbff', '#1cb0f6', '#2dd4bf', '#ffb020'],
   placement: ['#fff2c7', '#ffc800', '#ff4b4b', '#1cb0f6'],
   logout: ['#ffecec', '#ff4b4b', '#ff7a59', '#ffc800'],
 };
@@ -109,6 +111,28 @@ function SoftIcon({ name = 'courses', size = 38, className = '', title }) {
         <path d="M17 49c2-10 9-15 15-15s13 5 15 15" fill="var(--soft-accent)" />
         <circle cx="43" cy="39" r="7" fill="var(--soft-extra)" />
         <path d="m40 39 3 3 5-7" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </Base>
+    );
+  }
+
+  if (name === 'more') {
+    return (
+      <Base name={name} size={size} className={className} title={title}>
+        <circle cx="24" cy="32" r="5" fill="var(--soft-main)" />
+        <circle cx="32" cy="32" r="5" fill="var(--soft-accent)" />
+        <circle cx="40" cy="32" r="5" fill="var(--soft-extra)" />
+      </Base>
+    );
+  }
+
+  if (name === 'support') {
+    return (
+      <Base name={name} size={size} className={className} title={title}>
+        <path d="M17 27c0-7 6-12 15-12s15 5 15 12c0 8-6 12-15 12h-6l-8 8 2-10c-2-2-3-5-3-10z" fill="var(--soft-main)" />
+        <path d="M28 25c1-3 7-3 8 0 1 4-4 5-4 9" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+        <circle cx="32" cy="42" r="3" fill="#fff" />
+        <circle cx="45" cy="45" r="7" fill="var(--soft-accent)" />
+        <path d="m42 45 2 2 5-5" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       </Base>
     );
   }

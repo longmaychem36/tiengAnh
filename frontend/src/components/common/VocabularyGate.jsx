@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
@@ -39,7 +39,7 @@ const dedupeVocabulary = (items = []) => {
     });
 };
 
-const VocabularyGate = ({
+function VocabularyGate({
   items,
   title,
   skillLabel,
@@ -51,17 +51,29 @@ const VocabularyGate = ({
   passMessage = 'Đã mở khóa bài học.',
   continueLabel = 'Vào làm bài',
   oneByOne = false
-}) => {
-  const vocabulary = useMemo(() => dedupeVocabulary(items), [items]);
+}) {
+  const fullVocabulary = useMemo(() => dedupeVocabulary(items), [items]);
+  const [retryVocabulary, setRetryVocabulary] = useState(null);
+  const vocabulary = retryVocabulary?.length ? retryVocabulary : fullVocabulary;
+  const isRetryRound = Boolean(retryVocabulary?.length);
+
   const [phase, setPhase] = useState(allowStudy ? 'study' : 'test');
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
-
-  // oneByOne specific states
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnswerChecked, setIsAnswerChecked] = useState(false);
 
+  useEffect(() => {
+    setRetryVocabulary(null);
+    setPhase(allowStudy ? 'study' : 'test');
+    setAnswers({});
+    setSubmitted(false);
+    setCurrentIndex(0);
+    setIsAnswerChecked(false);
+  }, [allowStudy, fullVocabulary]);
+
   const correctCount = vocabulary.filter((item, index) => normalize(answers[index]) === normalize(item.word)).length;
+  const displayCorrectCount = submitted ? correctCount : 0;
   const score = vocabulary.length ? Math.round((correctCount / vocabulary.length) * 100) : 100;
   const isComplete = vocabulary.every((_, index) => String(answers[index] || '').trim());
   const isPassed = submitted && score === 100;
@@ -81,14 +93,23 @@ const VocabularyGate = ({
     playSound('tap');
   };
 
-  const startTest = () => {
-    setPhase('test');
-    setSubmitted(false);
+  const resetTestState = () => {
     setAnswers({});
+    setSubmitted(false);
     setCurrentIndex(0);
     setIsAnswerChecked(false);
+  };
+
+  const startTest = () => {
+    setRetryVocabulary(null);
+    setPhase('test');
+    resetTestState();
     playSound('confirm');
   };
+
+  const getWrongItems = () => (
+    vocabulary.filter((item, index) => normalize(answers[index]) !== normalize(item.word))
+  );
 
   const handleSubmit = () => {
     if (!isComplete) {
@@ -109,11 +130,9 @@ const VocabularyGate = ({
       return;
     }
 
-    setIsAnswerChecked(true);
     const item = vocabulary[currentIndex];
     const isCorrect = normalize(currentAnswer) === normalize(item.word);
-
-    // Auto-speak word on check
+    setIsAnswerChecked(true);
     speakText(item.word, { lang: 'en-US', rate: 0.92 });
     playSound(isCorrect ? 'success' : 'error');
   };
@@ -122,40 +141,37 @@ const VocabularyGate = ({
     if (currentIndex < vocabulary.length - 1) {
       setCurrentIndex((prev) => prev + 1);
       setIsAnswerChecked(false);
-    } else {
-      setSubmitted(true);
-      const finalCorrectCount = vocabulary.filter((item, idx) => normalize(answers[idx]) === normalize(item.word)).length;
-      const finalScore = vocabulary.length ? Math.round((finalCorrectCount / vocabulary.length) * 100) : 100;
-      playSound(finalScore === 100 ? 'success' : 'error');
+      return;
     }
+
+    setSubmitted(true);
+    const finalCorrectCount = vocabulary.filter((item, idx) => normalize(answers[idx]) === normalize(item.word)).length;
+    const finalScore = vocabulary.length ? Math.round((finalCorrectCount / vocabulary.length) * 100) : 100;
+    playSound(finalScore === 100 ? 'success' : 'error');
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (!isAnswerChecked) {
-        handleCheckOneByOne();
-      } else {
-        handleNextOneByOne();
-      }
+  const handleKeyDown = (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    if (!isAnswerChecked) {
+      handleCheckOneByOne();
+    } else {
+      handleNextOneByOne();
     }
   };
 
   const handleRetry = () => {
-    setAnswers({});
-    setSubmitted(false);
-    setCurrentIndex(0);
-    setIsAnswerChecked(false);
+    const wrongItems = getWrongItems();
+    setRetryVocabulary(wrongItems.length ? wrongItems : null);
+    resetTestState();
     playSound('tap');
   };
 
   const handleBackToStudy = () => {
     if (!allowStudy) return;
+    setRetryVocabulary(null);
     setPhase('study');
-    setAnswers({});
-    setSubmitted(false);
-    setCurrentIndex(0);
-    setIsAnswerChecked(false);
+    resetTestState();
     playSound('tap');
   };
 
@@ -179,13 +195,13 @@ const VocabularyGate = ({
       <section className="vocab-gate-hero">
         <div>
           <span className="receptive-eyebrow">{skillLabel} · {phase === 'study' ? 'học từ' : 'kiểm tra'}</span>
-          <h1>{phase === 'study' ? 'Học từ vựng trước khi vào bài' : 'Gõ lại từ đã học'}</h1>
+          <h1>{phase === 'study' ? 'Học từ vựng trước khi vào bài' : (isRetryRound ? 'Gõ lại các từ chưa đúng' : 'Gõ lại từ đã học')}</h1>
           <p>{title}</p>
         </div>
         <div className="vocab-gate-score">
           <FiTarget />
           <strong>Pass 100%</strong>
-          <span>{phase === 'study' ? `${vocabulary.length} từ cần học` : `${correctCount}/${vocabulary.length} từ đúng`}</span>
+          <span>{phase === 'study' ? `${fullVocabulary.length} từ cần học` : `${displayCorrectCount}/${vocabulary.length} từ đúng`}</span>
         </div>
       </section>
 
@@ -197,7 +213,7 @@ const VocabularyGate = ({
           </div>
 
           <div className="vocab-card-list vocab-study-grid">
-            {vocabulary.map((item, index) => (
+            {fullVocabulary.map((item, index) => (
               <motion.article
                 key={`${item.word}-${item.meaning}`}
                 className="vocab-study-card is-large"
@@ -233,10 +249,10 @@ const VocabularyGate = ({
                 <h2>{score}%</h2>
                 <span>Đúng {correctCount}/{vocabulary.length} từ</span>
               </div>
-              
+
               <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, marginTop: 'var(--space-4)' }}>
-                {score === 100 
-                  ? 'Tuyệt vời! Bạn đã thuộc tất cả các từ!' 
+                {score === 100
+                  ? 'Tuyệt vời! Bạn đã thuộc tất cả các từ!'
                   : 'Hãy ôn lại các từ chưa chính xác nhé!'}
               </h3>
             </div>
@@ -269,7 +285,7 @@ const VocabularyGate = ({
             <div className="vocab-gate-actions">
               {score < 100 ? (
                 <button type="button" className="btn btn-secondary" onClick={handleRetry}>
-                  <FiRefreshCw /> Thử lại
+                  <FiRefreshCw /> Làm lại từ sai
                 </button>
               ) : (
                 <button type="button" className="btn btn-primary" onClick={handleContinue}>
@@ -281,20 +297,20 @@ const VocabularyGate = ({
         ) : (
           <section className="vocab-quiz-panel vocab-typing-panel one-by-one-layout">
             <div className="vocab-progress-container">
-              <div 
-                className="vocab-progress-bar" 
+              <div
+                className="vocab-progress-bar"
                 style={{ width: `${(currentIndex / vocabulary.length) * 100}%` }}
               />
             </div>
 
             <div className="vocab-flashcard-wrapper">
               <div className="vocab-flashcard-header">
-                <span>Học phần: {title}</span>
+                <span>{isRetryRound ? 'Luyện lại từ sai' : `Học phần: ${title}`}</span>
                 <span>Từ {currentIndex + 1} / {vocabulary.length}</span>
               </div>
 
               <motion.div
-                key={currentIndex}
+                key={`${vocabulary[currentIndex]?.word}-${currentIndex}`}
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.25 }}
@@ -318,7 +334,7 @@ const VocabularyGate = ({
                     autoComplete="off"
                     autoFocus
                     onKeyDown={handleKeyDown}
-                    onChange={(e) => setAnswers((current) => ({ ...current, [currentIndex]: e.target.value }))}
+                    onChange={(event) => setAnswers((current) => ({ ...current, [currentIndex]: event.target.value }))}
                   />
                 </div>
               </motion.div>
@@ -408,7 +424,7 @@ const VocabularyGate = ({
                   Cần đúng 100% để mở bài học chính thức.
                 </div>
                 <button type="button" className="btn btn-secondary" onClick={handleRetry}>
-                  <FiRefreshCw /> Gõ lại
+                  <FiRefreshCw /> Gõ lại từ sai
                 </button>
               </>
             )}
@@ -427,6 +443,6 @@ const VocabularyGate = ({
       )}
     </div>
   );
-};
+}
 
 export default VocabularyGate;
