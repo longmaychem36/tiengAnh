@@ -5,6 +5,8 @@ const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.
 
 const PLAN_VERSION = 2;
 const DAILY_LEARNING_TASK_COUNT = 4;
+const DAILY_DUE_TASK_TARGET = 2;
+const DAILY_NEW_TASK_TARGET = 2;
 const DAILY_TASK_REWARDS = {
   daily_login: 10,
   listening_lesson: 20,
@@ -40,6 +42,13 @@ function daysBetween(fromDate, toDate) {
   return Math.max(0, Math.floor((to - from) / 86400000));
 }
 
+function normalizeStoredTaskReason(reason, { overdueDays = 0 } = {}) {
+  const text = String(reason || '').trim();
+  if (!text) return '';
+  if (!text.includes('SM-2') && !text.includes('lịch ghi nhớ')) return text;
+  return 'Đã đến lúc ôn lại để ghi nhớ tốt hơn.';
+}
+
 function shapeTask(row) {
   const targetType = row.targettype || row.TargetType;
   const targetId = row.targetid || row.TargetId;
@@ -48,6 +57,7 @@ function shapeTask(row) {
   const planVersion = Number(row.planversion || row.PlanVersion || 1);
   const dueDate = toDateString(row.duedate || row.DueDate);
   const today = getSaigonDate();
+  const overdueDays = taskMode === 'review' && dueDate ? daysBetween(dueDate, today) : 0;
   const urlByType = {
     daily_login: '/daily-tasks',
     writing_lesson: `/writing/lessons/${targetId}`,
@@ -69,7 +79,7 @@ function shapeTask(row) {
     targetId,
     title: row.title || row.Title,
     description: row.description || row.Description || '',
-    reason: row.reason || row.Reason || '',
+    reason: normalizeStoredTaskReason(row.reason || row.Reason || '', { overdueDays }),
     status,
     orderIndex: row.orderindex ?? row.OrderIndex ?? 0,
     aiRationale: row.airationale || row.AiRationale || '',
@@ -79,7 +89,7 @@ function shapeTask(row) {
     planVersion,
     taskMode,
     dueDate,
-    overdueDays: taskMode === 'review' && dueDate ? daysBetween(dueDate, today) : 0
+    overdueDays
   };
 }
 
@@ -138,9 +148,7 @@ function candidateFromRow(row, config) {
     lastAssignedAt: row.lastassignedat || null,
     reason: taskMode === 'new'
       ? 'Nội dung mới phù hợp với tiến độ hiện tại của bạn.'
-      : overdueDays > 0
-        ? `Đã quá hạn ôn ${overdueDays} ngày theo lịch ghi nhớ SM-2.`
-        : 'Đến hạn ôn lại theo lịch ghi nhớ SM-2.',
+      : 'Đã đến lúc ôn lại để ghi nhớ tốt hơn.',
     aiRationale: taskMode === 'new' ? 'sm2_new' : overdueDays > 0 ? 'sm2_overdue' : 'sm2_due',
     rewardExp: DAILY_TASK_REWARDS[config.targetType] || DAILY_TASK_REWARDS.default
   };
@@ -200,6 +208,7 @@ async function collectDueCandidates(userId, { includePlusSkills }) {
         WHERE sri.UserId = $1
           AND sri.TargetType = $2
           AND sri.DueDate <= $3
+          AND COALESCE(sri.IsMastered, false) = false
           ${spec.extraWhere || ''}
         ORDER BY sri.DueDate ASC, sri.EaseFactor ASC, sri.LastAssignedAt ASC NULLS FIRST
         LIMIT 30
@@ -350,44 +359,50 @@ function sortDueCandidates(candidates) {
   ));
 }
 
+function pushDiverseCandidates(candidates, selected, usedTargets, usedSkills, limit) {
+  if (selected.length >= limit) return;
+
+  for (const candidate of candidates) {
+    const key = `${candidate.targetType}:${candidate.targetId}`;
+    if (usedTargets.has(key) || usedSkills.has(candidate.skill)) continue;
+    selected.push(candidate);
+    usedTargets.add(key);
+    usedSkills.add(candidate.skill);
+    if (selected.length >= limit) return;
+  }
+
+  for (const candidate of candidates) {
+    const key = `${candidate.targetType}:${candidate.targetId}`;
+    if (usedTargets.has(key)) continue;
+    selected.push(candidate);
+    usedTargets.add(key);
+    usedSkills.add(candidate.skill);
+    if (selected.length >= limit) return;
+  }
+}
+
 function selectDiverseTasks(dueCandidates, newCandidates, count = DAILY_LEARNING_TASK_COUNT, excluded = new Set()) {
   const selected = [];
   const usedTargets = new Set(excluded);
   const usedSkills = new Set();
   const due = sortDueCandidates(dueCandidates).filter((item) => !usedTargets.has(`${item.targetType}:${item.targetId}`));
+  const fresh = newCandidates.filter((item) => !usedTargets.has(`${item.targetType}:${item.targetId}`));
 
-  for (const candidate of due) {
-    if (usedSkills.has(candidate.skill)) continue;
-    selected.push(candidate);
-    usedSkills.add(candidate.skill);
-    usedTargets.add(`${candidate.targetType}:${candidate.targetId}`);
-    if (selected.length >= count) return selected;
+  const dueTarget = Math.min(DAILY_DUE_TASK_TARGET, count);
+  pushDiverseCandidates(due, selected, usedTargets, usedSkills, dueTarget);
+
+  const newTarget = Math.min(count, selected.length + Math.min(DAILY_NEW_TASK_TARGET, count - selected.length));
+  pushDiverseCandidates(fresh, selected, usedTargets, usedSkills, newTarget);
+
+  if (selected.length < count) {
+    pushDiverseCandidates(fresh, selected, usedTargets, usedSkills, count);
   }
-  for (const candidate of due) {
-    const key = `${candidate.targetType}:${candidate.targetId}`;
-    if (usedTargets.has(key)) continue;
-    selected.push(candidate);
-    usedTargets.add(key);
-    if (selected.length >= count) return selected;
+  if (selected.length < count) {
+    pushDiverseCandidates(due, selected, usedTargets, usedSkills, count);
   }
-  for (const candidate of newCandidates) {
-    const key = `${candidate.targetType}:${candidate.targetId}`;
-    if (usedTargets.has(key) || usedSkills.has(candidate.skill)) continue;
-    selected.push(candidate);
-    usedSkills.add(candidate.skill);
-    usedTargets.add(key);
-    if (selected.length >= count) return selected;
-  }
-  for (const candidate of newCandidates) {
-    const key = `${candidate.targetType}:${candidate.targetId}`;
-    if (usedTargets.has(key)) continue;
-    selected.push(candidate);
-    usedTargets.add(key);
-    if (selected.length >= count) return selected;
-  }
+
   return selected;
 }
-
 function getStarterTask() {
   return {
     targetType: 'daily_login', targetId: 'today', skill: 'habit',

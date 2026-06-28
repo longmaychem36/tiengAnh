@@ -60,6 +60,12 @@ function formatHours(value) {
   return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
 }
 
+function getDisplayTaskReason(task) {
+  const text = String(task.reason || task.description || '').trim();
+  if (!text.includes('SM-2') && !text.includes('lịch ghi nhớ')) return text;
+  return 'Đã đến lúc ôn lại để ghi nhớ tốt hơn.';
+}
+
 function Dashboard() {
   const { user } = useAuth();
   const [overview, setOverview] = useState(null);
@@ -241,7 +247,7 @@ function Dashboard() {
                     {completed && <FiCheckCircle />}
                   </div>
                   <h3>{task.title}</h3>
-                  <p>{task.reason || task.description}</p>
+                  <p>{getDisplayTaskReason(task)}</p>
                   <div className="daily-task-actions">
                     <Link className="btn btn-primary btn-sm" to={task.url || '/dashboard'}>
                       Luyện ngay

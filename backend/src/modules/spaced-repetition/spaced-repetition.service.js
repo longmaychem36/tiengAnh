@@ -86,6 +86,11 @@ function calculateNextReview(state = {}, rawScore, today = getSaigonDate()) {
   };
 }
 
+function isPerfectScore(rawScore) {
+  const score = Math.min(100, Math.max(0, Math.round(Number(rawScore) || 0)));
+  return score === 100;
+}
+
 function assertTargetType(targetType) {
   if (!TARGET_TYPES.has(targetType)) {
     const error = new Error(`Unsupported spaced repetition target type: ${targetType}`);
@@ -120,6 +125,8 @@ async function ensureSchema() {
       LastReviewedAt TIMESTAMPTZ,
       DueDate DATE NOT NULL DEFAULT ((NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date),
       LastAssignedAt TIMESTAMPTZ,
+      IsMastered BOOLEAN NOT NULL DEFAULT false,
+      MasteredAt TIMESTAMPTZ,
       CreatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UpdatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (UserId, TargetType, TargetId)
@@ -151,6 +158,8 @@ async function ensureSchema() {
   await pool.query('ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS PlanVersion SMALLINT NOT NULL DEFAULT 1');
   await pool.query("ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS TaskMode VARCHAR(20) NOT NULL DEFAULT 'new'");
   await pool.query('ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS DueDate DATE');
+  await pool.query('ALTER TABLE SpacedRepetitionItems ADD COLUMN IF NOT EXISTS IsMastered BOOLEAN NOT NULL DEFAULT false');
+  await pool.query('ALTER TABLE SpacedRepetitionItems ADD COLUMN IF NOT EXISTS MasteredAt TIMESTAMPTZ');
 
   schemaReady = true;
 }
@@ -189,7 +198,7 @@ async function recordReview({ userId, targetType, targetId, score, attemptId }) 
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`${userId}:${safeAttemptId}`]);
     const duplicate = await client.query(`
-      SELECT r.*, i.DueDate, i.IntervalDays, i.Repetitions, i.EaseFactor, i.Lapses
+      SELECT r.*, i.DueDate, i.IntervalDays, i.Repetitions, i.EaseFactor, i.Lapses, i.IsMastered, i.MasteredAt
       FROM SpacedRepetitionReviews r
       INNER JOIN SpacedRepetitionItems i ON i.Id = r.ItemId
       WHERE r.UserId = $1 AND r.AttemptId = $2
@@ -212,6 +221,7 @@ async function recordReview({ userId, targetType, targetId, score, attemptId }) 
     `, [userId, targetType, String(targetId)]);
     const current = currentResult.rows[0];
     const next = calculateNextReview(current, score);
+    const masteredByPerfectScore = isPerfectScore(next.score);
 
     const updatedResult = await client.query(`
       UPDATE SpacedRepetitionItems
@@ -223,8 +233,10 @@ async function recordReview({ userId, targetType, targetId, score, attemptId }) 
           LastQuality = $6,
           LastReviewedAt = NOW(),
           DueDate = $7,
+          IsMastered = CASE WHEN $8::boolean THEN true ELSE IsMastered END,
+          MasteredAt = CASE WHEN $8::boolean THEN COALESCE(MasteredAt, NOW()) ELSE MasteredAt END,
           UpdatedAt = NOW()
-      WHERE Id = $8
+      WHERE Id = $9
       RETURNING *
     `, [
       next.easeFactor,
@@ -234,6 +246,7 @@ async function recordReview({ userId, targetType, targetId, score, attemptId }) 
       next.score,
       next.quality,
       next.dueDate,
+      masteredByPerfectScore,
       current.id
     ]);
 
@@ -325,6 +338,7 @@ module.exports = {
   formatDueDate,
   qualityFromScore,
   calculateNextReview,
+  isPerfectScore,
   ensureSchema,
   registerItem,
   markAssigned,

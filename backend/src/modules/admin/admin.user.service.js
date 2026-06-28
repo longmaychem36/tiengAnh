@@ -250,7 +250,7 @@ const adminUserService = {
       pool.query(`
         SELECT COUNT(*)::int AS Total,
                COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS Completed,
-               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS Due,
+               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS Due,
                COALESCE(ROUND(AVG(LastScore))::int, 0) AS AverageScore,
                MAX(LastReviewedAt) AS LastActivityAt
         FROM SpacedRepetitionItems
@@ -267,12 +267,13 @@ const adminUserService = {
       pool.query(`
         SELECT COUNT(*)::int AS TotalItems,
                COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS ReviewedItems,
-               COUNT(*) FILTER (WHERE LastReviewedAt IS NULL)::int AS NewItems,
-               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS DueItems,
-               COUNT(*) FILTER (WHERE DueDate < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS OverdueItems,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NULL AND COALESCE(IsMastered, false) = false)::int AS NewItems,
+               COUNT(*) FILTER (WHERE COALESCE(IsMastered, false) = true)::int AS MasteredItems,
+               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS DueItems,
+               COUNT(*) FILTER (WHERE DueDate < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS OverdueItems,
                COALESCE(ROUND(AVG(EaseFactor), 2), 0) AS AverageEaseFactor,
                COALESCE(SUM(Lapses), 0)::int AS TotalLapses,
-               MIN(DueDate) AS NextDueDate,
+               MIN(DueDate) FILTER (WHERE COALESCE(IsMastered, false) = false) AS NextDueDate,
                MAX(LastReviewedAt) AS LastReviewedAt
         FROM SpacedRepetitionItems
         WHERE UserId = $1
@@ -281,8 +282,9 @@ const adminUserService = {
         SELECT TargetType,
                COUNT(*)::int AS Total,
                COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS Reviewed,
-               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS Due,
-               COUNT(*) FILTER (WHERE DueDate < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS Overdue,
+               COUNT(*) FILTER (WHERE COALESCE(IsMastered, false) = true)::int AS Mastered,
+               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS Due,
+               COUNT(*) FILTER (WHERE DueDate < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS Overdue,
                COALESCE(ROUND(AVG(LastScore))::int, 0) AS AverageScore,
                COALESCE(SUM(Lapses), 0)::int AS Lapses
         FROM SpacedRepetitionItems
@@ -374,6 +376,7 @@ const adminUserService = {
           totalItems: Number(sr.totalitems || 0),
           reviewedItems: Number(sr.revieweditems || 0),
           newItems: Number(sr.newitems || 0),
+          masteredItems: Number(sr.mastereditems || 0),
           dueItems: Number(sr.dueitems || 0),
           overdueItems: Number(sr.overdueitems || 0),
           averageEaseFactor: Number(sr.averageeasefactor || 0),

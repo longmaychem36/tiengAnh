@@ -191,6 +191,7 @@ function AdminLearnerDetail() {
         <div className="admin-learner-sr-metrics">
           <OverviewMetric icon={FiBookOpen} label="Nội dung theo dõi" value={srSummary.totalItems || 0} />
           <OverviewMetric icon={FiCheckCircle} label="Đã ôn" value={srSummary.reviewedItems || 0} />
+          <OverviewMetric icon={FiTarget} label="Thành thạo" value={srSummary.masteredItems || 0} detail="Đã từng đạt 100%" />
           <OverviewMetric icon={FiClock} label="Đến hạn" value={srSummary.dueItems || 0} detail={`${srSummary.overdueItems || 0} quá hạn`} />
           <OverviewMetric icon={FiTrendingUp} label="Ease factor TB" value={Number(srSummary.averageEaseFactor || 0).toFixed(2)} />
           <OverviewMetric icon={FiRefreshCw} label="Số lần quên" value={srSummary.totalLapses || 0} />

@@ -38,8 +38,14 @@ function getMeta(task) {
 function getTaskModeLabel(task) {
   if (task.taskMode === 'habit') return 'Thói quen';
   if (task.taskMode === 'new') return 'Bài mới';
-  if (Number(task.overdueDays || 0) > 0) return `Quá hạn ${task.overdueDays} ngày`;
-  return 'Đến hạn ôn';
+
+  return 'Ôn tập';
+}
+
+function getDisplayReason(task) {
+  const text = String(task.reason || task.description || '').trim();
+  if (!text.includes('SM-2') && !text.includes('lịch ghi nhớ')) return text;
+  return 'Đã đến lúc ôn lại để ghi nhớ tốt hơn.';
 }
 
 function DailyTasks() {
@@ -127,7 +133,7 @@ function DailyTasks() {
                         <strong>+{task.rewardExp || 10} EXP</strong>
                       </div>
                       <h3>{task.title}</h3>
-                      <p>{task.reason || task.description}</p>
+                      <p>{getDisplayReason(task)}</p>
                     </div>
                     <div className="daily-quest-actions">
                       {completed ? (

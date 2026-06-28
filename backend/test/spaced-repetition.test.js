@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const {
   qualityFromScore,
   calculateNextReview,
-  formatDueDate
+  formatDueDate,
+  isPerfectScore
 } = require('../src/modules/spaced-repetition/spaced-repetition.service');
 
 test('maps score boundaries to SM-2 quality', () => {
@@ -45,6 +46,13 @@ test('failed review resets repetitions and increments lapses', () => {
 test('ease factor never drops below 1.3', () => {
   const next = calculateNextReview({ easeFactor: 1.3 }, 0, '2026-06-28');
   assert.equal(next.easeFactor, 1.3);
+});
+
+test('masters any perfect score', () => {
+  assert.equal(isPerfectScore(100), true);
+  assert.equal(isPerfectScore(99), false);
+  assert.equal(isPerfectScore(95), false);
+  assert.equal(isPerfectScore('100'), true);
 });
 
 test('formats PostgreSQL date values in the application timezone', () => {
