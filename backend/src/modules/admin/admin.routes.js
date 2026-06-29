@@ -561,6 +561,14 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
         return fallback;
       }
     };
+    const rows = async (query, fallback = []) => {
+      try {
+        const result = await pool.query(query);
+        return result.rows || fallback;
+      } catch {
+        return fallback;
+      }
+    };
 
     const queries = await Promise.all([
       countTable('Users'),
@@ -591,14 +599,117 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       scalar("SELECT COALESCE(SUM(Exp), 0)::int FROM UserStats"),
     ]);
 
-    const topLearners = await pool.query(`
-      SELECT u.Id, u.Username, u.Email, COALESCE(us.Exp, 0)::int AS Exp, COALESCE(us.Level, 1)::int AS Level, COALESCE(us.StreakDays, 0)::int AS StreakDays
+    const topLearnersByExp = await rows(`
+      SELECT u.Id, u.Username, u.Email, u.Plan,
+             COALESCE(us.Exp, 0)::int AS Exp,
+             COALESCE(us.Level, 1)::int AS Level,
+             COALESCE(us.StreakDays, 0)::int AS StreakDays,
+             us.LastLogin
       FROM Users u
       LEFT JOIN UserStats us ON us.UserId = u.Id
       WHERE u.Role = 'user'
-      ORDER BY COALESCE(us.Exp, 0) DESC, u.CreatedAt DESC
+      ORDER BY COALESCE(us.Exp, 0) DESC, COALESCE(us.Level, 1) DESC, COALESCE(us.StreakDays, 0) DESC, u.CreatedAt DESC
       LIMIT 8
     `);
+
+    const topLearnersByStreak = await rows(`
+      SELECT u.Id, u.Username, u.Email, u.Plan,
+             COALESCE(us.StreakDays, 0)::int AS StreakDays,
+             COALESCE(us.Exp, 0)::int AS Exp,
+             COALESCE(us.Level, 1)::int AS Level,
+             us.LastLogin
+      FROM Users u
+      LEFT JOIN UserStats us ON us.UserId = u.Id
+      WHERE u.Role = 'user'
+      ORDER BY COALESCE(us.StreakDays, 0) DESC, COALESCE(us.Exp, 0) DESC, u.CreatedAt DESC
+      LIMIT 8
+    `);
+
+    const topLearnersByStudyTime30d = await rows(`
+      SELECT u.Id, u.Username, u.Email, u.Plan,
+             COALESCE(SUM(std.ActiveSeconds), 0)::int AS ActiveSeconds,
+             COUNT(std.ActivityDate)::int AS ActiveDays,
+             COALESCE(us.Exp, 0)::int AS Exp,
+             COALESCE(us.StreakDays, 0)::int AS StreakDays
+      FROM Users u
+      LEFT JOIN UserStats us ON us.UserId = u.Id
+      LEFT JOIN StudyTimeDaily std ON std.UserId = u.Id AND std.ActivityDate >= CURRENT_DATE - 29
+      WHERE u.Role = 'user'
+      GROUP BY u.Id, u.Username, u.Email, u.Plan, us.Exp, us.StreakDays
+      HAVING COALESCE(SUM(std.ActiveSeconds), 0) > 0
+      ORDER BY COALESCE(SUM(std.ActiveSeconds), 0) DESC, COUNT(std.ActivityDate) DESC, COALESCE(us.Exp, 0) DESC
+      LIMIT 8
+    `);
+
+    const topLearnersByDailyTasks30d = await rows(`
+      SELECT u.Id, u.Username, u.Email, u.Plan,
+             COUNT(dt.Id)::int AS CompletedTasks,
+             COALESCE(SUM(dt.RewardExp), 0)::int AS EarnedExp,
+             COALESCE(us.Exp, 0)::int AS Exp,
+             COALESCE(us.StreakDays, 0)::int AS StreakDays
+      FROM Users u
+      LEFT JOIN UserStats us ON us.UserId = u.Id
+      LEFT JOIN DailyTasks dt ON dt.UserId = u.Id AND dt.Status = 'completed' AND dt.TaskDate >= CURRENT_DATE - 29
+      WHERE u.Role = 'user'
+      GROUP BY u.Id, u.Username, u.Email, u.Plan, us.Exp, us.StreakDays
+      HAVING COUNT(dt.Id) > 0
+      ORDER BY COUNT(dt.Id) DESC, COALESCE(SUM(dt.RewardExp), 0) DESC, COALESCE(us.Exp, 0) DESC
+      LIMIT 8
+    `);
+
+    const learnersNeedingAttention = await rows(`
+      SELECT u.Id, u.Username, u.Email, u.Plan,
+             COALESCE(us.Exp, 0)::int AS Exp,
+             COALESCE(us.StreakDays, 0)::int AS StreakDays,
+             us.LastLogin,
+             COALESCE(std.ActiveSeconds30d, 0)::int AS ActiveSeconds30d,
+             COALESCE(dt.CompletedTasks30d, 0)::int AS CompletedTasks30d,
+             CASE
+               WHEN COALESCE(u.IsActive, true) = false THEN 'Tài khoản đang bị khóa'
+               WHEN us.LastLogin IS NULL THEN 'Chưa từng đăng nhập'
+               WHEN us.LastLogin < NOW() - INTERVAL '14 days' THEN 'Không đăng nhập hơn 14 ngày'
+               WHEN COALESCE(std.ActiveSeconds30d, 0) = 0 THEN 'Không có thời gian học 30 ngày'
+               WHEN COALESCE(dt.CompletedTasks30d, 0) = 0 THEN 'Chưa hoàn thành nhiệm vụ 30 ngày'
+               ELSE 'Cần theo dõi'
+             END AS Reason
+      FROM Users u
+      LEFT JOIN UserStats us ON us.UserId = u.Id
+      LEFT JOIN (
+        SELECT UserId, SUM(ActiveSeconds)::int AS ActiveSeconds30d
+        FROM StudyTimeDaily
+        WHERE ActivityDate >= CURRENT_DATE - 29
+        GROUP BY UserId
+      ) std ON std.UserId = u.Id
+      LEFT JOIN (
+        SELECT UserId, COUNT(*)::int AS CompletedTasks30d
+        FROM DailyTasks
+        WHERE Status = 'completed' AND TaskDate >= CURRENT_DATE - 29
+        GROUP BY UserId
+      ) dt ON dt.UserId = u.Id
+      WHERE u.Role = 'user'
+        AND (
+          COALESCE(u.IsActive, true) = false
+          OR us.LastLogin IS NULL
+          OR us.LastLogin < NOW() - INTERVAL '14 days'
+          OR COALESCE(std.ActiveSeconds30d, 0) = 0
+          OR COALESCE(dt.CompletedTasks30d, 0) = 0
+        )
+      ORDER BY
+        CASE WHEN COALESCE(u.IsActive, true) = false THEN 0 ELSE 1 END,
+        us.LastLogin ASC NULLS FIRST,
+        COALESCE(std.ActiveSeconds30d, 0) ASC
+      LIMIT 8
+    `);
+
+    const learningHealth = (await rows(`
+      SELECT
+        COALESCE((SELECT COUNT(DISTINCT UserId) FROM StudyTimeDaily WHERE ActivityDate >= CURRENT_DATE - 6), 0)::int AS ActiveLearners7d,
+        COALESCE((SELECT COUNT(DISTINCT UserId) FROM StudyTimeDaily WHERE ActivityDate >= CURRENT_DATE - 29), 0)::int AS ActiveLearners30d,
+        COALESCE((SELECT COUNT(*) FROM DailyTasks WHERE Status = 'completed' AND TaskDate >= CURRENT_DATE - 29), 0)::int AS CompletedTasks30d,
+        COALESCE((SELECT SUM(ActiveSeconds) FROM StudyTimeDaily WHERE ActivityDate >= CURRENT_DATE - 29), 0)::int AS StudySeconds30d,
+        COALESCE((SELECT COUNT(*) FROM SpacedRepetitionItems WHERE COALESCE(IsMastered, false) = true), 0)::int AS MasteredItems,
+        COALESCE((SELECT COUNT(*) FROM SpacedRepetitionItems WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false), 0)::int AS DueReviewItems
+    `))[0] || {};
 
     const activity7d = await pool.query(`
       SELECT d.day::date AS Date,
@@ -652,7 +763,20 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       totalDailyTasks: Number(queries[23].rows[0].count || 0),
       totalStudySeconds: queries[24],
       totalExp: queries[25],
-      topLearners: topLearners.rows,
+      topLearners: topLearnersByExp,
+      topLearnersByExp,
+      topLearnersByStreak,
+      topLearnersByStudyTime30d,
+      topLearnersByDailyTasks30d,
+      learnersNeedingAttention,
+      learningHealth,
+      topCriteria: {
+        exp: 'Xếp theo tổng EXP giảm dần; hòa điểm thì ưu tiên level, streak và tài khoản mới hơn.',
+        streak: 'Xếp theo streak hiện tại giảm dần; hòa điểm thì ưu tiên tổng EXP.',
+        studyTime30d: 'Xếp theo tổng thời gian học trong 30 ngày gần nhất; hòa điểm thì ưu tiên số ngày có học.',
+        dailyTasks30d: 'Xếp theo số nhiệm vụ hằng ngày đã hoàn thành trong 30 ngày; hòa điểm thì ưu tiên EXP nhận từ nhiệm vụ.',
+        attention: 'Learner bị khóa, chưa đăng nhập, vắng hơn 14 ngày hoặc không có hoạt động/nhiệm vụ trong 30 ngày.'
+      },
       activity7d: activity7d.rows,
     };
 

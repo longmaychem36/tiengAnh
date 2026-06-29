@@ -1270,7 +1270,7 @@ function Onboarding() {
         {(!attempt || result) && (
           <div className="onboarding-brand">
             <span>L</span>
-            <strong>LingoWeb</strong>
+            <strong>LingoConnect</strong>
           </div>
         )}
 

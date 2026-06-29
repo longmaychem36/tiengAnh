@@ -1,6 +1,6 @@
 // ============================================
 // PostgreSQL Database Configuration
-// PostgreSQL pool with legacy request/input compatibility
+// PostgreSQL pool with a named-parameter request adapter
 // ============================================
 const { Pool } = require('pg');
 
@@ -48,7 +48,8 @@ function buildPoolConfig() {
   };
 }
 
-// Dummy sql type constants for older request/input call sites
+// Query type hints used by the named-parameter adapter.
+// PostgreSQL infers the concrete type when executing the converted query.
 const sql = {
   NVarChar: 'NVarChar',
   VarChar: 'VarChar',
@@ -62,7 +63,8 @@ const sql = {
 };
 
 /**
- * Request builder that supports the older pool.request().input().query() pattern
+ * Request builder that exposes named parameters through
+ * pool.request().input().query() and converts them to PostgreSQL placeholders.
  */
 class PgRequest {
   constructor(pgPool) {

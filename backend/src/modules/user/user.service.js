@@ -135,7 +135,7 @@ const userService = {
     const { cloudName, apiKey, apiSecret } = getCloudinaryConfig();
     const timestamp = Math.floor(Date.now() / 1000);
     const params = {
-      folder: 'lingoweb/avatars',
+      folder: 'lingoconnect/avatars',
       overwrite: 'true',
       public_id: `user_${userId}`,
       timestamp

@@ -1914,3 +1914,215 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Admin dashboard learner intelligence */
+.admin-health-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-health-tile {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.admin-health-tile span,
+.admin-health-tile small {
+  overflow: hidden;
+  color: var(--admin-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-health-tile strong {
+  color: var(--admin-text);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.admin-top-learners-section {
+  min-width: 0;
+}
+
+.admin-top-learners-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(230px, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+
+.admin-top-learner-card {
+  min-width: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.admin-top-learner-head {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-bottom: 1px solid var(--admin-border);
+  background: #f8f9fa;
+}
+
+.admin-top-learner-head h3 {
+  margin: 0;
+  color: var(--admin-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-top-learner-head p {
+  display: block;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.admin-top-learner-list,
+.admin-attention-list,
+.admin-criteria-list {
+  display: grid;
+  gap: 0;
+  padding: 10px;
+}
+
+.admin-top-learner-row,
+.admin-attention-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-text);
+  text-decoration: none;
+}
+
+.admin-top-learner-row:last-child,
+.admin-attention-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-top-learner-row:hover,
+.admin-attention-row:hover {
+  color: var(--admin-primary-dark);
+}
+
+.admin-rank-number {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid var(--admin-border);
+  border-radius: 3px;
+  background: #f8f9fa;
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-top-learner-user,
+.admin-attention-row > span:nth-child(2),
+.admin-top-learner-metric,
+.admin-attention-meta {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.admin-top-learner-user strong,
+.admin-attention-row strong {
+  overflow: hidden;
+  color: var(--admin-text);
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-top-learner-user small,
+.admin-top-learner-metric small,
+.admin-attention-row small,
+.admin-attention-meta small {
+  overflow: hidden;
+  color: var(--admin-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-top-learner-metric,
+.admin-attention-meta {
+  justify-items: end;
+  text-align: right;
+}
+
+.admin-top-learner-metric strong,
+.admin-attention-meta b {
+  color: var(--admin-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-criteria-list {
+  gap: 10px;
+}
+
+.admin-criteria-list p {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-criteria-list strong {
+  color: var(--admin-text);
+}
+
+@media (max-width: 1180px) {
+  .admin-health-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1180px) {
+  .admin-top-learners-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .admin-top-learners-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-health-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-top-learner-row,
+  .admin-attention-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .admin-top-learner-metric,
+  .admin-attention-meta {
+    grid-column: 2;
+    justify-items: start;
+    text-align: left;
+  }
+}

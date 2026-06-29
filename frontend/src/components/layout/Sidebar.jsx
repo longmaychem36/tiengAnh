@@ -39,7 +39,7 @@ function Sidebar() {
       <div className="lingo-brand">
         <div className="lingo-brand-mark">L</div>
         <div>
-          <strong>LingoWeb</strong>
+          <strong>LingoConnect</strong>
           <span>Học tiếng Anh</span>
         </div>
       </div>

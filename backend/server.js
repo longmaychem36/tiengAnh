@@ -9,9 +9,9 @@ const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
-    // Connect to SQL Server
+    // Connect to PostgreSQL
     await connectDB();
-    console.log('✅ Connected to SQL Server database');
+    console.log('✅ Connected to PostgreSQL database');
 
     // Start HTTP server
     app.listen(PORT, () => {
