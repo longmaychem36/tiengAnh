@@ -79,7 +79,9 @@ Luồng luyện nói chuẩn:
 
 Thuật toán so khớp xử lý contraction, số, tiền tệ, từ đệm và biến thể từ đơn giản. Điểm kết hợp recall, precision/F1 và tỷ lệ độ dài; việc căn chỉnh dùng quy hoạch động và độ tương đồng Levenshtein.
 
-Speaking AI cho phép người dùng Plus nhập chủ đề, trình độ, mục tiêu và số câu. Backend gọi NVIDIA Chat Completions, kiểm tra JSON trả về rồi tạo bài học tạm thời. Session hiện được lưu trong bộ nhớ tiến trình, tồn tại tối đa 1 giờ và tối đa 5 session/user.
+Speaking AI cho phép người dùng Plus chọn chủ đề và độ khó để bắt đầu một hội thoại liên tục kiểu Messenger. AI nói trước và đưa ra ba câu trả lời; người học chọn một câu, ghi âm và phải đạt ngưỡng phát âm trước khi hội thoại đi tiếp. Lượt AI tiếp theo được sinh từ toàn bộ lịch sử nên giữ nguyên vai, bối cảnh và các lựa chọn trước đó. AI được phép kết thúc tự nhiên từ lượt 4 và hệ thống bắt buộc khép lại ở lượt 12.
+
+Nội dung hội thoại được lưu trong `localStorage` của trình duyệt trong 24 giờ, không lưu vào PostgreSQL và không thưởng EXP. Backend không giữ session trong memory; state token JWT, option hash và history hash bảo vệ trạng thái từng lượt. Vì vậy phiên có thể tiếp tục sau khi backend restart, miễn là dùng đúng trình duyệt và token chưa hết hạn.
 
 ### 3.5. Writing với phản hồi AI
 
@@ -262,7 +264,7 @@ Base URL mặc định: `http://localhost:5000/api/v1`.
 | Onboarding | `/onboarding` | Status, survey, tạo/check/submit placement attempt. |
 | Dashboard | `/dashboard` | Tổng quan học tập. |
 | Listening/Reading | `/listening`, `/reading` | Danh sách, chi tiết và lưu progress. |
-| Speaking | `/speaking` | Bài học, upload audio, chấm nói, Speaking AI. |
+| Speaking | `/speaking` | Bài học cố định; tạo hội thoại AI; chấm lượt nói và sinh phản hồi kế tiếp. |
 | Writing | `/writing` | Bài học, chấm Writing và progress. |
 | Grammar | `/grammar` | Category, topic, quiz attempt. |
 | Dictionary | `/dictionary` | Search, autocomplete, translate. |
@@ -277,6 +279,12 @@ Base URL mặc định: `http://localhost:5000/api/v1`.
 | Admin | `/admin` | Dashboard, CRUD nội dung, user, support. |
 
 Các endpoint learner/admin đều dùng JWT, trừ các endpoint auth công khai, health check và SePay webhook. Phân quyền cụ thể được đặt trong route/middleware của từng module.
+
+Luồng API riêng của Speaking AI:
+
+- `POST /api/v1/speaking/personalized`: tạo lời mở đầu từ `topic` và `level`.
+- `POST /api/v1/speaking/personalized/:sessionId/analyze-turn`: upload audio, chấm câu đã chọn và phát hành advance token khi đạt ngưỡng.
+- `POST /api/v1/speaking/personalized/:sessionId/next-turn`: xác thực lịch sử rồi sinh phản hồi AI tiếp theo hoặc lời kết.
 
 ## 8. Thiết kế cơ sở dữ liệu
 
@@ -439,9 +447,12 @@ VITE_API_URL=http://localhost:5000/api/v1
 Các lệnh hiện có:
 
 ```powershell
-# Test thuật toán spaced repetition và chọn daily task
+# Chạy toàn bộ backend test
 cd backend
-npm run test:spaced-repetition
+npm test
+
+# Chỉ test hội thoại Speaking AI
+npm run test:speaking-conversation
 
 # Kiểm tra frontend có build được
 cd frontend
@@ -459,7 +470,7 @@ Nhóm test case nên đưa vào báo cáo:
 | Auth | Đăng ký hợp lệ/trùng email, đăng nhập đúng/sai, user bị khóa, token hết hạn, reset code sai/hết hạn. |
 | Placement | Xếp trực tiếp, tạo attempt, answer đúng/sai theo loại, attempt sai user/hết hạn, cập nhật level. |
 | Learning | Mở khóa bài theo placement, nộp kết quả, upsert progress, cộng EXP, hoàn thành task. |
-| Speaking | Audio hợp lệ/không hỗ trợ, Whisper lỗi, transcript đúng/sai, từ thiếu/thừa, giới hạn Plus. |
+| Speaking | Audio hợp lệ/không hỗ trợ, Whisper lỗi, transcript đúng/sai, token/history bị sửa, câu không thuộc lựa chọn, retry AI, giới hạn Plus và tự kết thúc lượt 4-12. |
 | Writing | Câu gần đúng, sai rõ ràng, LLM timeout/mất API key, fallback. |
 | Daily/SRS | Ưu tiên bài đến hạn, đa dạng kỹ năng, quality dưới 3, lịch 1-6-n ngày, không cộng thưởng hai lần. |
 | Billing | Tạo order, giao dịch không khớp, webhook sai key, đối soát đúng, gia hạn user đã Plus. |
@@ -498,13 +509,13 @@ Các điểm cần tăng cường nếu đưa vào vận hành thật: rate limi
 
 ## 13. Hạn chế hiện tại và hướng phát triển
 
-1. Speaking AI lưu session/cache/giới hạn EXP trong memory; dữ liệu mất khi restart và không đồng bộ giữa nhiều instance. Nên chuyển sang Redis hoặc PostgreSQL.
+1. Hội thoại Speaking AI chỉ lưu trên trình duyệt: không đồng bộ giữa thiết bị và không thể mở từ một browser khác. Nếu cần đồng bộ tài khoản, nên chuyển snapshot sang PostgreSQL hoặc Redis.
 2. Schema được hình thành từ dump, script migration và lệnh `ensureSchema` lúc chạy. Nên chuẩn hóa thành một migration chain có version.
 3. Từ điển phụ thuộc API công cộng và hiện không lưu history; chất lượng/độ sẵn sàng phụ thuộc nhà cung cấp.
 4. Whisper model chạy CPU tốn tài nguyên và lần tải model đầu tiên lâu; production nên tách service, warm-up và cân nhắc GPU.
 5. Chấm Speaking chủ yếu đánh giá mức khớp từ với câu mẫu, chưa đánh giá đầy đủ âm vị, trọng âm và ngữ điệu.
 6. Kết quả từ LLM có tính xác suất; cần tiếp tục validate, lưu phiên bản prompt/model và cho phép giáo viên kiểm duyệt.
-7. Test tự động hiện tập trung vào spaced repetition/daily task; cần bổ sung unit, integration, API và end-to-end test.
+7. Test tự động đã bao phủ thuật toán daily/SRS và state token Speaking AI; vẫn cần bổ sung integration, API và end-to-end test.
 8. Giá Plus mặc định chỉ là giá demo. Thanh toán production cần quy trình hoàn tiền, đối soát, idempotency và logging chặt hơn.
 
 ## 14. Gợi ý chuyển thành báo cáo đồ án

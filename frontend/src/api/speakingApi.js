@@ -37,7 +37,22 @@ export const speakingApi = {
     timeout: 60000
   }),
 
-  getPersonalizedLesson: (sessionId) => axiosClient.get(`/speaking/personalized/${sessionId}`),
+  analyzePersonalizedTurn: (sessionId, { audioBlob, stateToken, history, option, passThreshold }) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    formData.append('stateToken', stateToken);
+    formData.append('history', JSON.stringify(history));
+    formData.append('option', JSON.stringify(option));
+    formData.append('passThreshold', String(passThreshold));
+    return axiosClient.post(`/speaking/personalized/${sessionId}/analyze-turn`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 50000
+    });
+  },
 
-  completePersonalizedLesson: (sessionId, data) => axiosClient.post(`/speaking/personalized/${sessionId}/complete`, data)
+  generateNextPersonalizedTurn: (sessionId, data) => axiosClient.post(
+    `/speaking/personalized/${sessionId}/next-turn`,
+    data,
+    { timeout: 60000 }
+  )
 };

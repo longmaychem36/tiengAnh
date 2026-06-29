@@ -2,7 +2,7 @@
 // Speaking Module — Controller
 // ============================================
 const speakingService = require('./speaking.service');
-const { success, created, badRequest } = require('../../utils/responseHelper');
+const { success, badRequest } = require('../../utils/responseHelper');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -466,8 +466,7 @@ const speakingController = {
   },
 
   /**
-   * Generate a temporary personalized speaking lesson with NVIDIA AI.
-   * Generated questions are stored in process memory only, not in database.
+   * Start a stateless AI role-play and return the opening message.
    */
   async createPersonalizedLesson(req, res, next) {
     try {
@@ -481,7 +480,7 @@ const speakingController = {
       }
 
       const data = await speakingService.createPersonalizedLesson(req.user.id, req.body);
-      return success(res, data, 'Personalized speaking lesson generated');
+      return success(res, data, 'AI speaking conversation started');
     } catch (err) {
       if (err.statusCode) {
         return res.status(err.statusCode).json({
@@ -494,44 +493,92 @@ const speakingController = {
   },
 
   /**
-   * Read a temporary personalized speaking lesson from memory.
+   * Transcribe and grade the selected learner reply. A passing attempt
+   * receives an advance token, but does not call the LLM yet.
    */
-  async getPersonalizedLesson(req, res, next) {
+  async analyzePersonalizedTurn(req, res, next) {
+    let filePath = null;
     try {
-      const data = speakingService.getPersonalizedLesson(req.user.id, req.params.sessionId);
-      return success(res, data);
-    } catch (err) {
-      if (err.statusCode) {
-        return res.status(err.statusCode).json({
-          success: false,
-          message: err.message
-        });
+      if (!req.file) return badRequest(res, 'Audio file is required');
+      filePath = path.resolve(req.file.path);
+
+      let option;
+      try {
+        option = typeof req.body.option === 'string' ? JSON.parse(req.body.option) : req.body.option;
+      } catch {
+        return badRequest(res, 'Selected reply is invalid');
       }
-      next(err);
-    }
-  },
+      if (!option?.text) return badRequest(res, 'Selected reply is required');
 
-  /**
-   * Complete an AI speaking lesson and award a small anti-spam capped EXP reward.
-   */
-  async completePersonalizedLesson(req, res, next) {
-    try {
-      const completion = speakingService.completePersonalizedLesson(req.user.id, req.params.sessionId, req.body);
-      const expReward = completion.expAmount > 0
-        ? await gamificationService.addExp(
-          req.user.id,
-          completion.expAmount,
-          'ai_speaking_lesson_complete'
-        )
-        : null;
-
-      return success(res, {
-        message: completion.alreadyRewarded ? 'AI speaking lesson already rewarded' : 'AI speaking lesson completed',
-        alreadyRewarded: completion.alreadyRewarded,
-        expAmount: completion.expAmount,
-        dailyRemaining: completion.dailyRemaining,
-        expReward
+      const formData = new FormData();
+      formData.append('file', fs.createReadStream(filePath), {
+        filename: req.file.filename || 'audio.webm',
+        contentType: req.file.mimetype || 'audio/webm'
       });
+      formData.append('targetTexts', JSON.stringify([option.text]));
+      const initialPrompt = buildWhisperInitialPrompt([option.text], 'Continue the role-play');
+      if (initialPrompt) formData.append('initialPrompt', initialPrompt);
+
+      let whisperResult;
+      try {
+        const response = await axios.post(`${WHISPER_SERVER_URL}/transcribe-and-analyze`, formData, {
+          headers: { ...formData.getHeaders() },
+          timeout: WHISPER_TIMEOUT_MS,
+          maxContentLength: 50 * 1024 * 1024
+        });
+        whisperResult = response.data || {};
+      } catch (error) {
+        console.error('Failed to communicate with Whisper Server:', error.message);
+        return res.status(500).json({
+          success: false,
+          message: 'Whisper server đang offline. Vui lòng chạy: python whisper_server.py'
+        });
+      }
+
+      if (whisperResult.error) {
+        return res.status(500).json({ success: false, message: whisperResult.error });
+      }
+
+      const transcript = whisperResult.transcript || whisperResult.text || '';
+      if (!transcript.trim()) {
+        return badRequest(res, 'Không nhận diện được giọng nói. Vui lòng nói to và rõ hơn.');
+      }
+      const localAnalysis = analyzeTranscript(transcript, [option.text]);
+      const data = speakingService.analyzeConversationTurn(
+        req.user.id,
+        req.params.sessionId,
+        { ...req.body, option },
+        { ...localAnalysis, transcript }
+      );
+      return success(res, data, data.passed ? 'Reply accepted' : 'Please try the reply again');
+    } catch (err) {
+      if (err.statusCode) {
+        return res.status(err.statusCode).json({
+          success: false,
+          message: err.message
+        });
+      }
+      next(err);
+    } finally {
+      try {
+        if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch (error) {
+        console.error('Failed to delete temp audio file:', error.message);
+      }
+    }
+  },
+
+  /**
+   * Generate the next AI message from browser-owned, token-verified history.
+   */
+  async generateNextPersonalizedTurn(req, res, next) {
+    try {
+      const data = await speakingService.generateNextConversationTurn(
+        req.user.id,
+        req.params.sessionId,
+        req.body
+      );
+      return success(res, data, data.completed ? 'Conversation completed' : 'Next turn generated');
     } catch (err) {
       if (err.statusCode) {
         return res.status(err.statusCode).json({

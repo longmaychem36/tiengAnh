@@ -32,6 +32,7 @@ import SpeakingList from './components/speaking/SpeakingList';
 import SpeakingLesson from './components/speaking/SpeakingLesson';
 import SpeakingOptions from './components/speaking/SpeakingOptions';
 import SpeakingAiBuilder from './components/speaking/SpeakingAiBuilder';
+import SpeakingConversation from './components/speaking/SpeakingConversation';
 import WritingList from './components/writing/WritingList';
 import WritingLesson from './components/writing/WritingLesson';
 import ListeningList from './components/listening/ListeningList';
@@ -100,7 +101,7 @@ function App() {
         <Route path="/speaking/ai" element={<PlusRoute featureName="Speaking AI"><SpeakingAiBuilder /></PlusRoute>} />
         <Route path="/speaking/lessons" element={<PlusRoute featureName="Speaking"><SpeakingList /></PlusRoute>} />
         <Route path="/speaking/lessons/:id" element={<PlusRoute featureName="Speaking"><SpeakingLesson /></PlusRoute>} />
-        <Route path="/speaking/personalized/:sessionId" element={<PlusRoute featureName="Speaking AI"><SpeakingLesson /></PlusRoute>} />
+        <Route path="/speaking/personalized/:sessionId" element={<PlusRoute featureName="Speaking AI"><SpeakingConversation /></PlusRoute>} />
         <Route path="/writing/lessons" element={<WritingList />} />
         <Route path="/writing/lessons/:id" element={<WritingLesson />} />
         <Route path="/listening/lessons" element={<PlusRoute featureName="Listening"><ListeningList /></PlusRoute>} />

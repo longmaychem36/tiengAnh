@@ -47,10 +47,20 @@ router.post('/transcribe', audioUpload.single('audio'), speakingController.trans
 // Combined transcribe + analyze (faster: 1 round-trip instead of 2)
 router.post('/transcribe-analyze', audioUpload.single('audio'), speakingController.transcribeAndAnalyze);
 
-// Temporary AI-generated personalized speaking lesson (stored in memory only)
+// Stateless AI conversation. The browser owns the transcript; signed tokens
+// protect the active turn and allow the flow to survive backend restarts.
 router.post('/personalized', requirePlus('Speaking AI'), speakingController.createPersonalizedLesson);
-router.get('/personalized/:sessionId', requirePlus('Speaking AI'), speakingController.getPersonalizedLesson);
-router.post('/personalized/:sessionId/complete', requirePlus('Speaking AI'), speakingController.completePersonalizedLesson);
+router.post(
+  '/personalized/:sessionId/analyze-turn',
+  requirePlus('Speaking AI'),
+  audioUpload.single('audio'),
+  speakingController.analyzePersonalizedTurn
+);
+router.post(
+  '/personalized/:sessionId/next-turn',
+  requirePlus('Speaking AI'),
+  speakingController.generateNextPersonalizedTurn
+);
 
 // Existing endpoints
 router.get('/lessons', requirePlus('Speaking'), speakingController.getLessons);

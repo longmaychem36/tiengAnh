@@ -8,6 +8,7 @@ import App from './App';
 import './index.css';
 import './App.css';
 import './styles/learningSession.css';
+import './styles/speakingConversation.css';
 import './styles/admin.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(

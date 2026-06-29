@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FiMic, FiSquare } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { stopAllPlayback } from '../../utils/audioControl';
 
 const formatTime = (seconds) => {
   const safeSeconds = Math.max(0, seconds);
@@ -14,7 +15,7 @@ const WAVEFORM_BARS = Array.from({ length: 18 }, (_, index) => ({
   delay: `${(index % 6) * 80}ms`
 }));
 
-const Recorder = ({ onRecordingComplete, isAnalyzing, maxDuration = 14 }) => {
+const Recorder = ({ onRecordingComplete, onRecordingStateChange, isAnalyzing, maxDuration = 14 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -89,6 +90,7 @@ const Recorder = ({ onRecordingComplete, isAnalyzing, maxDuration = 14 }) => {
     if (isAnalyzing || isRecording) return;
 
     try {
+      stopAllPlayback();
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -121,6 +123,7 @@ const Recorder = ({ onRecordingComplete, isAnalyzing, maxDuration = 14 }) => {
 
         stopMediaStream();
         setIsRecording(false);
+        onRecordingStateChange?.(false);
 
         if (audioBlob.size < 1000) {
           toast.error('Vui lòng đọc to và rõ ràng hơn.');
@@ -136,11 +139,13 @@ const Recorder = ({ onRecordingComplete, isAnalyzing, maxDuration = 14 }) => {
         clearTimers();
         stopMediaStream();
         setIsRecording(false);
+        onRecordingStateChange?.(false);
       };
 
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start(100);
       setIsRecording(true);
+      onRecordingStateChange?.(true);
       startTimer();
       startVisualization(stream);
 
@@ -171,6 +176,7 @@ const Recorder = ({ onRecordingComplete, isAnalyzing, maxDuration = 14 }) => {
       clearTimers();
       stopMediaStream();
       setIsRecording(false);
+      onRecordingStateChange?.(false);
     }
   };
 

@@ -5,7 +5,6 @@ import {
   FiArrowLeft,
   FiArrowRight,
   FiCheckCircle,
-  FiCpu,
   FiMic,
   FiRefreshCw,
   FiSettings,
@@ -46,9 +45,8 @@ const getRecordDuration = (text = '') => {
 const getAttemptKey = (item, index) => item?.id || index;
 
 const SpeakingLesson = () => {
-  const { id, sessionId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const isPersonalized = Boolean(sessionId);
 
   const [loading, setLoading] = useState(true);
   const [lessonData, setLessonData] = useState(null);
@@ -109,13 +107,11 @@ const SpeakingLesson = () => {
     setAttempts({});
     setFirstAttempts({});
 
-    const request = isPersonalized
-      ? speakingApi.getPersonalizedLesson(sessionId)
-      : speakingApi.getLessonDetails(id);
+    const request = speakingApi.getLessonDetails(id);
 
     Promise.all([
       request,
-      isPersonalized ? Promise.resolve(null) : speakingApi.getLessons().catch(() => null)
+      speakingApi.getLessons().catch(() => null)
     ])
       .then(([res, lessonsRes]) => {
         if (cancelled) return;
@@ -126,7 +122,7 @@ const SpeakingLesson = () => {
         setNextLesson(getNextLesson(lessons, id));
       })
       .catch((err) => {
-        toast.error(isPersonalized ? 'Bài luyện AI đã hết hạn hoặc không tồn tại' : 'Lỗi tải chủ đề');
+        toast.error('Lỗi tải chủ đề');
         console.error(err);
       })
       .finally(() => {
@@ -137,7 +133,7 @@ const SpeakingLesson = () => {
       cancelled = true;
       stopAllPlayback();
     };
-  }, [id, sessionId, isPersonalized]);
+  }, [id]);
 
   const currentSentence = sentences[currentIndex];
   const currentOptions = currentSentence?.options || [];
@@ -190,7 +186,7 @@ const SpeakingLesson = () => {
 
     try {
       const res = await speakingApi.transcribeAndAnalyze(audioBlob, [selectedOption.text], {
-        lessonId: id || sessionId || '',
+        lessonId: id || '',
         questionId: currentSentence.id || '',
         targetText: selectedOption.text,
         prompt: currentSentence.question,
@@ -266,27 +262,6 @@ const SpeakingLesson = () => {
   const finishLesson = async (finalAttempts = attempts) => {
     stopAllPlayback();
     setLoading(true);
-    if (isPersonalized) {
-      speakingApi.completePersonalizedLesson(sessionId, {
-        questionCount: sentences.length,
-        averageScore: getAverageScore(finalAttempts)
-      })
-        .then((res) => {
-          setExpReward(res.data?.expReward || null);
-          toast.success(res.data?.expReward?.amount
-            ? `Bạn đã hoàn thành bài luyện nói AI và nhận ${res.data.expReward.amount} EXP.`
-            : 'Bạn đã hoàn thành bài luyện nói AI.');
-          setShowCompletion(true);
-        })
-        .catch((err) => {
-          console.error(err);
-          toast.error('Lỗi lưu thưởng bài nói AI');
-          setShowCompletion(true);
-        })
-        .finally(() => setLoading(false));
-      return;
-    }
-
     const currentKey = getAttemptKey(currentSentence, currentIndex);
     const firstAttemptMap = firstAttempts[currentKey]
       ? firstAttempts
@@ -335,7 +310,7 @@ const SpeakingLesson = () => {
   if (loading) return <Loading />;
 
   if (showCompletion) {
-    const completionTitle = isPersonalized ? 'Hoàn thành bài luyện nói AI' : 'Hoàn thành chủ đề Speaking';
+    const completionTitle = 'Hoàn thành chủ đề Speaking';
 
     return (
       <div className="receptive-page fade-in" style={{ '--receptive-accent': '#2563eb' }}>
@@ -368,17 +343,10 @@ const SpeakingLesson = () => {
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/speaking/options')}>
               <FiArrowLeft /> Thoát
             </button>
-            {isPersonalized && (
-              <button type="button" className="btn btn-primary" onClick={() => navigate('/speaking/ai')}>
-                <FiCpu /> Tạo bài nói khác
-              </button>
-            )}
-            {!isPersonalized && (
-              <button type="button" className="btn btn-secondary" onClick={() => navigate('/speaking/lessons')}>
-                Về danh sách
-              </button>
-            )}
-            {!isPersonalized && nextLesson && (
+            <button type="button" className="btn btn-secondary" onClick={() => navigate('/speaking/lessons')}>
+              Về danh sách
+            </button>
+            {nextLesson && (
               <button type="button" className="btn btn-primary" onClick={() => navigate(`/speaking/lessons/${getLessonId(nextLesson)}`)}>
                 Bài tiếp theo <FiArrowRight />
               </button>
@@ -424,7 +392,7 @@ const SpeakingLesson = () => {
         header={(
           <LessonHeader
             title={lessonData?.title || 'Chưa có tiêu đề'}
-            level={isPersonalized ? 'AI' : ''}
+            level=""
             topic={lessonData?.topic}
             progress={progressPercent}
             answered={answeredCount}
@@ -432,7 +400,7 @@ const SpeakingLesson = () => {
             score={passRate}
             duration={`${recordDuration}s/câu`}
             backLabel="Thoát"
-            onBack={() => navigate(isPersonalized ? '/speaking/options' : '/speaking/lessons')}
+            onBack={() => navigate('/speaking/lessons')}
             confirmOnBack
             actions={(
               <SecondaryButton onClick={() => setShowSettings(true)}>
