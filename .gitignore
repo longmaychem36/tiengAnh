@@ -6,3 +6,11 @@ __pycache__/
 *.log
 dist/
 .DS_Store
+
+# Local speech-recognition models
+backend/vosk-model-*/
+
+# Microsoft Word temporary and backup files
+baocao/~$*.docx
+baocao/~WRL*.tmp
+baocao/*backup*.docx
