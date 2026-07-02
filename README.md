@@ -328,7 +328,7 @@ tiengAnh/
 │   │   ├── modules/             # Module nghiệp vụ
 │   │   ├── repositories/        # Lớp truy cập dữ liệu dùng lại
 │   │   └── app.js               # Express app và API mount
-│   ├── scripts/                 # Migration, seed và audit
+│   ├── scripts/                 # Kiểm tra schema, dữ liệu và import dump
 │   ├── test/                    # Backend tests
 │   ├── server.js                # Entry point Express
 │   ├── whisper_server.py        # Flask Whisper service

@@ -512,7 +512,8 @@ const speakingService = {
         id: assistantMessage.id,
         options: turn.options
       },
-danh      expiresAt
+      stateToken,
+      expiresAt
     };
   },
 
