@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiArrowLeft, FiCpu, FiLock, FiMessageCircle, FiPlay } from 'react-icons/fi';
@@ -10,25 +10,15 @@ import {
   getLatestActiveSpeakingConversation
 } from '../../utils/speakingConversationStorage';
 
-const AI_TOPIC_OPTIONS = [
-  'At a coffee shop',
-  'Job interview',
-  'Travel abroad',
-  'Daily routine',
-  'School and study',
-  'Shopping',
-  'Meeting new friends',
-  'Health appointment'
-];
-
 function SpeakingAiBuilder() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const canUseAi = Boolean(user?.isPlus || user?.plan === 'plus');
-  const [topic, setTopic] = useState(AI_TOPIC_OPTIONS[0]);
+  const [topic, setTopic] = useState('At a coffee shop');
   const [level, setLevel] = useState('beginner');
   const [targetTurns, setTargetTurns] = useState(5);
   const [isGenerating, setIsGenerating] = useState(false);
+  const generatingRef = useRef(false);
   const [recentConversation, setRecentConversation] = useState(null);
 
   useEffect(() => {
@@ -36,6 +26,7 @@ function SpeakingAiBuilder() {
   }, []);
 
   const handleGenerate = async () => {
+    if (generatingRef.current) return;
     if (!canUseAi) {
       toast.error('Vui lòng nâng cấp Plus để sử dụng tính năng này.');
       navigate('/profile');
@@ -47,6 +38,7 @@ function SpeakingAiBuilder() {
       return;
     }
 
+    generatingRef.current = true;
     setIsGenerating(true);
     try {
       const response = await speakingApi.generatePersonalizedLesson({ topic: cleanTopic, level, targetTurns });
@@ -56,6 +48,7 @@ function SpeakingAiBuilder() {
     } catch (error) {
       toast.error(error.message || 'Không thể bắt đầu hội thoại AI.');
     } finally {
+      generatingRef.current = false;
       setIsGenerating(false);
     }
   };
@@ -104,15 +97,11 @@ function SpeakingAiBuilder() {
             <span>Chủ đề</span>
             <input
               className="form-input"
-              list="ai-speaking-topics"
               value={topic}
               onChange={(event) => setTopic(event.target.value)}
               placeholder="Ví dụ: At the airport"
               disabled={!canUseAi || isGenerating}
             />
-            <datalist id="ai-speaking-topics">
-              {AI_TOPIC_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-            </datalist>
           </label>
 
           <label>

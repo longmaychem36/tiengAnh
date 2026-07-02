@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiArrowRight } from 'react-icons/fi';
@@ -42,6 +42,7 @@ const brandMarkStyle = {
 function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -55,6 +56,8 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       const userData = await login(form);
@@ -63,6 +66,7 @@ function Login() {
     } catch (err) {
       toast.error(err.message || 'Không thể đăng nhập.');
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
