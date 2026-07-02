@@ -30,8 +30,8 @@ const initialAccountForm = {
 };
 
 const roleLabels = {
-  user: 'Learner',
-  admin: 'Admin'
+  user: 'Học viên',
+  admin: 'Quản trị viên'
 };
 
 const roleColors = {
@@ -126,11 +126,11 @@ function UserTable({
             <tr>
               <th>Tên</th>
               <th>Email</th>
-              <th>Role</th>
-              {showLearnerColumns && <th>Plan</th>}
+              <th>Vai trò</th>
+              {showLearnerColumns && <th>Gói</th>}
               {showLearnerColumns && <th>Plus còn lại</th>}
-              {showLearnerColumns && <th>Placement</th>}
-              <th>Login cuối</th>
+              {showLearnerColumns && <th>Xếp lớp</th>}
+              <th>Đăng nhập gần nhất</th>
               <th>Trạng thái</th>
               <th>Hành động</th>
             </tr>
@@ -164,7 +164,7 @@ function UserTable({
                   <td>{formatDate(getField(item, 'LastLogin', 'lastlogin'))}</td>
                   <td>
                     <span className={`admin-status-chip ${isActive ? 'is-active' : 'is-locked'}`}>
-                      {isActive ? 'Active' : 'Locked'}
+                      {isActive ? 'Hoạt động' : 'Bị khóa'}
                     </span>
                   </td>
                   <td>
@@ -191,8 +191,8 @@ function UserTable({
           </tbody>
         </table>
 
-        {!loading && users.length === 0 && <div className="admin-empty-inline">Không có account phù hợp.</div>}
-        {loading && <div className="admin-empty-inline">Đang tải danh sách account...</div>}
+        {!loading && users.length === 0 && <div className="admin-empty-inline">Không có tài khoản phù hợp.</div>}
+        {loading && <div className="admin-empty-inline">Đang tải danh sách tài khoản...</div>}
       </div>
     </section>
   );
@@ -217,9 +217,9 @@ function AdminUsers() {
   const [resetPassword, setResetPassword] = useState('');
 
   const statCards = useMemo(() => ([
-    { label: 'Tổng account', value: getNumberField(stats, 'totalUsers', 'totalusers'), color: '#171717' },
-    { label: 'Learners', value: getNumberField(stats, 'members'), color: '#0f766e' },
-    { label: 'Admins', value: getNumberField(stats, 'admins'), color: '#2563eb' },
+    { label: 'Tổng tài khoản', value: getNumberField(stats, 'totalUsers', 'totalusers'), color: '#171717' },
+    { label: 'Học viên', value: getNumberField(stats, 'members'), color: '#0f766e' },
+    { label: 'Quản trị viên', value: getNumberField(stats, 'admins'), color: '#2563eb' },
     { label: 'Plus', value: getNumberField(stats, 'plusUsers', 'plususers'), color: '#7c3aed' },
     { label: 'Bị khóa', value: getNumberField(stats, 'locked'), color: '#a13b4b' },
     { label: 'Tạo mới 7 ngày', value: getNumberField(stats, 'newUsers7d', 'newusers7d'), color: '#b45309' }
@@ -329,7 +329,7 @@ function AdminUsers() {
         setAdmins((current) => current.map(mergeUser));
         setLearners((current) => current.map(mergeUser));
       }
-      toast.success('Đã cập nhật trạng thái account');
+      toast.success('Đã cập nhật trạng thái tài khoản');
       await loadAll();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Không cập nhật được trạng thái'));
@@ -361,10 +361,10 @@ function AdminUsers() {
 
   const deleteAccount = async (target) => {
     const name = getField(target, 'Email', 'email') || getField(target, 'Username', 'username');
-    if (!window.confirm(`Xóa account ${name}? Hành động này sẽ xóa cả tiến độ liên quan.`)) return;
+    if (!window.confirm(`Xóa tài khoản ${name}? Hành động này sẽ xóa cả tiến độ liên quan.`)) return;
     try {
       await adminApi.deleteUser(getUserId(target));
-      toast.success('Đã xóa account');
+      toast.success('Đã xóa tài khoản');
       await loadAll();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Không xóa được account'));
@@ -388,19 +388,19 @@ function AdminUsers() {
       <section className="admin-content-card admin-create-account-panel">
         <div className="admin-subpanel-head">
           <div>
-            <h3>Tạo account admin</h3>
+            <h3>Tạo tài khoản quản trị</h3>
           </div>
           <FiUserPlus />
         </div>
 
         <form className="admin-form-grid" onSubmit={createAccount}>
           <label>
-            <span>Username</span>
-            <input className="form-input" value={accountForm.username} onChange={(e) => updateAccountForm('username', e.target.value)} placeholder="teacher01" required />
+            <span>Tên đăng nhập</span>
+            <input className="form-input" value={accountForm.username} onChange={(e) => updateAccountForm('username', e.target.value)} placeholder="quantri01" required />
           </label>
           <label>
             <span>Email</span>
-            <input className="form-input" type="email" value={accountForm.email} onChange={(e) => updateAccountForm('email', e.target.value)} placeholder="teacher01@example.com" required />
+            <input className="form-input" type="email" value={accountForm.email} onChange={(e) => updateAccountForm('email', e.target.value)} placeholder="quantri01@example.com" required />
           </label>
           <label>
             <span>Mật khẩu tạm thời</span>
@@ -408,11 +408,11 @@ function AdminUsers() {
           </label>
           <label className="admin-check-row">
             <input type="checkbox" checked={accountForm.isActive} onChange={(e) => updateAccountForm('isActive', e.target.checked)} />
-            Active
+            Đang hoạt động
           </label>
           <div className="admin-form-actions is-wide">
             <button className="btn btn-primary" type="submit" disabled={creating}>
-              <FiUserPlus /> {creating ? 'Đang tạo...' : 'Tạo account'}
+              <FiUserPlus /> {creating ? 'Đang tạo...' : 'Tạo tài khoản'}
             </button>
           </div>
         </form>
@@ -421,13 +421,13 @@ function AdminUsers() {
       <form className="admin-user-search admin-content-card" onSubmit={handleSearch}>
         <div className="admin-user-search-input">
           <FiSearch />
-          <input aria-label="Tìm account" className="form-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm theo username hoặc email..." />
+          <input aria-label="Tìm tài khoản" className="form-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm theo tên đăng nhập hoặc email..." />
         </div>
         <button className="btn btn-primary" type="submit">Tìm</button>
       </form>
 
       <UserTable
-        title="Danh sách admin"
+        title="Danh sách quản trị viên"
         icon={<FiShield />}
         users={admins}
         loading={loading}
@@ -440,7 +440,7 @@ function AdminUsers() {
       />
 
       <UserTable
-        title="Danh sách learner"
+        title="Danh sách học viên"
         icon={<FiUsers />}
         users={learners}
         loading={loading}

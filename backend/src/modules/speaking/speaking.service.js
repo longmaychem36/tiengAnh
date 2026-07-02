@@ -1,20 +1,23 @@
 // ============================================
 // Speaking Module - Service
-// Stateless AI conversation flow for Plus learners
+// Stateless AI conversation flow for users with an active Plus plan
 // ============================================
 const axios = require('axios');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../../config/jwt');
 
-const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const NVIDIA_MODEL = process.env.SPEAKING_NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
-const SPEAKING_AI_TIMEOUT_MS = Number.parseInt(process.env.SPEAKING_AI_TIMEOUT_MS, 10) || 25000;
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const OPENAI_MODEL = process.env.SPEAKING_OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const SPEAKING_AI_TIMEOUT_MS = Number.parseInt(process.env.SPEAKING_AI_TIMEOUT_MS, 10) || 60000;
 const CONVERSATION_TOKEN_TTL = '24h';
 const CONVERSATION_TTL_MS = 24 * 60 * 60 * 1000;
-const MIN_CONVERSATION_TURNS = 4;
-const MAX_CONVERSATION_TURNS = 12;
+const SHORT_CONVERSATION_TURNS = 5;
+const LONG_CONVERSATION_TURNS = 10;
+const MIN_CONVERSATION_TURNS = SHORT_CONVERSATION_TURNS;
+const MAX_CONVERSATION_TURNS = LONG_CONVERSATION_TURNS;
 const MAX_HISTORY_MESSAGES = (MAX_CONVERSATION_TURNS * 2) + 1;
+const DEFAULT_COMPLETION_SUMMARY = 'Bạn đã hoàn thành cuộc hội thoại.';
 
 function serviceError(message, statusCode = 400) {
   const error = new Error(message);
@@ -75,7 +78,18 @@ function isPlaceholderEnglish(value) {
 
 function normalizeLevel(value) {
   const level = toSafeString(value, 'beginner').toLowerCase();
-  return ['beginner', 'intermediate', 'advanced'].includes(level) ? level : 'beginner';
+  if (level === 'advanced') return 'intermediate';
+  return ['beginner', 'intermediate'].includes(level) ? level : 'beginner';
+}
+
+function normalizeTargetTurns(value) {
+  const raw = toSafeString(value).toLowerCase();
+  if (raw === 'long' || raw === '10') return LONG_CONVERSATION_TURNS;
+  if (raw === 'short' || raw === '5') return SHORT_CONVERSATION_TURNS;
+
+  const numeric = Number.parseInt(value, 10);
+  if (numeric === LONG_CONVERSATION_TURNS) return LONG_CONVERSATION_TURNS;
+  return SHORT_CONVERSATION_TURNS;
 }
 
 function stripCodeFence(text) {
@@ -203,9 +217,6 @@ function normalizeOption(option = {}, index = 0, statusCode = 400) {
   if (!isEnglishPracticeText(normalized.text) || isPlaceholderEnglish(normalized.text)) {
     throw serviceError('Reply must contain valid English text', statusCode);
   }
-  if (!normalized.translation || !hasVietnameseMarks(normalized.translation)) {
-    throw serviceError('Reply must contain a Vietnamese translation', statusCode);
-  }
   return normalized;
 }
 
@@ -243,9 +254,6 @@ function normalizeAiTurn(raw, { canComplete = false, forceComplete = false } = {
   if (!isEnglishPracticeText(message) || isPlaceholderEnglish(message)) {
     throw serviceError('AI did not return a valid English message', 502);
   }
-  if (!translation || !hasVietnameseMarks(translation)) {
-    throw serviceError('AI did not return a Vietnamese translation', 502);
-  }
 
   const isComplete = Boolean(forceComplete || (canComplete && raw?.isComplete === true));
   const options = isComplete
@@ -264,7 +272,7 @@ function normalizeAiTurn(raw, { canComplete = false, forceComplete = false } = {
 
   return {
     message,
-    translation,
+    translation: translation && hasVietnameseMarks(translation) ? translation : '',
     options,
     isComplete,
     summary: isComplete && hasVietnameseMarks(toSafeString(raw?.summary))
@@ -304,9 +312,33 @@ function assertHistory(historyValue, expectedHash) {
   return history;
 }
 
-function buildSystemPrompt({ topic, level, canComplete, forceComplete }) {
+function buildLevelGuidance(level) {
+  if (level === 'beginner') {
+    return [
+      'Treat the learner as an absolute beginner.',
+      'Use only very easy everyday English.',
+      'Prefer short sentences of about 3 to 7 words.',
+      'Use simple patterns like I want, I need, I like, Can I, Where is, It is.',
+      'Avoid idioms, slang, phrasal verbs, long clauses, and advanced verb tenses.',
+      'Make each reply easy to hear, repeat, and pronounce for a new learner.'
+    ].join(' ');
+  }
+  if (level === 'intermediate') {
+    return [
+      'Use easy everyday English that is only slightly harder than beginner.',
+      'Prefer short sentences of about 5 to 9 words.',
+      'Use simple present, simple past, can, want, like, because, and very common adjectives.',
+      'Avoid idioms, slang, long clauses, advanced tenses, and uncommon vocabulary.',
+      'The learner should still be able to repeat each sentence after hearing it once.'
+    ].join(' ');
+  }
+  return buildLevelGuidance('beginner');
+}
+
+function buildSystemPrompt({ topic, level, canComplete, forceComplete, targetTurns = SHORT_CONVERSATION_TURNS }) {
+  const normalizedTargetTurns = normalizeTargetTurns(targetTurns);
   const endingRule = forceComplete
-    ? 'This is the final turn. Close the situation naturally. Set isComplete to true and return no options.'
+    ? `This is the final turn because the learner has completed ${normalizedTargetTurns} replies. Close the situation naturally. Set isComplete to true and return no options.`
     : canComplete
       ? 'You may close the conversation only if the situation has reached a natural conclusion. Otherwise continue with exactly 3 options.'
       : 'The conversation must continue. Set isComplete to false and return exactly 3 options.';
@@ -314,14 +346,17 @@ function buildSystemPrompt({ topic, level, canComplete, forceComplete }) {
   return [
     'You are Lingo Coach, the other participant in a natural English role-play with a Vietnamese learner.',
     `Role-play topic: ${topic}.`,
+    `Target length: ${normalizedTargetTurns} learner replies before the final closing message.`,
     'Continue one coherent conversation. Remember facts, requests, and choices from earlier turns; never reset the scene or produce unrelated drills.',
     'Your next message must directly answer the learner\'s most recent reply in the chat history and stay in the same situation unless the history clearly changes it.',
     `Learner level: ${level}. Keep vocabulary, grammar, and sentence length appropriate for that level.`,
+    buildLevelGuidance(level),
     endingRule,
     'Return JSON only with shape:',
-    '{"message":"Would you like to pay by cash or card?","translation":"Ban muon thanh toan bang tien mat hay the?","options":[{"text":"I can pay by card.","translation":"Toi co the thanh toan bang the."},{"text":"I only have cash with me.","translation":"Toi chi mang theo tien mat."},{"text":"How much is it altogether?","translation":"Tong cong la bao nhieu?"}],"isComplete":false,"summary":"Tom tat bang tieng Viet chi khi hoan thanh"}.',
-    'message and options.text must be English. Translation fields must be Vietnamese.',
-    'Never output placeholders or labels such as "English AI reply", "English learner reply", or "Vietnamese translation".',
+    '{"message":"Would you like to pay by cash or card?","options":[{"text":"I can pay by card."},{"text":"I only have cash with me."},{"text":"How much is it altogether?"}],"isComplete":false,"summary":"Tóm tắt bằng tiếng Việt chỉ khi hoàn thành"}.',
+    'message and options.text must be English.',
+    'Do not include Vietnamese translations for message or options.',
+    'Never output placeholders or labels such as "English AI reply" or "English learner reply".',
     'For a continuing turn return exactly 3 distinct, natural learner replies that lead to meaningfully different next directions.',
     'For a completed turn return options as an empty array.',
     'Keep each reply concise and conversational. Avoid unsafe, sexual, hateful, illegal, or self-harm content.'
@@ -335,12 +370,12 @@ function historyForModel(history) {
   }));
 }
 
-async function requestAiTurn({ topic, level, history = [], canComplete = false, forceComplete = false, strict = false }) {
-  const apiKey = process.env.NVIDIA_API_KEY;
-  if (!apiKey) throw serviceError('NVIDIA_API_KEY is not configured', 500);
+async function requestAiTurn({ topic, level, targetTurns = SHORT_CONVERSATION_TURNS, history = [], canComplete = false, forceComplete = false, strict = false }) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw serviceError('OPENAI_API_KEY is not configured', 500);
 
   const modelMessages = [
-    { role: 'system', content: buildSystemPrompt({ topic, level, canComplete, forceComplete }) }
+    { role: 'system', content: buildSystemPrompt({ topic, level, canComplete, forceComplete, targetTurns }) }
   ];
 
   if (history.length === 0) {
@@ -348,6 +383,7 @@ async function requestAiTurn({ topic, level, history = [], canComplete = false, 
       role: 'user',
       content: [
         `Start a role-play about: ${topic}.`,
+        `Plan this as a ${targetTurns}-reply learner conversation.`,
         'Infer useful roles for you and the learner, then speak first.',
         'Do not finish in the opening turn. Return exactly 3 learner reply options.',
         strict ? 'Correction: follow the JSON shape exactly and keep all English fields free of Vietnamese text.' : ''
@@ -373,11 +409,11 @@ async function requestAiTurn({ topic, level, history = [], canComplete = false, 
   let response;
   try {
     response = await axios.post(
-      `${NVIDIA_BASE_URL}/chat/completions`,
+      `${OPENAI_BASE_URL}/chat/completions`,
       {
-        model: NVIDIA_MODEL,
+        model: OPENAI_MODEL,
         messages: modelMessages,
-        temperature: 0.65,
+        temperature: level === 'beginner' ? 0.45 : 0.65,
         top_p: 0.9,
         max_tokens: 900,
         response_format: { type: 'json_object' },
@@ -394,17 +430,17 @@ async function requestAiTurn({ topic, level, history = [], canComplete = false, 
   } catch (error) {
     const status = error.response?.status;
     const detail = error.response?.data?.error?.message || error.response?.data?.message || error.message;
-    throw serviceError(`NVIDIA generation failed${status ? ` (${status})` : ''}: ${detail}`, 502);
+    throw serviceError(`OpenAI generation failed${status ? ` (${status})` : ''}: ${detail}`, 502);
   }
 
   const content = response.data?.choices?.[0]?.message?.content;
-  if (!content) throw serviceError('NVIDIA did not return conversation content', 502);
+  if (!content) throw serviceError('OpenAI did not return conversation content', 502);
   return parseJsonContent(content);
 }
 
 async function generateValidatedTurn(parameters) {
   let lastError;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const raw = await requestAiTurn({ ...parameters, strict: attempt > 0 });
       return normalizeAiTurn(raw, parameters);
@@ -435,11 +471,13 @@ const speakingService = {
   async createPersonalizedLesson(userId, payload = {}) {
     const topic = toSafeString(payload.topic).slice(0, 100);
     const level = normalizeLevel(payload.level);
+    const targetTurns = normalizeTargetTurns(payload.targetTurns || payload.length || payload.conversationLength);
     if (!topic) throw serviceError('Topic is required');
 
     const turn = await generateValidatedTurn({
       topic,
       level,
+      targetTurns,
       history: [],
       canComplete: false,
       forceComplete: false
@@ -454,6 +492,7 @@ const speakingService = {
       sessionId,
       topic,
       level,
+      targetTurns,
       turnCount: 0,
       scoreTotal: 0,
       historyHash: hashHistory(history),
@@ -466,14 +505,14 @@ const speakingService = {
       sessionId,
       topic,
       level,
+      targetTurns,
       phase: 'ready',
       messages: history,
       currentTurn: {
         id: assistantMessage.id,
         options: turn.options
       },
-      stateToken,
-      expiresAt
+danh      expiresAt
     };
   },
 
@@ -524,19 +563,50 @@ const speakingService = {
     const nextHistory = [...history, learnerMessage];
     const turnCount = Number(state.turnCount || 0) + 1;
     const scoreTotal = Number(state.scoreTotal || 0) + result.score;
+    const targetTurns = normalizeTargetTurns(state.targetTurns);
+
+    if (turnCount >= targetTurns) {
+      const stateToken = signConversationToken({
+        tokenType: 'state',
+        userId,
+        sessionId,
+        topic: state.topic,
+        level: state.level,
+        targetTurns,
+        turnCount,
+        scoreTotal,
+        historyHash: hashHistory(nextHistory),
+        currentTurnId: '',
+        optionHashes: [],
+        status: 'completed'
+      });
+
+      return {
+        ...result,
+        learnerMessage,
+        stateToken,
+        completed: true,
+        summary: DEFAULT_COMPLETION_SUMMARY,
+        turnCount,
+        targetTurns,
+        averageScore: Math.round(scoreTotal / turnCount)
+      };
+    }
+
     const advanceToken = signConversationToken({
       tokenType: 'advance',
       userId,
       sessionId,
       topic: state.topic,
       level: state.level,
+      targetTurns,
       turnCount,
       scoreTotal,
       historyHash: hashHistory(nextHistory),
       status: 'awaiting_ai'
     });
 
-    return { ...result, learnerMessage, advanceToken };
+    return { ...result, learnerMessage, advanceToken, completed: false, turnCount, targetTurns };
   },
 
   async generateNextConversationTurn(userId, sessionId, payload = {}) {
@@ -547,11 +617,44 @@ const speakingService = {
     }
 
     const turnCount = Number(advance.turnCount || 0);
-    const forceComplete = turnCount >= MAX_CONVERSATION_TURNS;
-    const canComplete = turnCount >= MIN_CONVERSATION_TURNS;
+    const targetTurns = normalizeTargetTurns(advance.targetTurns);
+    const forceComplete = turnCount >= targetTurns;
+    const canComplete = turnCount >= targetTurns;
+
+    if (forceComplete) {
+      const stateToken = signConversationToken({
+        tokenType: 'state',
+        userId,
+        sessionId,
+        topic: advance.topic,
+        level: advance.level,
+        targetTurns,
+        turnCount,
+        scoreTotal: Number(advance.scoreTotal || 0),
+        historyHash: hashHistory(history),
+        currentTurnId: '',
+        optionHashes: [],
+        status: 'completed'
+      });
+
+      return {
+        assistantMessage: null,
+        currentTurn: null,
+        stateToken,
+        completed: true,
+        summary: DEFAULT_COMPLETION_SUMMARY,
+        turnCount,
+        targetTurns,
+        averageScore: turnCount > 0
+          ? Math.round(Number(advance.scoreTotal || 0) / turnCount)
+          : 0
+      };
+    }
+
     const turn = await generateValidatedTurn({
       topic: advance.topic,
       level: normalizeLevel(advance.level),
+      targetTurns,
       history,
       canComplete,
       forceComplete
@@ -565,6 +668,7 @@ const speakingService = {
       sessionId,
       topic: advance.topic,
       level: advance.level,
+      targetTurns,
       turnCount,
       scoreTotal: Number(advance.scoreTotal || 0),
       historyHash: hashHistory(nextHistory),
@@ -578,8 +682,11 @@ const speakingService = {
       currentTurn: completed ? null : { id: assistantMessage.id, options: turn.options },
       stateToken,
       completed,
-      summary: turn.summary,
+      summary: completed && /[ÃÂÄ]/.test(turn.summary || '')
+        ? DEFAULT_COMPLETION_SUMMARY
+        : turn.summary,
       turnCount,
+      targetTurns,
       averageScore: turnCount > 0
         ? Math.round(Number(advance.scoreTotal || 0) / turnCount)
         : 0
@@ -591,7 +698,11 @@ module.exports = speakingService;
 module.exports._internals = {
   MIN_CONVERSATION_TURNS,
   MAX_CONVERSATION_TURNS,
+  SHORT_CONVERSATION_TURNS,
+  LONG_CONVERSATION_TURNS,
+  normalizeTargetTurns,
   normalizeAiTurn,
+  buildSystemPrompt,
   normalizeHistoryMessage,
   normalizeOption,
   hashHistory,

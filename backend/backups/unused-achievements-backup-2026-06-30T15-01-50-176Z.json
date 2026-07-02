@@ -1,0 +1,115 @@
+{
+  "createdAt": "2026-06-30T15:01:50.359Z",
+  "tables": {
+    "achievements": {
+      "columns": [
+        {
+          "table_name": "achievements",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "achievements",
+          "column_name": "name",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "achievements",
+          "column_name": "description",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "achievements",
+          "column_name": "condition",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        }
+      ],
+      "rows": []
+    },
+    "userachievements": {
+      "columns": [
+        {
+          "table_name": "userachievements",
+          "column_name": "userid",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "userachievements",
+          "column_name": "achievementid",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "userachievements",
+          "column_name": "unlockedat",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "rows": []
+    }
+  },
+  "constraints": [
+    {
+      "conname": "achievements_id_not_null",
+      "table_name": "achievements",
+      "contype": "n",
+      "references_table": "-",
+      "definition": "NOT NULL id"
+    },
+    {
+      "conname": "achievements_pkey",
+      "table_name": "achievements",
+      "contype": "p",
+      "references_table": "-",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "conname": "userachievements_achievementid_fkey",
+      "table_name": "userachievements",
+      "contype": "f",
+      "references_table": "achievements",
+      "definition": "FOREIGN KEY (achievementid) REFERENCES achievements(id)"
+    },
+    {
+      "conname": "userachievements_achievementid_not_null",
+      "table_name": "userachievements",
+      "contype": "n",
+      "references_table": "-",
+      "definition": "NOT NULL achievementid"
+    },
+    {
+      "conname": "userachievements_pkey",
+      "table_name": "userachievements",
+      "contype": "p",
+      "references_table": "-",
+      "definition": "PRIMARY KEY (userid, achievementid)"
+    },
+    {
+      "conname": "userachievements_userid_fkey",
+      "table_name": "userachievements",
+      "contype": "f",
+      "references_table": "users",
+      "definition": "FOREIGN KEY (userid) REFERENCES users(id)"
+    },
+    {
+      "conname": "userachievements_userid_not_null",
+      "table_name": "userachievements",
+      "contype": "n",
+      "references_table": "-",
+      "definition": "NOT NULL userid"
+    }
+  ]
+}

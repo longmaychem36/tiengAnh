@@ -328,6 +328,7 @@ function Onboarding() {
 
   useEffect(() => {
     if (!attempt || !miniCurrentQuestion) return;
+    let timerId = null;
     stopAllPlayback();
     setMiniBuiltWords([]);
     setMiniAudioPlaying(false);
@@ -336,18 +337,21 @@ function Onboarding() {
     const type = miniCurrentQuestion.questionType;
     if (type === 'matching') {
       setMiniWordBank(shuffleItems(miniCurrentQuestion.options || [miniCurrentQuestion.contentVI]).filter(Boolean));
-      return;
-    }
-    if (type === 'listenbuild') {
+    } else if (type === 'listenbuild') {
       const words = (miniCurrentQuestion.options?.length ? miniCurrentQuestion.options : getTargetText(miniCurrentQuestion).split(/\s+/)).filter(Boolean);
       setMiniWordBank(shuffleItems(words));
-      setTimeout(() => playMiniTTS(getTargetText(miniCurrentQuestion)), 250);
-      return;
+      timerId = window.setTimeout(() => playMiniTTS(getTargetText(miniCurrentQuestion)), 250);
+    } else {
+      setMiniWordBank([]);
+      if (type === 'listening' || type === 'speakrepeat') {
+        timerId = window.setTimeout(() => playMiniTTS(getTargetText(miniCurrentQuestion)), 250);
+      }
     }
-    setMiniWordBank([]);
-    if (type === 'listening' || type === 'speakrepeat') {
-      setTimeout(() => playMiniTTS(getTargetText(miniCurrentQuestion)), 250);
-    }
+
+    return () => {
+      if (timerId) window.clearTimeout(timerId);
+      stopAllPlayback();
+    };
   }, [attempt?.attemptToken, miniCurrentQuestion?.id]);
 
   const finishWithPlacement = (payload) => {

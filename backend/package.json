@@ -29,7 +29,6 @@
     "db:seed-vocabulary": "node scripts/seed_vocabulary.js",
     "db:seed-learning-full": "node scripts/seed_learning_content_full.js",
     "db:seed-onboarding": "node scripts/seed_onboarding_content.js",
-    "db:seed-leaderboard-demo": "node scripts/seed_leaderboard_demo.js",
     "db:enhance-grammar": "node scripts/enhance_grammar_existing.js",
     "db:seed-grammar": "node scripts/seed_grammar.js"
   },

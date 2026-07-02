@@ -139,7 +139,7 @@ function AdminNotifications() {
     <div className="admin-notification-page">
       <header className="admin-page-title admin-notification-title">
         <div>
-          <h1>Notifications</h1>
+          <h1>Thông báo</h1>
           <p>Tạo thông báo trong app và gửi email tới learner bằng cấu hình mail hiện có.</p>
         </div>
         <button type="button" className="btn btn-secondary btn-sm" onClick={loadData} disabled={loading}>
@@ -212,7 +212,7 @@ function AdminNotifications() {
                       <label key={userId} className="admin-notification-recipient">
                         <input type="checkbox" checked={form.userIds.includes(userId)} onChange={() => toggleUser(userId)} />
                         <span>
-                          <strong>{getField(user, 'Username', 'username') || 'Learner'}</strong>
+                          <strong>{getField(user, 'Username', 'username') || 'Chưa có tên'}</strong>
                           <small>{getField(user, 'Email', 'email')}</small>
                         </span>
                       </label>
@@ -249,7 +249,7 @@ function AdminNotifications() {
             </article>
             <article>
               <strong>{learners.length}</strong>
-              <span>Learner có thể nhận</span>
+              <span>Học viên có thể nhận</span>
             </article>
             <article>
               <strong>{notifications.reduce((sum, item) => sum + Number(item.emailSentCount || item.emailsentcount || 0), 0)}</strong>

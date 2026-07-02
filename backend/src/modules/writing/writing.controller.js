@@ -10,8 +10,8 @@ const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.
 const { EXP_REWARDS } = require('../../utils/constants');
 const { ensureOnboardingSchema, getUserPlacementLevel } = require('../onboarding/onboarding.schema');
 
-const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const NVIDIA_MODEL = process.env.WRITING_NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const OPENAI_MODEL = process.env.WRITING_OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const WRITING_AI_ENABLED = process.env.WRITING_AI_ENABLED !== 'false';
 const WRITING_AI_TIMEOUT_MS = Number.parseInt(process.env.WRITING_AI_TIMEOUT_MS, 10) || 6000;
 const WRITING_AI_MAX_TOKENS = Number.parseInt(process.env.WRITING_AI_MAX_TOKENS, 10) || 280;
@@ -192,9 +192,9 @@ function normalizeAiWritingFeedback(raw, fallbackScore) {
 }
 
 async function checkWritingWithAi(userText, targetText) {
-  const apiKey = process.env.NVIDIA_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error('NVIDIA_API_KEY is not configured');
+    throw new Error('OPENAI_API_KEY is not configured');
   }
 
   const similarityScore = getSimilarityScore(userText, targetText);
@@ -218,9 +218,9 @@ async function checkWritingWithAi(userText, targetText) {
   let response;
   try {
     response = await axios.post(
-      `${NVIDIA_BASE_URL}/chat/completions`,
+      `${OPENAI_BASE_URL}/chat/completions`,
       {
-        model: NVIDIA_MODEL,
+        model: OPENAI_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -242,12 +242,12 @@ async function checkWritingWithAi(userText, targetText) {
   } catch (err) {
     const status = err.response?.status;
     const detail = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Unknown API error';
-    throw new Error(`NVIDIA writing feedback failed${status ? ` (${status})` : ''}: ${detail}`);
+    throw new Error(`OpenAI writing feedback failed${status ? ` (${status})` : ''}: ${detail}`);
   }
 
   const content = response.data?.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error('NVIDIA did not return writing feedback.');
+    throw new Error('OpenAI did not return writing feedback.');
   }
 
   return normalizeAiWritingFeedback(parseJsonContent(content), similarityScore);

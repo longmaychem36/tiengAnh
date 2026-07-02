@@ -16,17 +16,17 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 
 const adminItems = [
-  { to: '/admin', label: 'Dashboard', icon: FiCommand, exact: true },
-  { to: '/admin/listening', label: 'Listening', icon: FiHeadphones },
-  { to: '/admin/reading', label: 'Reading', icon: FiBookOpen },
-  { to: '/admin/speaking', label: 'Speaking', icon: FiMic },
-  { to: '/admin/writing', label: 'Writing', icon: FiEdit3 },
-  { to: '/admin/grammar', label: 'Grammar', icon: FiLayers },
-  { to: '/admin/vocabulary', label: 'Vocabulary', icon: FiGrid },
-  { to: '/admin/games', label: 'Mini games', icon: FiPlay },
-  { to: '/admin/users', label: 'Accounts', icon: FiUsers },
-  { to: '/admin/notifications', label: 'Notifications', icon: FiBell },
-  { to: '/admin/support', label: 'Support', icon: FiLifeBuoy },
+  { to: '/admin', label: 'Tổng quan', icon: FiCommand, exact: true },
+  { to: '/admin/listening', label: 'Luyện nghe', icon: FiHeadphones },
+  { to: '/admin/reading', label: 'Luyện đọc', icon: FiBookOpen },
+  { to: '/admin/speaking', label: 'Luyện nói', icon: FiMic },
+  { to: '/admin/writing', label: 'Luyện viết', icon: FiEdit3 },
+  { to: '/admin/grammar', label: 'Ngữ pháp', icon: FiLayers },
+  { to: '/admin/vocabulary', label: 'Từ vựng', icon: FiGrid },
+  { to: '/admin/games', label: 'Trò chơi', icon: FiPlay },
+  { to: '/admin/users', label: 'Tài khoản', icon: FiUsers },
+  { to: '/admin/notifications', label: 'Thông báo', icon: FiBell },
+  { to: '/admin/support', label: 'Hỗ trợ', icon: FiLifeBuoy },
 ];
 
 function NavItem({ to, label, icon: Icon, exact }) {
@@ -48,7 +48,7 @@ function AdminSidebar() {
   const { logout } = useAuth();
 
   return (
-    <aside className="admin-sidebar" aria-label="Admin navigation">
+    <aside className="admin-sidebar" aria-label="Điều hướng quản trị">
       <nav className="admin-sidebar-nav">
         {adminItems.map((item) => <NavItem key={item.to} {...item} />)}
       </nav>

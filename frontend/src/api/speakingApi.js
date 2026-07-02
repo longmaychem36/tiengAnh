@@ -34,7 +34,7 @@ export const speakingApi = {
   saveProgress: (data) => axiosClient.post('/speaking/progress', data),
 
   generatePersonalizedLesson: (data) => axiosClient.post('/speaking/personalized', data, {
-    timeout: 60000
+    timeout: 90000
   }),
 
   analyzePersonalizedTurn: (sessionId, { audioBlob, stateToken, history, option, passThreshold }) => {
@@ -53,6 +53,6 @@ export const speakingApi = {
   generateNextPersonalizedTurn: (sessionId, data) => axiosClient.post(
     `/speaking/personalized/${sessionId}/next-turn`,
     data,
-    { timeout: 60000 }
+    { timeout: 90000 }
   )
 };

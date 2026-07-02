@@ -17,29 +17,24 @@ async function migrate() {
       WHERE Role = 'superadmin'
     `);
 
+    const constraints = await pool.query(`
+      SELECT con.conname
+      FROM pg_constraint con
+      JOIN pg_class rel ON rel.oid = con.conrelid
+      WHERE rel.oid = 'users'::regclass
+        AND con.contype = 'c'
+        AND pg_get_constraintdef(con.oid) ILIKE '%role%'
+    `);
+
+    for (const { conname } of constraints.rows) {
+      const quotedName = `"${String(conname).replace(/"/g, '""')}"`;
+      await pool.query(`ALTER TABLE Users DROP CONSTRAINT ${quotedName}`);
+    }
+
     await pool.query(`
-      DO $
-      DECLARE constraint_name text;
-      BEGIN
-        SELECT con.conname INTO constraint_name
-        FROM pg_constraint con
-        JOIN pg_class rel ON rel.oid = con.conrelid
-        JOIN pg_attribute att ON att.attrelid = rel.oid AND att.attnum = ANY(con.conkey)
-        WHERE rel.relname = 'users'
-          AND att.attname = 'role'
-          AND con.contype = 'c'
-        LIMIT 1;
-
-        IF constraint_name IS NOT NULL THEN
-          EXECUTE format('ALTER TABLE Users DROP CONSTRAINT %I', constraint_name);
-        END IF;
-
-        ALTER TABLE Users
-        ADD CONSTRAINT ck_users_role
-        CHECK (Role IN ('user', 'admin'));
-      EXCEPTION
-        WHEN duplicate_object THEN NULL;
-      END $$;
+      ALTER TABLE Users
+      ADD CONSTRAINT ck_users_role
+      CHECK (Role IN ('user', 'admin'))
     `);
 
     console.log('Roles migration completed: user/admin only.');

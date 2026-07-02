@@ -546,35 +546,21 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
   try {
     const { getPool } = require('../../config/database');
     const pool = getPool();
-    const countTable = async (tableName) => {
-      try {
-        return await pool.query(`SELECT count(*)::int as count FROM ${tableName}`);
-      } catch (err) {
-        return { rows: [{ count: 0 }] };
-      }
+    const countTable = (tableName) => pool.query(`SELECT count(*)::int as count FROM ${tableName}`);
+    const scalar = async (query) => {
+      const result = await pool.query(query);
+      return Number(Object.values(result.rows[0] || {})[0] || 0);
     };
-    const scalar = async (query, fallback = 0) => {
-      try {
-        const result = await pool.query(query);
-        return Number(Object.values(result.rows[0] || {})[0] || fallback);
-      } catch {
-        return fallback;
-      }
-    };
-    const rows = async (query, fallback = []) => {
-      try {
-        const result = await pool.query(query);
-        return result.rows || fallback;
-      } catch {
-        return fallback;
-      }
+    const rows = async (query) => {
+      const result = await pool.query(query);
+      return result.rows || [];
     };
 
     const queries = await Promise.all([
       countTable('Users'),
       scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsActive, true) = true"),
       scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsActive, true) = false"),
-      scalar("SELECT count(*)::int FROM Users WHERE Role = 'admin'"),
+      scalar("SELECT count(*)::int FROM Users WHERE Role IN ('admin', 'superadmin')"),
       scalar("SELECT count(*)::int FROM Users WHERE Role = 'user'"),
       scalar("SELECT count(*)::int FROM Users WHERE Plan = 'plus'"),
       scalar("SELECT count(*)::int FROM Users WHERE CreatedAt >= NOW() - INTERVAL '7 days'"),
@@ -783,13 +769,13 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
     stats.totalSkillLessons = stats.totalSpeakingLessons + stats.totalWritingLessons + stats.totalListeningLessons + stats.totalReadingLessons;
     stats.totalLearningItems = stats.totalSpeakingQuestions + stats.totalWritingExercises + stats.totalListeningQuestions + stats.totalReadingQuestions + stats.totalGrammarQuiz + stats.totalQuestions;
     stats.modules = [
-      { key: 'listening', name: 'Listening', lessons: stats.totalListeningLessons, items: stats.totalListeningQuestions, to: '/admin/listening' },
-      { key: 'reading', name: 'Reading', lessons: stats.totalReadingLessons, items: stats.totalReadingQuestions, to: '/admin/reading' },
-      { key: 'speaking', name: 'Speaking', lessons: stats.totalSpeakingLessons, items: stats.totalSpeakingQuestions, to: '/admin/speaking' },
-      { key: 'writing', name: 'Writing', lessons: stats.totalWritingLessons, items: stats.totalWritingExercises, to: '/admin/writing' },
-      { key: 'grammar', name: 'Grammar', lessons: stats.totalGrammarTopics, items: stats.totalGrammarQuiz, to: '/admin/grammar' },
-      { key: 'games', name: 'Mini games', lessons: stats.totalGameLevels, items: stats.totalQuestions, to: '/admin/games' },
-      { key: 'vocabulary', name: 'Vocabulary', lessons: stats.totalVocabularyCollections, items: stats.totalVocabularyWords, to: '/admin/vocabulary' },
+      { key: 'listening', name: 'Luyện nghe', lessons: stats.totalListeningLessons, items: stats.totalListeningQuestions, to: '/admin/listening' },
+      { key: 'reading', name: 'Luyện đọc', lessons: stats.totalReadingLessons, items: stats.totalReadingQuestions, to: '/admin/reading' },
+      { key: 'speaking', name: 'Luyện nói', lessons: stats.totalSpeakingLessons, items: stats.totalSpeakingQuestions, to: '/admin/speaking' },
+      { key: 'writing', name: 'Luyện viết', lessons: stats.totalWritingLessons, items: stats.totalWritingExercises, to: '/admin/writing' },
+      { key: 'grammar', name: 'Ngữ pháp', lessons: stats.totalGrammarTopics, items: stats.totalGrammarQuiz, to: '/admin/grammar' },
+      { key: 'games', name: 'Trò chơi', lessons: stats.totalGameLevels, items: stats.totalQuestions, to: '/admin/games' },
+      { key: 'vocabulary', name: 'Từ vựng', lessons: stats.totalVocabularyCollections, items: stats.totalVocabularyWords, to: '/admin/vocabulary' },
     ];
 
     return success(res, stats);

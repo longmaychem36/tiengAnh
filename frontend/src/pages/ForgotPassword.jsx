@@ -68,9 +68,9 @@ function ForgotPassword() {
       setPassword('');
       setConfirmPassword('');
       setStep('reset');
-      toast.success('Ma xac nhan da duoc gui ve email.');
+      toast.success('Mã xác nhận đã được gửi đến email.');
     } catch (err) {
-      toast.error(err.message || 'Khong the gui ma xac nhan.');
+      toast.error(err.message || 'Không thể gửi mã xác nhận.');
     } finally {
       setLoading(false);
     }
@@ -79,7 +79,7 @@ function ForgotPassword() {
   const resetPassword = async (event) => {
     event.preventDefault();
     if (password !== confirmPassword) {
-      toast.error('Mat khau xac nhan khong khop.');
+      toast.error('Mật khẩu xác nhận không khớp.');
       return;
     }
 
@@ -87,9 +87,9 @@ function ForgotPassword() {
     try {
       await authApi.resetPassword({ email, code, password });
       setStep('done');
-      toast.success('Mat khau da duoc cap nhat.');
+      toast.success('Mật khẩu đã được cập nhật.');
     } catch (err) {
-      toast.error(err.message || 'Khong the dat lai mat khau.');
+      toast.error(err.message || 'Không thể đặt lại mật khẩu.');
     } finally {
       setLoading(false);
     }
@@ -104,16 +104,16 @@ function ForgotPassword() {
         style={authCardStyle}
       >
         <div style={{ textAlign: 'center', marginBottom: 'var(--space-8)' }}>
-          <div style={brandMarkStyle}>E</div>
+          <div style={brandMarkStyle}>L</div>
           <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>
-            {step === 'done' ? 'Password updated' : 'Reset password'}
+            {step === 'done' ? 'Đã cập nhật mật khẩu' : 'Đặt lại mật khẩu'}
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--space-2)' }}>
             {step === 'email'
-              ? 'Enter your account email to receive a verification code.'
+              ? 'Nhập email tài khoản để nhận mã xác nhận.'
               : step === 'reset'
-                ? 'Enter the code from your email and choose a new password.'
-                : 'You can now sign in with your new password.'}
+                ? 'Nhập mã trong email và chọn mật khẩu mới.'
+                : 'Bạn có thể đăng nhập bằng mật khẩu mới.'}
           </p>
         </div>
 
@@ -128,7 +128,7 @@ function ForgotPassword() {
                   className="form-input"
                   type="email"
                   autoComplete="email"
-                  placeholder="your@email.com"
+                  placeholder="tenban@example.com"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   required
@@ -143,7 +143,7 @@ function ForgotPassword() {
               disabled={loading}
               style={{ marginTop: 'var(--space-4)', background: 'linear-gradient(135deg, #1cb0f6, #58cc02)', boxShadow: '0 12px 24px rgba(28, 176, 246, 0.24)' }}
             >
-              {loading ? 'Sending...' : 'Send code'}
+              {loading ? 'Đang gửi...' : 'Gửi mã xác nhận'}
               {!loading && <FiArrowRight />}
             </button>
           </form>
@@ -152,7 +152,7 @@ function ForgotPassword() {
         {step === 'reset' && (
           <form onSubmit={resetPassword} autoComplete="off">
             <div className="form-group">
-              <span className="form-label">Verification code</span>
+              <span className="form-label">Mã xác nhận</span>
               <div style={inputWrapStyle}>
                 <FiKey style={iconStyle} />
                 <input
@@ -176,7 +176,7 @@ function ForgotPassword() {
             </div>
 
             <div className="form-group">
-              <span className="form-label">New password</span>
+              <span className="form-label">Mật khẩu mới</span>
               <div style={inputWrapStyle}>
                 <FiLock style={iconStyle} />
                 <input
@@ -195,7 +195,7 @@ function ForgotPassword() {
             </div>
 
             <div className="form-group">
-              <span className="form-label">Confirm password</span>
+              <span className="form-label">Xác nhận mật khẩu</span>
               <div style={inputWrapStyle}>
                 <FiLock style={iconStyle} />
                 <input
@@ -219,7 +219,7 @@ function ForgotPassword() {
               disabled={loading}
               style={{ marginTop: 'var(--space-4)', background: 'linear-gradient(135deg, #1cb0f6, #58cc02)', boxShadow: '0 12px 24px rgba(28, 176, 246, 0.24)' }}
             >
-              {loading ? 'Updating...' : 'Update password'}
+              {loading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
               {!loading && <FiArrowRight />}
             </button>
 
@@ -230,7 +230,7 @@ function ForgotPassword() {
               onClick={requestCode}
               style={{ marginTop: 'var(--space-3)' }}
             >
-              Send a new code
+              Gửi lại mã
             </button>
           </form>
         )}
@@ -241,7 +241,7 @@ function ForgotPassword() {
             className="btn btn-primary btn-lg w-full"
             style={{ marginTop: 'var(--space-4)', background: 'linear-gradient(135deg, #1cb0f6, #58cc02)' }}
           >
-            Back to login
+            Về trang đăng nhập
             <FiArrowRight />
           </Link>
         )}
@@ -258,7 +258,7 @@ function ForgotPassword() {
             fontSize: 'var(--font-size-sm)'
           }}
         >
-          <FiArrowLeft /> Back to login
+          <FiArrowLeft /> Về trang đăng nhập
         </Link>
       </motion.div>
     </div>

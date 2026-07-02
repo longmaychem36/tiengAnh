@@ -6,7 +6,11 @@ const speakingService = require('../src/modules/speaking/speaking.service');
 const {
   MIN_CONVERSATION_TURNS,
   MAX_CONVERSATION_TURNS,
+  SHORT_CONVERSATION_TURNS,
+  LONG_CONVERSATION_TURNS,
+  normalizeTargetTurns,
   normalizeAiTurn,
+  buildSystemPrompt,
   hashHistory,
   hashOption,
   signConversationToken,
@@ -17,51 +21,61 @@ const assistantMessage = {
   id: 'ai-opening',
   role: 'assistant',
   text: 'Hello, what would you like to order?',
-  translation: 'Xin chào, bạn muốn gọi món gì?'
+  translation: ''
 };
 
 const options = [
-  { id: 'tea', text: 'I would like a cup of tea, please.', translation: 'Tôi muốn một tách trà.' },
-  { id: 'coffee', text: 'Could I have a black coffee, please?', translation: 'Cho tôi một cà phê đen.' },
-  { id: 'menu', text: 'May I see the menu first, please?', translation: 'Cho tôi xem thực đơn trước.' }
+  { id: 'tea', text: 'I would like a cup of tea, please.' },
+  { id: 'coffee', text: 'Could I have a black coffee, please?' },
+  { id: 'menu', text: 'May I see the menu first, please?' }
 ];
 
 const continuingRawTurn = {
   message: 'Would you like anything else with that?',
-  translation: 'Bạn có muốn dùng thêm gì không?',
   options,
   isComplete: false,
   summary: ''
 };
 
-test('normalizes a continuing AI turn with exactly three replies', () => {
+test('normalizes a continuing AI turn without requiring translations', () => {
   const turn = normalizeAiTurn(continuingRawTurn, { canComplete: false });
   assert.equal(turn.isComplete, false);
+  assert.equal(turn.translation, '');
   assert.equal(turn.options.length, 3);
+  assert.deepEqual(turn.options.map((option) => option.translation), ['', '', '']);
 });
 
 test('accepts common AI field aliases when normalizing a turn', () => {
   const turn = normalizeAiTurn({
     reply: 'You can use your credit card here.',
-    vi: 'Báº¡n cÃ³ thá»ƒ dÃ¹ng tháº» tÃ­n dá»¥ng á»Ÿ Ä‘Ã¢y.',
     choices: [
-      { message: 'Great, I will pay by card.', vi: 'Tuyá»‡t, tÃ´i sáº½ thanh toÃ¡n báº±ng tháº».' },
-      { message: 'How much do I need to pay?', vi: 'TÃ´i cáº§n tráº£ bao nhiÃªu?' },
-      { message: 'Can I split the payment?', vi: 'TÃ´i cÃ³ thá»ƒ chia hÃ³a Ä‘Æ¡n khÃ´ng?' }
+      { message: 'Great, I will pay by card.' },
+      { message: 'How much do I need to pay?' },
+      { message: 'Can I split the payment?' }
     ],
     isComplete: false
   }, { canComplete: false });
 
   assert.equal(turn.message, 'You can use your credit card here.');
-  assert.equal(turn.translation, 'Báº¡n cÃ³ thá»ƒ dÃ¹ng tháº» tÃ­n dá»¥ng á»Ÿ Ä‘Ã¢y.');
+  assert.equal(turn.translation, '');
   assert.equal(turn.options.length, 3);
+});
+
+test('keeps optional legacy Vietnamese translations when they are present', () => {
+  const turn = normalizeAiTurn({
+    message: 'You can use your credit card here.',
+    translation: 'Bạn có thể dùng thẻ tín dụng ở đây.',
+    options,
+    isComplete: false
+  }, { canComplete: false });
+
+  assert.equal(turn.translation, 'Bạn có thể dùng thẻ tín dụng ở đây.');
 });
 
 test('rejects placeholder AI content instead of surfacing it to the learner', () => {
   assert.throws(
     () => normalizeAiTurn({
       message: 'English AI reply',
-      translation: 'Báº£n dá»‹ch tiáº¿ng Viá»‡t há»£p lá»‡.',
       options,
       isComplete: false
     }, { canComplete: false }),
@@ -69,19 +83,41 @@ test('rejects placeholder AI content instead of surfacing it to the learner', ()
   );
 });
 
+test('beginner prompt asks for very easy English and no translations', () => {
+  const prompt = buildSystemPrompt({
+    topic: 'Shopping',
+    level: 'beginner',
+    targetTurns: 5,
+    canComplete: false,
+    forceComplete: false
+  });
+  assert.match(prompt, /absolute beginner/i);
+  assert.match(prompt, /very easy everyday English/i);
+  assert.match(prompt, /3 to 7 words/i);
+  assert.match(prompt, /Target length: 5 learner replies/i);
+  assert.match(prompt, /Do not include Vietnamese translations/i);
+});
+
+test('normalizes conversation length to short or long only', () => {
+  assert.equal(normalizeTargetTurns(5), SHORT_CONVERSATION_TURNS);
+  assert.equal(normalizeTargetTurns('short'), SHORT_CONVERSATION_TURNS);
+  assert.equal(normalizeTargetTurns(10), LONG_CONVERSATION_TURNS);
+  assert.equal(normalizeTargetTurns('long'), LONG_CONVERSATION_TURNS);
+  assert.equal(normalizeTargetTurns(99), SHORT_CONVERSATION_TURNS);
+});
+
 test('ignores an early AI completion before the minimum turn', () => {
   const turn = normalizeAiTurn({ ...continuingRawTurn, isComplete: true }, { canComplete: false });
   assert.equal(turn.isComplete, false);
-  assert.equal(MIN_CONVERSATION_TURNS, 4);
+  assert.equal(MIN_CONVERSATION_TURNS, 5);
 });
 
 test('allows a natural completion after the minimum and forces it at the cap', () => {
   const natural = normalizeAiTurn({
     message: 'Thank you for visiting. Have a wonderful day!',
-    translation: 'Cảm ơn bạn đã ghé thăm. Chúc bạn một ngày tốt lành!',
     options,
     isComplete: true,
-    summary: 'Bạn đã hoàn thành tình huống gọi món.'
+    summary: ''
   }, { canComplete: true });
   assert.equal(natural.isComplete, true);
   assert.deepEqual(natural.options, []);
@@ -89,7 +125,7 @@ test('allows a natural completion after the minimum and forces it at the cap', (
   const forced = normalizeAiTurn({ ...continuingRawTurn, isComplete: false }, { forceComplete: true });
   assert.equal(forced.isComplete, true);
   assert.deepEqual(forced.options, []);
-  assert.equal(MAX_CONVERSATION_TURNS, 12);
+  assert.equal(MAX_CONVERSATION_TURNS, 10);
 });
 
 test('history and option hashes change when browser data is modified', () => {
@@ -165,6 +201,44 @@ test('a failed pronunciation keeps the current state and a passing one creates a
   assert.equal(advance.scoreTotal, 88);
 });
 
+test('the final learner reply completes the conversation without creating an AI advance token', () => {
+  const userId = 'user-1';
+  const sessionId = 'session-complete-after-learner';
+  const history = [assistantMessage];
+  const stateToken = signConversationToken({
+    tokenType: 'state',
+    userId,
+    sessionId,
+    topic: 'At a coffee shop',
+    level: 'beginner',
+    targetTurns: 5,
+    turnCount: 4,
+    scoreTotal: 360,
+    historyHash: hashHistory(history),
+    currentTurnId: assistantMessage.id,
+    optionHashes: options.map((option) => ({ id: option.id, hash: hashOption(option) })),
+    status: 'ready'
+  });
+
+  const result = speakingService.analyzeConversationTurn(userId, sessionId, {
+    stateToken,
+    history,
+    option: options[0],
+    passThreshold: 60
+  }, {
+    score: 90,
+    transcript: options[0].text,
+    feedback: 'Good job.'
+  });
+
+  assert.equal(result.passed, true);
+  assert.equal(result.completed, true);
+  assert.equal(result.advanceToken, undefined);
+  assert.ok(result.stateToken);
+  assert.equal(result.turnCount, 5);
+  assert.equal(result.averageScore, 90);
+});
+
 test('rejects a reply that was not offered in the signed current turn', () => {
   const userId = 'user-1';
   const sessionId = 'session-1';
@@ -183,17 +257,19 @@ test('rejects a reply that was not offered in the signed current turn', () => {
 });
 
 test('retries an invalid opening and returns a signed browser-owned conversation', async () => {
-  const previousKey = process.env.NVIDIA_API_KEY;
+  const previousKey = process.env.OPENAI_API_KEY;
   const originalPost = axios.post;
-  process.env.NVIDIA_API_KEY = 'test-key';
+  process.env.OPENAI_API_KEY = 'test-key';
   let calls = 0;
-  axios.post = async () => {
+  axios.post = async (url, body, config) => {
     calls += 1;
+    assert.equal(url, 'https://api.openai.com/v1/chat/completions');
+    assert.equal(body.model, 'gpt-4o-mini');
+    assert.equal(config.headers.Authorization, 'Bearer test-key');
     const content = calls === 1
-      ? JSON.stringify({ message: 'Welcome to the cafe.', translation: '', options, isComplete: false })
+      ? JSON.stringify({ message: 'Welcome to the cafe.', options: [], isComplete: false })
       : JSON.stringify({
         message: 'Welcome to the cafe. What can I get for you?',
-        translation: 'Chào mừng đến quán cà phê. Tôi có thể lấy gì cho bạn?',
         options,
         isComplete: false,
         summary: ''
@@ -204,33 +280,34 @@ test('retries an invalid opening and returns a signed browser-owned conversation
   try {
     const conversation = await speakingService.createPersonalizedLesson('user-1', {
       topic: 'At a coffee shop',
-      level: 'beginner'
+      level: 'beginner',
+      targetTurns: 10
     });
     assert.equal(calls, 2);
     assert.equal(conversation.messages.length, 1);
+    assert.equal(conversation.targetTurns, 10);
     assert.equal(conversation.currentTurn.options.length, 3);
     assert.ok(conversation.stateToken);
   } finally {
     axios.post = originalPost;
-    if (previousKey === undefined) delete process.env.NVIDIA_API_KEY;
-    else process.env.NVIDIA_API_KEY = previousKey;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
   }
 });
 
-test('generates a natural final AI message from verified history after turn four', async () => {
-  const previousKey = process.env.NVIDIA_API_KEY;
+test('generates a final AI message from verified history at the short target', async () => {
+  const previousKey = process.env.OPENAI_API_KEY;
   const originalPost = axios.post;
-  process.env.NVIDIA_API_KEY = 'test-key';
+  process.env.OPENAI_API_KEY = 'test-key';
   axios.post = async () => ({
     data: {
       choices: [{
         message: {
           content: JSON.stringify({
             message: 'Your order is ready. Thank you and have a great day!',
-            translation: 'Đơn của bạn đã sẵn sàng. Cảm ơn và chúc bạn một ngày tốt lành!',
             options: [],
             isComplete: true,
-            summary: 'Bạn đã hoàn thành tình huống gọi món tại quán cà phê.'
+            summary: ''
           })
         }
       }]
@@ -241,7 +318,7 @@ test('generates a natural final AI message from verified history after turn four
     id: 'learner-four',
     role: 'learner',
     text: options[0].text,
-    translation: options[0].translation,
+    translation: '',
     transcript: options[0].text,
     score: 90,
     feedback: 'Good job.',
@@ -251,8 +328,8 @@ test('generates a natural final AI message from verified history after turn four
   const history = [assistantMessage, learnerMessage];
   const advanceToken = signConversationToken({
     tokenType: 'advance', userId: 'user-1', sessionId: 'session-final',
-    topic: 'At a coffee shop', level: 'beginner', turnCount: 4,
-    scoreTotal: 350, historyHash: hashHistory(history), status: 'awaiting_ai'
+    topic: 'At a coffee shop', level: 'beginner', targetTurns: 5, turnCount: 5,
+    scoreTotal: 440, historyHash: hashHistory(history), status: 'awaiting_ai'
   });
 
   try {
@@ -261,12 +338,13 @@ test('generates a natural final AI message from verified history after turn four
       history
     });
     assert.equal(result.completed, true);
+    assert.equal(result.assistantMessage, null);
     assert.equal(result.currentTurn, null);
     assert.equal(result.averageScore, 88);
-    assert.match(result.summary, /gọi món/);
+    assert.ok(result.summary);
   } finally {
     axios.post = originalPost;
-    if (previousKey === undefined) delete process.env.NVIDIA_API_KEY;
-    else process.env.NVIDIA_API_KEY = previousKey;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
   }
 });

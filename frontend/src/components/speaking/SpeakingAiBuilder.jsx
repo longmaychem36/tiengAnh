@@ -27,6 +27,7 @@ function SpeakingAiBuilder() {
   const canUseAi = Boolean(user?.isPlus || user?.plan === 'plus');
   const [topic, setTopic] = useState(AI_TOPIC_OPTIONS[0]);
   const [level, setLevel] = useState('beginner');
+  const [targetTurns, setTargetTurns] = useState(5);
   const [isGenerating, setIsGenerating] = useState(false);
   const [recentConversation, setRecentConversation] = useState(null);
 
@@ -48,7 +49,7 @@ function SpeakingAiBuilder() {
 
     setIsGenerating(true);
     try {
-      const response = await speakingApi.generatePersonalizedLesson({ topic: cleanTopic, level });
+      const response = await speakingApi.generatePersonalizedLesson({ topic: cleanTopic, level, targetTurns });
       const snapshot = createSpeakingConversationSnapshot(response.data);
       toast.success('Đã tạo cuộc hội thoại mới.');
       navigate(`/speaking/personalized/${snapshot.sessionId}`);
@@ -71,7 +72,7 @@ function SpeakingAiBuilder() {
           <div>
             <span>LINGOCONNECT PLUS</span>
             <h1>Hội thoại tiếng Anh với AI</h1>
-            <p>Chọn chủ đề và độ khó. Lingo Coach sẽ trò chuyện liên tục dựa trên từng câu bạn chọn.</p>
+            <p>Chọn chủ đề, độ khó và độ dài. Lingo Coach sẽ trò chuyện liên tục dựa trên từng câu bạn chọn.</p>
           </div>
           <span className={canUseAi ? 'badge badge-success' : 'badge badge-warning'}>
             {canUseAi ? 'PLUS' : 'Cần Plus'}
@@ -118,8 +119,15 @@ function SpeakingAiBuilder() {
             <span>Độ khó</span>
             <select className="form-input" value={level} onChange={(event) => setLevel(event.target.value)} disabled={!canUseAi || isGenerating}>
               <option value="beginner">Cơ bản</option>
-              <option value="intermediate">Trung bình</option>
-              <option value="advanced">Nâng cao</option>
+              <option value="intermediate">Khó hơn một chút</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Độ dài</span>
+            <select className="form-input" value={targetTurns} onChange={(event) => setTargetTurns(Number(event.target.value))} disabled={!canUseAi || isGenerating}>
+              <option value={5}>Ngắn - 5 câu</option>
+              <option value={10}>Dài - 10 câu</option>
             </select>
           </label>
         </div>

@@ -1,7 +1,4 @@
-// ============================================
-// Admin Dashboard - operational overview
-// ============================================
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FiAlertCircle,
@@ -118,7 +115,7 @@ function learnerId(item) {
 }
 
 function learnerName(item) {
-  return getField(item, 'Username', 'username') || 'Learner';
+  return getField(item, 'Username', 'username') || 'Chưa có tên';
 }
 
 function TopLearnerCard({ title, criteria, items = [], metric, helper }) {
@@ -163,7 +160,8 @@ function HealthTile({ label, value, detail }) {
 function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -172,12 +170,12 @@ function AdminDashboard() {
       .then((res) => {
         if (!isMounted) return;
         setStats(res.data || {});
-        setError(false);
+        setError('');
       })
       .catch(() => {
         if (!isMounted) return;
-        setStats({});
-        setError(true);
+        setStats(null);
+        setError('Không thể tải số liệu quản trị từ máy chủ.');
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -186,57 +184,77 @@ function AdminDashboard() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const safeStats = stats || {};
 
-  const totals = useMemo(() => ({
+  const totals = {
     activeRate: percent(safeStats.activeUsers, safeStats.totalUsers),
     adminRate: percent(safeStats.adminUsers, safeStats.totalUsers),
     contentItems: Number(safeStats.totalLearningItems || 0),
     studyMinutes: Math.round(Number(safeStats.totalStudySeconds || 0) / 60)
-  }), [safeStats]);
+  };
 
   if (loading) return <Loading />;
 
+  if (error && !stats) {
+    return (
+      <main className="admin-dashboard admin-simple-dashboard" aria-labelledby="admin-dashboard-title">
+        <header className="admin-page-title">
+          <h1 id="admin-dashboard-title">Tổng quan</h1>
+        </header>
+        <div className="admin-dashboard-alert" role="alert">
+          <FiAlertCircle />
+          <span>{error}</span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
+            setLoading(true);
+            setReloadKey((value) => value + 1);
+          }}>
+            Thử lại
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   const statCards = [
     {
-      label: 'Accounts',
+      label: 'Tài khoản',
       value: safeStats.totalUsers,
-      detail: `${formatNumber(safeStats.activeUsers)} active / ${formatNumber(safeStats.lockedUsers)} locked`,
-      note: `${totals.activeRate}% active`,
+      detail: `${formatNumber(safeStats.activeUsers)} hoạt động / ${formatNumber(safeStats.lockedUsers)} bị khóa`,
+      note: `${totals.activeRate}% đang hoạt động`,
       icon: <FiUsers />
     },
     {
-      label: 'Admins',
+      label: 'Quản trị viên',
       value: safeStats.adminUsers,
-      detail: `${formatNumber(safeStats.learnerUsers)} learners`,
-      note: `${totals.adminRate}% admin`,
+      detail: `${formatNumber(safeStats.learnerUsers)} học viên`,
+      note: `${totals.adminRate}% tài khoản quản trị`,
       icon: <FiAward />
     },
     {
-      label: 'Learning content',
+      label: 'Bài học kỹ năng',
       value: safeStats.totalSkillLessons,
-      detail: `${formatNumber(totals.contentItems)} questions/items`,
+      detail: `${formatNumber(totals.contentItems)} câu hỏi và nội dung`,
       icon: <FiBookOpen />
     },
     {
-      label: 'Study time',
+      label: 'Thời gian học',
       value: totals.studyMinutes,
       detail: formatMinutes(safeStats.totalStudySeconds),
       note: `${formatNumber(safeStats.totalExp)} EXP`,
       icon: <FiClock />
     },
     {
-      label: 'Plus users',
+      label: 'Tài khoản Plus',
       value: safeStats.plusUsers,
-      detail: `${formatNumber(safeStats.totalPaymentRequests)} payment requests`,
+      detail: `${formatNumber(safeStats.totalPaymentRequests)} yêu cầu thanh toán`,
       icon: <FiCreditCard />
     },
     {
-      label: 'New users',
+      label: 'Tài khoản mới',
       value: safeStats.newUsers7d,
-      detail: 'last 7 days',
+      detail: 'trong 7 ngày gần nhất',
       icon: <FiTrendingUp />
     }
   ];
@@ -263,20 +281,14 @@ function AdminDashboard() {
     <main className="admin-dashboard admin-simple-dashboard" aria-labelledby="admin-dashboard-title">
       <header className="admin-page-title admin-dashboard-title-row">
         <div>
-          <h1 id="admin-dashboard-title">Dashboard</h1>
+          <h1 id="admin-dashboard-title">Tổng quan</h1>
         </div>
         <Link to="/admin/users" className="btn btn-primary">
-          <FiUsers /> Accounts
+          <FiUsers /> Quản lý tài khoản
         </Link>
       </header>
 
-      {error && (
-        <div className="admin-dashboard-alert" role="alert">
-          <FiAlertCircle /> Could not load fresh dashboard numbers. The page is showing empty values.
-        </div>
-      )}
-
-      <section className="admin-stat-grid admin-dashboard-stat-grid" aria-label="Summary">
+      <section className="admin-stat-grid admin-dashboard-stat-grid" aria-label="Số liệu tổng quan">
         {statCards.map((card) => (
           <article key={card.label} className="admin-stat-card admin-rich-stat-card">
             <div className="admin-stat-card-head">
@@ -293,26 +305,26 @@ function AdminDashboard() {
       </section>
 
       <section className="admin-health-strip" aria-label="Learning health">
-        <HealthTile label="Active 7 ngày" value={formatNumber(getField(health, 'ActiveLearners7d', 'activelearners7d'))} detail="learner có thời gian học" />
-        <HealthTile label="Active 30 ngày" value={formatNumber(getField(health, 'ActiveLearners30d', 'activelearners30d'))} detail={percent(getField(health, 'ActiveLearners30d', 'activelearners30d'), safeStats.learnerUsers) + '% learner'} />
-        <HealthTile label="Task 30 ngày" value={formatNumber(getField(health, 'CompletedTasks30d', 'completedtasks30d'))} detail="nhiệm vụ đã hoàn thành" />
+        <HealthTile label="Học viên hoạt động 7 ngày" value={formatNumber(getField(health, 'ActiveLearners7d', 'activelearners7d'))} detail="có ghi nhận thời gian học" />
+        <HealthTile label="Học viên hoạt động 30 ngày" value={formatNumber(getField(health, 'ActiveLearners30d', 'activelearners30d'))} detail={percent(getField(health, 'ActiveLearners30d', 'activelearners30d'), safeStats.learnerUsers) + '% học viên'} />
+        <HealthTile label="Nhiệm vụ trong 30 ngày" value={formatNumber(getField(health, 'CompletedTasks30d', 'completedtasks30d'))} detail="đã hoàn thành" />
         <HealthTile label="Giờ học 30 ngày" value={formatMinutes(getField(health, 'StudySeconds30d', 'studyseconds30d'))} detail="tổng thời gian học" />
       </section>
 
       <section className="admin-dashboard-grid admin-dashboard-grid-wide">
         <article className="admin-panel admin-module-table">
           <div className="admin-panel-head">
-            <h2>Content modules</h2>
+            <h2>Nội dung học tập</h2>
           </div>
           <div className="admin-table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Module</th>
-                  <th>Lessons/sets</th>
-                  <th>Items</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                  <th>Học phần</th>
+                  <th>Bài học / bộ</th>
+                  <th>Nội dung</th>
+                  <th>Trạng thái</th>
+                  <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -330,12 +342,12 @@ function AdminDashboard() {
                       <td>{formatNumber(row.items)}</td>
                       <td>
                         <span className={`admin-status-chip ${isEmpty ? 'is-locked' : 'is-active'}`}>
-                          {isEmpty ? 'Needs content' : 'Ready'}
+                          {isEmpty ? 'Chưa có nội dung' : 'Sẵn sàng'}
                         </span>
                       </td>
                       <td>
                         <Link to={row.to} className="btn btn-primary btn-xs">
-                          Open <FiArrowRight />
+                          Mở <FiArrowRight />
                         </Link>
                       </td>
                     </tr>
@@ -348,7 +360,7 @@ function AdminDashboard() {
 
         <aside className="admin-panel admin-activity-panel">
           <div className="admin-panel-head">
-            <h2>7-day activity</h2>
+            <h2>Hoạt động 7 ngày</h2>
           </div>
           <div className="admin-activity-bars">
             {activity.map((item) => {
@@ -358,7 +370,7 @@ function AdminDashboard() {
                 <div key={String(getField(item, 'Date', 'date'))} className="admin-activity-bar-item">
                   <span className="admin-activity-bar" style={{ height }} />
                   <small>{formatDate(getField(item, 'Date', 'date'))}</small>
-                  <b>{Math.round(seconds / 60)}m</b>
+                  <b>{Math.round(seconds / 60)} phút</b>
                 </div>
               );
             })}
@@ -369,28 +381,28 @@ function AdminDashboard() {
       <section className="admin-dashboard-grid">
         <article className="admin-panel admin-visual-chart-panel">
           <div className="admin-panel-head">
-            <h2>Account and content charts</h2>
+            <h2>Phân bố tài khoản và nội dung</h2>
           </div>
           <div className="admin-visual-chart-grid">
             <DonutChart
-              title="Account roles"
+              title="Vai trò tài khoản"
               total={Number(safeStats.totalUsers || 0)}
               segments={[
-                { label: 'Learners', value: safeStats.learnerUsers, color: '#0f766e' },
-                { label: 'Admins', value: safeStats.adminUsers, color: '#2563eb' }
+                { label: 'Học viên', value: safeStats.learnerUsers, color: '#0f766e' },
+                { label: 'Quản trị viên', value: safeStats.adminUsers, color: '#2563eb' }
               ]}
             />
 
             <div className="admin-ratio-chart-card">
-              <h3>Plan and status</h3>
-              <RatioBar label="Plus learners" value={safeStats.plusUsers} total={safeStats.totalUsers} color="#7c3aed" />
-              <RatioBar label="Free learners" value={freeUsers} total={safeStats.totalUsers} color="#0891b2" />
-              <RatioBar label="Active accounts" value={safeStats.activeUsers} total={safeStats.totalUsers} color="#16a34a" />
-              <RatioBar label="Locked accounts" value={safeStats.lockedUsers} total={safeStats.totalUsers} color="#dc2626" />
+              <h3>Gói và trạng thái</h3>
+              <RatioBar label="Tài khoản Plus" value={safeStats.plusUsers} total={safeStats.totalUsers} color="#7c3aed" />
+              <RatioBar label="Tài khoản Free" value={freeUsers} total={safeStats.totalUsers} color="#0891b2" />
+              <RatioBar label="Đang hoạt động" value={safeStats.activeUsers} total={safeStats.totalUsers} color="#16a34a" />
+              <RatioBar label="Đang bị khóa" value={safeStats.lockedUsers} total={safeStats.totalUsers} color="#dc2626" />
             </div>
 
             <div className="admin-module-chart-card">
-              <h3>Content item volume</h3>
+              <h3>Quy mô nội dung</h3>
               <ModuleBars modules={visibleModules.length ? visibleModules : modules} />
             </div>
           </div>
@@ -401,7 +413,7 @@ function AdminDashboard() {
 
       <section className="admin-panel admin-top-learners-section">
         <div className="admin-panel-head">
-          <h2>Top learners</h2>
+          <h2>Học viên nổi bật</h2>
         </div>
         <div className="admin-top-learners-grid">
           <TopLearnerCard
@@ -409,10 +421,10 @@ function AdminDashboard() {
             criteria={criteria.exp || 'Xếp theo tổng EXP.'}
             items={safeStats.topLearnersByExp || safeStats.topLearners || []}
             metric={(item) => formatNumber(getField(item, 'Exp', 'exp')) + ' EXP'}
-            helper={(item) => 'Lv.' + formatNumber(getField(item, 'Level', 'level')) + ' · ' + formatNumber(getField(item, 'StreakDays', 'streakdays')) + ' ngày streak'}
+            helper={(item) => 'Cấp ' + formatNumber(getField(item, 'Level', 'level')) + ' · chuỗi ' + formatNumber(getField(item, 'StreakDays', 'streakdays')) + ' ngày'}
           />
           <TopLearnerCard
-            title="Theo streak"
+            title="Theo chuỗi ngày học"
             criteria={criteria.streak || 'Xếp theo chuỗi ngày học hiện tại.'}
             items={safeStats.topLearnersByStreak || []}
             metric={(item) => formatNumber(getField(item, 'StreakDays', 'streakdays')) + ' ngày'}
@@ -429,8 +441,8 @@ function AdminDashboard() {
             title="Theo nhiệm vụ"
             criteria={criteria.dailyTasks30d || 'Xếp theo nhiệm vụ hằng ngày hoàn thành trong 30 ngày.'}
             items={safeStats.topLearnersByDailyTasks30d || []}
-            metric={(item) => formatNumber(getField(item, 'CompletedTasks', 'completedtasks')) + ' task'}
-            helper={(item) => '+' + formatNumber(getField(item, 'EarnedExp', 'earnedexp')) + ' EXP task'}
+            metric={(item) => formatNumber(getField(item, 'CompletedTasks', 'completedtasks')) + ' nhiệm vụ'}
+            helper={(item) => '+' + formatNumber(getField(item, 'EarnedExp', 'earnedexp')) + ' EXP từ nhiệm vụ'}
           />
         </div>
       </section>
@@ -439,7 +451,7 @@ function AdminDashboard() {
       <section className="admin-dashboard-grid admin-dashboard-grid-wide">
         <article className="admin-panel admin-attention-panel">
           <div className="admin-panel-head">
-            <h2>Learner cần chú ý</h2>
+            <h2>Học viên cần chú ý</h2>
           </div>
           <div className="admin-attention-list">
             {(safeStats.learnersNeedingAttention || []).length > 0 ? (safeStats.learnersNeedingAttention || []).map((item, index) => {
@@ -453,11 +465,11 @@ function AdminDashboard() {
                   </span>
                   <span className="admin-attention-meta">
                     <b>{formatMinutes(getField(item, 'ActiveSeconds30d', 'activeseconds30d'))}</b>
-                    <small>{formatNumber(getField(item, 'CompletedTasks30d', 'completedtasks30d'))} task / 30 ngày</small>
+                    <small>{formatNumber(getField(item, 'CompletedTasks30d', 'completedtasks30d'))} nhiệm vụ / 30 ngày</small>
                   </span>
                 </Link>
               );
-            }) : <div className="admin-empty-inline">Không có learner cần chú ý theo tiêu chí hiện tại.</div>}
+            }) : <div className="admin-empty-inline">Không có học viên cần chú ý theo tiêu chí hiện tại.</div>}
           </div>
         </article>
 

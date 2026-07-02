@@ -319,7 +319,7 @@ function AdminGames() {
       fields.push(
         { key: 'difficulty', label: 'Độ khó', type: 'select', options: [{ value: 'easy', label: 'Dễ' }, { value: 'hard', label: 'Khó' }] },
         { key: 'pointRatio', label: 'Tỉ số điểm', type: 'number' },
-        { key: 'activeStatus', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] }
+        { key: 'activeStatus', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Hoạt động' }, { value: 'inactive', label: 'Tạm ẩn' }] }
       );
     }
 
@@ -388,7 +388,7 @@ function AdminGames() {
             <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => deletePlacementQuestion(q.Id)}>Xóa</button>
           </>,
           <>
-            <span className={`badge ${q.IsActive ? 'is-active' : 'is-locked'}`} style={{ color: q.IsActive ? 'var(--admin-success)' : 'var(--admin-danger)' }}>{q.IsActive ? 'Active' : 'Inactive'}</span>
+            <span className={`badge ${q.IsActive ? 'is-active' : 'is-locked'}`} style={{ color: q.IsActive ? 'var(--admin-success)' : 'var(--admin-danger)' }}>{q.IsActive ? 'Hoạt động' : 'Tạm ẩn'}</span>
             <span className="badge badge-secondary">{TYPE_LABELS[q.QuestionType] || q.QuestionType}</span>
             <span className="badge badge-secondary">x{Number(q.PointRatio || 1).toFixed(2)}</span>
           </>
@@ -406,7 +406,7 @@ function AdminGames() {
           <p>Quản lý màn chơi và ngân hàng câu hỏi riêng cho bài test đầu vào.</p>
         </div>
         <div className="admin-inline-actions">
-          {view !== 'levels' && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setView('levels'); setActiveLevel(null); }}><FiArrowLeft /> Levels</button>}
+          {view !== 'levels' && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setView('levels'); setActiveLevel(null); }}><FiArrowLeft /> Cấp độ</button>}
           {view === 'levels' && <button type="button" className="btn btn-primary btn-sm" onClick={() => openLevelForm()}><FiPlus /> Thêm level</button>}
         </div>
       </div>

@@ -125,7 +125,7 @@ function AdminLearnerDetail() {
   return (
     <main className="admin-learner-detail-page">
       <header className="admin-learner-toolbar">
-        <button type="button" className="btn btn-secondary" onClick={() => navigate('/admin/users')}><FiArrowLeft /> Learners</button>
+        <button type="button" className="btn btn-secondary" onClick={() => navigate('/admin/users')}><FiArrowLeft /> Học viên</button>
         <button type="button" className="btn btn-secondary" onClick={loadDetail}><FiRefreshCw /> Làm mới</button>
       </header>
 
@@ -137,7 +137,7 @@ function AdminLearnerDetail() {
           <div className="admin-learner-title-line">
             <h1>{learner.username}</h1>
             <span className={`admin-status-chip ${learner.isactive !== false ? 'is-active' : 'is-locked'}`}>
-              {learner.isactive !== false ? 'Active' : 'Locked'}
+              {learner.isactive !== false ? 'Hoạt động' : 'Bị khóa'}
             </span>
             <span className={`admin-learner-plan ${isPlus ? 'is-plus' : ''}`}>{isPlus ? 'PLUS' : 'FREE'}</span>
           </div>
@@ -145,7 +145,7 @@ function AdminLearnerDetail() {
           <div className="admin-learner-facts">
             <span><FiTarget /> Placement: <strong>{learner.placementlevel || 'new'}</strong></span>
             <span><FiCalendar /> Tham gia: <strong>{formatDate(learner.createdat, false)}</strong></span>
-            <span><FiClock /> Login cuối: <strong>{formatDate(learner.lastlogin)}</strong></span>
+            <span><FiClock /> Đăng nhập gần nhất: <strong>{formatDate(learner.lastlogin)}</strong></span>
             {isPlus && <span><FiZap /> Plus còn <strong>{learner.plusdaysremaining} ngày</strong></span>}
           </div>
         </div>
@@ -203,7 +203,7 @@ function AdminLearnerDetail() {
           <div className="admin-subpanel-head"><div><h3>SM-2 theo nội dung</h3><p>Khối lượng ôn và độ ổn định theo module.</p></div><FiTarget /></div>
           <div className="admin-table-wrap">
             <table>
-              <thead><tr><th>Module</th><th>Đã ôn</th><th>Đến hạn</th><th>Quá hạn</th><th>Điểm TB</th></tr></thead>
+              <thead><tr><th>Kỹ năng</th><th>Đã ôn</th><th>Đến hạn</th><th>Quá hạn</th><th>Điểm TB</th></tr></thead>
               <tbody>
                 {(spacedRepetition.byType || []).map((row) => (
                   <tr key={row.targettype}>
@@ -246,7 +246,7 @@ function AdminLearnerDetail() {
                 ))}
               </tbody>
             </table>
-            {recentLessons.length === 0 && <div className="admin-empty-inline">Learner chưa bắt đầu bài học.</div>}
+            {recentLessons.length === 0 && <div className="admin-empty-inline">Học viên chưa bắt đầu bài học.</div>}
           </div>
         </section>
 

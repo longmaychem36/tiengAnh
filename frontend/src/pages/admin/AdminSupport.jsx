@@ -158,7 +158,7 @@ function AdminSupport() {
     <main className="admin-support-page" aria-labelledby="admin-support-title">
       <header className="admin-page-title admin-support-title">
         <div>
-          <h1 id="admin-support-title">Support tickets</h1>
+          <h1 id="admin-support-title">Yêu cầu hỗ trợ</h1>
           <p>Quản lý phiếu trợ giúp và phản hồi người học.</p>
         </div>
         <button className="btn btn-secondary" type="button" onClick={loadTickets}>
@@ -238,7 +238,7 @@ function AdminSupport() {
                   {statusLabels[selected.status] || selected.status}
                 </span>
                 <h2>{selected.title}</h2>
-                <p>{selected.username || 'Learner'} · {selected.email}</p>
+                <p>{selected.username || 'Chưa có tên'} · {selected.email}</p>
                 <small>{categories[selected.category] || selected.category} · {formatDate(selected.createdAt)}</small>
               </div>
 

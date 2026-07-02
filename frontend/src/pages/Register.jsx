@@ -1,6 +1,3 @@
-// ============================================
-// Register Page
-// ============================================
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -59,17 +56,17 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
-      toast.error('Passwords do not match.');
+      toast.error('Mật khẩu xác nhận không khớp.');
       return;
     }
 
     setLoading(true);
     try {
       const userData = await register({ username: form.username, email: form.email, password: form.password });
-      toast.success('Account created successfully.');
+      toast.success('Tạo tài khoản thành công.');
       navigate(userData.onboardingCompleted === false ? '/onboarding' : '/dashboard');
     } catch (err) {
-      toast.error(err.message || 'Registration failed');
+      toast.error(err.message || 'Không thể tạo tài khoản.');
     } finally {
       setLoading(false);
     }
@@ -84,23 +81,23 @@ function Register() {
         style={authCardStyle}
       >
         <div style={{ textAlign: 'center', marginBottom: 'var(--space-8)' }}>
-          <div style={brandMarkStyle}>E</div>
-          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>Create Account</h1>
+          <div style={brandMarkStyle}>L</div>
+          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>Tạo tài khoản</h1>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--space-2)' }}>
-            Start your English learning journey today
+            Bắt đầu quá trình học tiếng Anh ngay hôm nay
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <span className="form-label">Username</span>
+            <span className="form-label">Tên người dùng</span>
             <div style={{ position: 'relative' }}>
               <FiUser style={iconStyle} />
               <input
                 aria-label="Username"
                 className="form-input"
                 type="text"
-                placeholder="johndoe"
+                placeholder="nguyenvana"
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
                 required
@@ -117,7 +114,7 @@ function Register() {
                 aria-label="Email"
                 className="form-input"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="tenban@example.com"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
@@ -127,14 +124,14 @@ function Register() {
           </div>
 
           <div className="form-group">
-            <span className="form-label">Password</span>
+            <span className="form-label">Mật khẩu</span>
             <div style={{ position: 'relative' }}>
               <FiLock style={iconStyle} />
               <input
                 aria-label="Password"
                 className="form-input"
                 type="password"
-                placeholder="Min. 6 characters"
+                placeholder="Tối thiểu 6 ký tự"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 required
@@ -145,14 +142,14 @@ function Register() {
           </div>
 
           <div className="form-group">
-            <span className="form-label">Confirm Password</span>
+            <span className="form-label">Xác nhận mật khẩu</span>
             <div style={{ position: 'relative' }}>
               <FiLock style={iconStyle} />
               <input
                 aria-label="Confirm Password"
                 className="form-input"
                 type="password"
-                placeholder="Repeat password"
+                placeholder="Nhập lại mật khẩu"
                 value={form.confirmPassword}
                 onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                 required
@@ -167,7 +164,7 @@ function Register() {
             disabled={loading}
             style={{ marginTop: 'var(--space-4)', background: 'linear-gradient(135deg, #1cb0f6, #58cc02)', boxShadow: '0 12px 24px rgba(28, 176, 246, 0.24)' }}
           >
-            {loading ? 'Creating account...' : 'Create Account'}
+            {loading ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
             {!loading && <FiArrowRight />}
           </button>
         </form>
@@ -176,8 +173,8 @@ function Register() {
           textAlign: 'center', marginTop: 'var(--space-6)',
           color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)'
         }}>
-          Already have an account?{' '}
-          <Link to="/login" style={{ fontWeight: 600 }}>Sign In</Link>
+          Đã có tài khoản?{' '}
+          <Link to="/login" style={{ fontWeight: 600 }}>Đăng nhập</Link>
         </p>
       </motion.div>
     </div>

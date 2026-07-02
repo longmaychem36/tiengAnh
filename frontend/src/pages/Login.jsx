@@ -1,6 +1,3 @@
-// ============================================
-// Login Page
-// ============================================
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -64,7 +61,7 @@ function Login() {
       toast.success('Đăng nhập thành công.');
       goAfterLogin(userData);
     } catch (err) {
-      toast.error(err.message || 'Login failed');
+      toast.error(err.message || 'Không thể đăng nhập.');
     } finally {
       setLoading(false);
     }
@@ -79,10 +76,10 @@ function Login() {
         style={authCardStyle}
       >
         <div style={{ textAlign: 'center', marginBottom: 'var(--space-8)' }}>
-          <div style={brandMarkStyle}>E</div>
-          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>Welcome back</h1>
+          <div style={brandMarkStyle}>L</div>
+          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>Chào mừng bạn trở lại</h1>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--space-2)' }}>
-            Sign in to continue your learning journey
+            Đăng nhập để tiếp tục quá trình học tiếng Anh
           </p>
         </div>
 
@@ -98,7 +95,7 @@ function Login() {
                 aria-label="Email"
                 className="form-input"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="tenban@example.com"
                 value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
                 required
@@ -108,7 +105,7 @@ function Login() {
           </div>
 
           <div className="form-group">
-            <span className="form-label">Password</span>
+            <span className="form-label">Mật khẩu</span>
             <div style={{ position: 'relative' }}>
               <FiLock style={{
                 position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
@@ -128,7 +125,7 @@ function Login() {
           </div>
 
           <Link to="/forgot-password" style={{ display: 'block', width: 'fit-content', margin: '-6px 0 var(--space-4) auto', fontSize: 'var(--font-size-sm)', fontWeight: 800, color: '#0d8ecf' }}>
-            Forgot password?
+            Quên mật khẩu?
           </Link>
 
           <button
@@ -137,7 +134,7 @@ function Login() {
             disabled={loading}
             style={{ marginTop: 'var(--space-4)', background: 'linear-gradient(135deg, #1cb0f6, #58cc02)', boxShadow: '0 12px 24px rgba(28, 176, 246, 0.24)' }}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             {!loading && <FiArrowRight />}
           </button>
         </form>
@@ -146,8 +143,8 @@ function Login() {
           textAlign: 'center', marginTop: 'var(--space-6)',
           color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)'
         }}>
-          Don't have an account?{' '}
-          <Link to="/register" style={{ fontWeight: 600 }}>Sign Up</Link>
+          Chưa có tài khoản?{' '}
+          <Link to="/register" style={{ fontWeight: 600 }}>Đăng ký</Link>
         </p>
       </motion.div>
     </div>

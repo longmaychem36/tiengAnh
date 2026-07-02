@@ -8,7 +8,6 @@ import PlusRoute from './components/common/PlusRoute';
 import { stopAllPlayback } from './utils/audioControl';
 import { installSoundEffects } from './utils/soundEffects';
 
-// Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -27,7 +26,6 @@ import DailyTasks from './pages/DailyTasks';
 import Onboarding from './pages/Onboarding';
 import Support from './pages/Support';
 
-// New Speaking Module
 import SpeakingList from './components/speaking/SpeakingList';
 import SpeakingLesson from './components/speaking/SpeakingLesson';
 import SpeakingOptions from './components/speaking/SpeakingOptions';
@@ -40,7 +38,6 @@ import ListeningLesson from './components/listening/ListeningLesson';
 import ReadingList from './components/reading/ReadingList';
 import ReadingLesson from './components/reading/ReadingLesson';
 
-// Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminGames from './pages/admin/AdminGames';
 import AdminUsers from './pages/admin/AdminUsers';
@@ -81,7 +78,6 @@ function App() {
 
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <Login />} />
       <Route path="/register" element={user ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to={user.onboardingCompleted === false ? '/onboarding' : '/dashboard'} />) : <Register />} />
@@ -89,14 +85,12 @@ function App() {
 
       <Route path="/onboarding" element={<ProtectedRoute learnerOnly><Onboarding /></ProtectedRoute>} />
 
-      {/* Learning routes - regular learners only */}
       <Route element={<ProtectedRoute learnerOnly><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/courses" element={<CoursesHub />} />
         <Route path="/daily-tasks" element={<DailyTasks />} />
         <Route path="/skill/:type" element={<SkillCourse />} />
         
-        {/* Speaking & Writing Module */}
         <Route path="/speaking/options" element={<PlusRoute featureName="Speaking"><SpeakingOptions /></PlusRoute>} />
         <Route path="/speaking/ai" element={<PlusRoute featureName="Speaking AI"><SpeakingAiBuilder /></PlusRoute>} />
         <Route path="/speaking/lessons" element={<PlusRoute featureName="Speaking"><SpeakingList /></PlusRoute>} />
@@ -121,7 +115,6 @@ function App() {
         <Route path="/grammar" element={<Grammar />} />
       </Route>
 
-      {/* Admin routes — separate AdminLayout */}
       <Route element={<AdminLayout />}>
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/speaking" element={<AdminSpeaking />} />
@@ -137,7 +130,6 @@ function App() {
         <Route path="/admin/support" element={<AdminSupport />} />
       </Route>
 
-      {/* 404 */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

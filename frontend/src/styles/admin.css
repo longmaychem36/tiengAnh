@@ -1,4 +1,4 @@
-/* Admin: simple dashboard interface */
+/* Admin layout */
 .admin-layout {
   --admin-sidebar-width: 200px;
   --admin-navbar-height: 46px;
@@ -159,7 +159,7 @@
   inset: 0 0 auto 0;
   z-index: var(--z-navbar);
   display: grid;
-  grid-template-columns: var(--admin-sidebar-width) minmax(220px, 390px) 1fr;
+  grid-template-columns: var(--admin-sidebar-width) 1fr;
   min-height: var(--admin-navbar-height);
   align-items: center;
   gap: 14px;
@@ -182,80 +182,17 @@
   white-space: nowrap;
 }
 
-.admin-navbar-search {
-  position: relative;
-  display: block;
-  min-width: 0;
-}
-
-.admin-navbar-search svg {
-  position: absolute;
-  top: 50%;
-  left: 9px;
-  width: 14px;
-  height: 14px;
-  color: var(--admin-faint);
-  transform: translateY(-50%);
-}
-
-.admin-navbar-search input {
-  width: 100%;
-  height: 24px;
-  padding: 3px 8px 3px 28px;
-  border: 1px solid #ced4da;
-  border-radius: 2px;
-  background: #ffffff;
-  color: var(--admin-text);
-  font: inherit;
-  font-size: 12px;
-}
-
 .admin-user-summary {
   display: flex;
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-}
-
-.admin-star-button,
-.admin-user-button {
-  display: inline-flex;
-  min-height: 26px;
-  align-items: center;
-  gap: 4px;
-  border-radius: 3px;
-  font: inherit;
+  gap: 6px;
   font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
 }
 
-.admin-star-button {
-  padding: 3px 8px;
-  border: 1px solid var(--admin-border);
-  background: #ffffff;
-  color: var(--admin-text);
-}
-
-.admin-star-button svg,
-.admin-user-button svg {
-  width: 13px;
-  height: 13px;
-}
-
-.admin-star-button b {
-  padding-left: 5px;
-  border-left: 1px solid var(--admin-border);
-  font-weight: 500;
-}
-
-.admin-user-button {
-  padding: 4px 9px;
-  border: 1px solid #6c757d;
-  background: #6c757d;
-  color: #ffffff;
-  cursor: pointer;
+.admin-user-label {
+  color: var(--admin-muted);
 }
 
 .admin-content {
@@ -1196,7 +1133,7 @@
   }
 }
 
-/* Final guard against legacy admin styles still present in App.css. */
+/* Keep admin layout isolated from shared App.css rules. */
 .admin-layout .admin-sidebar {
   inset: var(--admin-navbar-height) auto 0 0 !important;
   width: var(--admin-sidebar-width) !important;
@@ -1299,7 +1236,7 @@
   }
 }
 
-/* Admin richer dashboard and user CRUD additions */
+/* Dashboard and account management */
 .admin-dashboard-title-row {
   display: flex;
   align-items: flex-start;
@@ -1915,7 +1852,7 @@
   }
 }
 
-/* Admin dashboard learner intelligence */
+/* Learner activity metrics */
 .admin-health-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

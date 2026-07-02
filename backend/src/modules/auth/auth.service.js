@@ -62,12 +62,16 @@ function getOnboardingInfo(user = {}) {
   };
 }
 
+function normalizeRole(role) {
+  return String(role || '').toLowerCase() === 'superadmin' ? 'admin' : role;
+}
+
 function shapeUser(user = {}) {
   return {
     id: user.Id,
     username: user.Username,
     email: user.Email,
-    role: user.Role,
+    role: normalizeRole(user.Role),
     avatarUrl: user.AvatarUrl || null,
     ...getPlanInfo(user),
     ...getOnboardingInfo(user),
@@ -128,7 +132,7 @@ async function createSession(user) {
   const token = generateToken({
     id: user.Id,
     username: user.Username,
-    role: user.Role
+    role: normalizeRole(user.Role)
   });
 
   return {

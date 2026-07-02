@@ -117,9 +117,11 @@ const adminUserService = {
       whereClause += ' AND (u.Username ILIKE @search OR u.Email ILIKE @search)';
     }
 
-    if (['user', 'admin'].includes(safeRole)) {
+    if (safeRole === 'user') {
       req.input('role', sql.NVarChar, safeRole);
       whereClause += ' AND u.Role = @role';
+    } else if (safeRole === 'admin') {
+      whereClause += " AND u.Role IN ('admin', 'superadmin')";
     }
 
     const countRes = await req.query(`SELECT COUNT(*)::int as total FROM Users u ${whereClause}`);
@@ -127,7 +129,7 @@ const adminUserService = {
 
     const req2 = pool.request().input('limit', sql.Int, safeLimit).input('offset', sql.Int, offset);
     if (search) req2.input('search', sql.NVarChar, `%${String(search).trim()}%`);
-    if (['user', 'admin'].includes(safeRole)) req2.input('role', sql.NVarChar, safeRole);
+    if (safeRole === 'user') req2.input('role', sql.NVarChar, safeRole);
 
     const dataRes = await req2.query(`
       SELECT u.Id, u.Username, u.Email, u.Role, COALESCE(u.IsActive, true) AS IsActive, u.Plan, u.PlusExpiresAt,
@@ -160,7 +162,7 @@ const adminUserService = {
         GROUP BY UserId
       ) uc ON uc.UserId = u.Id
       ${whereClause}
-      ORDER BY CASE WHEN u.Role = 'admin' THEN 0 ELSE 1 END, u.CreatedAt DESC
+      ORDER BY CASE WHEN u.Role IN ('admin', 'superadmin') THEN 0 ELSE 1 END, u.CreatedAt DESC
       LIMIT @limit OFFSET @offset
     `);
 
@@ -603,7 +605,7 @@ const adminUserService = {
       SELECT
         COUNT(*)::int as totalUsers,
         SUM(CASE WHEN Role = 'user' THEN 1 ELSE 0 END)::int as members,
-        SUM(CASE WHEN Role = 'admin' THEN 1 ELSE 0 END)::int as admins,
+        SUM(CASE WHEN Role IN ('admin', 'superadmin') THEN 1 ELSE 0 END)::int as admins,
         SUM(CASE WHEN COALESCE(IsActive, true) = false THEN 1 ELSE 0 END)::int as locked,
         SUM(CASE WHEN Plan = 'plus' THEN 1 ELSE 0 END)::int as plusUsers,
         SUM(CASE WHEN CreatedAt >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END)::int as newUsers7d,

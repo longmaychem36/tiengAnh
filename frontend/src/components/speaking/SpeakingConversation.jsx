@@ -3,20 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FiArrowLeft,
-  FiCheckCircle,
-  FiEye,
-  FiEyeOff,
   FiMessageCircle,
   FiRefreshCw,
-  FiSettings,
-  FiVolume2,
-  FiX
+  FiVolume2
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import CharacterSvg from '../common/CharacterSvg';
 import Recorder from './Recorder';
 import { speakingApi } from '../../api/speakingApi';
 import { hasSpeechSupport, speakText, stopAllPlayback } from '../../utils/audioControl';
+import { useAuth } from '../../hooks/useAuth';
 import {
   loadSpeakingConversation,
   saveSpeakingConversation
@@ -24,24 +20,39 @@ import {
 
 const getInitialThreshold = () => Number.parseInt(localStorage.getItem('speaking_threshold'), 10) || 60;
 const getInitialVoice = () => localStorage.getItem('speaking_voice') || '';
+const DEFAULT_COMPLETION_SUMMARY = 'Bạn đã hoàn thành cuộc hội thoại.';
+const HAS_VIETNAMESE_MARKS = /[\u0300-\u036f]/;
+const BROKEN_ENCODING_MARKS = /[ÃÂÄ]/;
 
 const getRecordDuration = (text = '') => {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   return Math.min(32, Math.max(10, Math.ceil(words * 1.45)));
 };
 
+const getUserInitial = (user) => {
+  const source = user?.fullName || user?.username || user?.email || 'Learner';
+  return String(source).trim().charAt(0).toUpperCase() || 'L';
+};
+
+const getDisplaySummary = (summary) => {
+  const value = String(summary || '').trim();
+  if (!value || BROKEN_ENCODING_MARKS.test(value) || !HAS_VIETNAMESE_MARKS.test(value.normalize('NFD'))) {
+    return DEFAULT_COMPLETION_SUMMARY;
+  }
+  return value;
+};
+
 function SpeakingConversation() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const chatEndRef = useRef(null);
+  const { user } = useAuth();
   const autoSpokenRef = useRef(new Set());
   const advancingTokenRef = useRef('');
+  const chatEndRef = useRef(null);
   const [conversation, setConversation] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [selectedOptionId, setSelectedOptionId] = useState('');
-  const [visibleTranslations, setVisibleTranslations] = useState(() => new Set());
-  const [showSettings, setShowSettings] = useState(false);
-  const [passThreshold, setPassThreshold] = useState(getInitialThreshold);
+  const [passThreshold] = useState(getInitialThreshold);
   const [voices, setVoices] = useState([]);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState(getInitialVoice);
   const [isCharacterSpeaking, setIsCharacterSpeaking] = useState(false);
@@ -93,7 +104,15 @@ function SpeakingConversation() {
     });
   }, [selectedVoiceURI, voices]);
 
-  const latestMessage = conversation?.messages?.[conversation.messages.length - 1];
+  const visibleMessages = useMemo(() => {
+    const messages = conversation?.messages || [];
+    if (conversation?.phase === 'completed' && messages[messages.length - 1]?.role === 'assistant') {
+      return messages.slice(0, -1);
+    }
+    return messages;
+  }, [conversation?.messages, conversation?.phase]);
+
+  const latestMessage = visibleMessages[visibleMessages.length - 1];
   useEffect(() => {
     if (!latestMessage || latestMessage.role !== 'assistant' || autoSpokenRef.current.has(latestMessage.id)) return;
     autoSpokenRef.current.add(latestMessage.id);
@@ -102,12 +121,12 @@ function SpeakingConversation() {
   }, [latestMessage, playMessage]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [conversation?.messages?.length, conversation?.phase, conversation?.lastAttempt]);
-
-  useEffect(() => {
     setSelectedOptionId('');
   }, [conversation?.currentTurn?.id]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [visibleMessages.length, selectedOptionId, conversation?.phase]);
 
   const currentOptions = conversation?.currentTurn?.options || [];
   const selectedOption = currentOptions.find((option) => option.id === selectedOptionId) || null;
@@ -126,14 +145,18 @@ function SpeakingConversation() {
         history: snapshot.messages
       });
       const data = response.data;
+      const summary = data.summary && !BROKEN_ENCODING_MARKS.test(data.summary) ? data.summary : '';
+      const messages = data.assistantMessage
+        ? [...snapshot.messages, data.assistantMessage]
+        : snapshot.messages;
       const next = persist({
         ...snapshot,
-        messages: [...snapshot.messages, data.assistantMessage],
+        messages,
         currentTurn: data.currentTurn,
         stateToken: data.stateToken,
         advanceToken: null,
         phase: data.completed ? 'completed' : 'ready',
-        summary: data.summary || '',
+        summary,
         averageScore: data.averageScore ?? averageScore,
         aiError: '',
         lastAttempt: null
@@ -177,17 +200,22 @@ function SpeakingConversation() {
 
       if (!data.passed) {
         persist({ ...analyzingSnapshot, phase: 'ready', lastAttempt: data });
-        toast.error(`Bạn cần đạt ít nhất ${passThreshold}% để tiếp tục.`);
+        toast.error('Hãy nói rõ hơn và thử lại.');
         return;
       }
 
+      const nextMessages = [...analyzingSnapshot.messages, data.learnerMessage];
+      const completed = Boolean(data.completed);
+      const summary = data.summary && !BROKEN_ENCODING_MARKS.test(data.summary) ? data.summary : '';
       persist({
         ...analyzingSnapshot,
-        phase: 'awaiting_ai',
-        messages: [...analyzingSnapshot.messages, data.learnerMessage],
+        phase: completed ? 'completed' : 'awaiting_ai',
+        messages: nextMessages,
         currentTurn: null,
-        stateToken: null,
-        advanceToken: data.advanceToken,
+        stateToken: data.stateToken || null,
+        advanceToken: completed ? null : data.advanceToken,
+        summary,
+        averageScore: data.averageScore ?? averageScore,
         lastAttempt: null,
         aiError: ''
       });
@@ -204,24 +232,8 @@ function SpeakingConversation() {
     persist({ ...conversation, phase: isRecording ? 'recording' : 'ready' });
   };
 
-  const toggleTranslation = (messageId) => {
-    setVisibleTranslations((current) => {
-      const next = new Set(current);
-      if (next.has(messageId)) next.delete(messageId);
-      else next.add(messageId);
-      return next;
-    });
-  };
-
-  const saveSettings = () => {
-    localStorage.setItem('speaking_threshold', String(passThreshold));
-    localStorage.setItem('speaking_voice', selectedVoiceURI);
-    setShowSettings(false);
-    toast.success('Đã lưu cài đặt.');
-  };
-
   const exitConversation = () => {
-    if (conversation?.phase !== 'completed' && !window.confirm('Thoát khỏi màn hình? Hội thoại vẫn được lưu trên trình duyệt để tiếp tục sau.')) return;
+    if (conversation?.phase !== 'completed' && !window.confirm('Thoát khỏi màn hình? Hội thoại vẫn được lưu để tiếp tục sau.')) return;
     navigate('/speaking/ai');
   };
 
@@ -240,6 +252,7 @@ function SpeakingConversation() {
 
   const busy = ['recording', 'analyzing', 'awaiting_ai'].includes(conversation.phase);
   const recordDuration = getRecordDuration(selectedOption?.text);
+  const isAnalyzing = conversation.phase === 'analyzing';
 
   return (
     <div className="ai-chat-shell fade-in">
@@ -247,88 +260,93 @@ function SpeakingConversation() {
         <button type="button" className="ai-chat-icon-button" onClick={exitConversation} aria-label="Thoát">
           <FiArrowLeft />
         </button>
-        <div className="ai-chat-profile">
-          <span className="ai-chat-header-avatar">
-            <CharacterSvg width={48} className={isCharacterSpeaking ? 'is-speaking' : ''} aria-hidden="true" />
-          </span>
-          <div>
-            <strong>Lingo Coach</strong>
-            <span>{conversation.phase === 'awaiting_ai' ? 'Đang nhập...' : isCharacterSpeaking ? 'Đang nói...' : 'Sẵn sàng trò chuyện'}</span>
-          </div>
-        </div>
-        <div className="ai-chat-header-meta">
-          <span>{conversation.topic}</span>
-          <strong>Lượt {learnerMessages.length}/12</strong>
-        </div>
-        <button type="button" className="ai-chat-icon-button" onClick={() => setShowSettings(true)} aria-label="Cài đặt">
-          <FiSettings />
-        </button>
       </header>
 
       <main className="ai-chat-messages">
-        <div className="ai-chat-date">Hội thoại mới · {conversation.level}</div>
-        {conversation.messages.map((message) => {
-          const isAssistant = message.role === 'assistant';
-          const translationVisible = visibleTranslations.has(message.id);
-          return (
+        <section className="ai-chat-stage">
+          {visibleMessages.map((message) => {
+            const isAssistant = message.role === 'assistant';
+            return (
+              <motion.div
+                key={message.id}
+                className={`ai-chat-dialogue ${isAssistant ? 'is-coach' : 'is-learner'}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {isAssistant && (
+                  <span className="ai-chat-coach-avatar">
+                    <CharacterSvg width={82} className={isCharacterSpeaking && message.id === latestMessage?.id ? 'is-speaking' : ''} aria-hidden="true" />
+                  </span>
+                )}
+                <div className={isAssistant ? 'ai-chat-coach-bubble' : 'ai-chat-learner-bubble'}>
+                  {isAssistant && (
+                    <div className="ai-chat-coach-meta">
+                      <strong>Lingo Coach</strong>
+                      <button type="button" onClick={() => playMessage(message.text)} aria-label="Nghe Lingo Coach">
+                        <FiVolume2 />
+                      </button>
+                    </div>
+                  )}
+                  <p>{message.text}</p>
+                </div>
+                {!isAssistant && (
+                  <span className="ai-chat-learner-avatar">
+                    {user?.avatarUrl ? <img src={user.avatarUrl} alt="Avatar" /> : getUserInitial(user)}
+                  </span>
+                )}
+              </motion.div>
+            );
+          })}
+
+          {selectedOption && (
             <motion.div
-              key={message.id}
-              className={`ai-chat-row ${isAssistant ? 'is-assistant' : 'is-learner'}`}
-              initial={{ opacity: 0, y: 8 }}
+              className="ai-chat-dialogue is-learner"
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              {isAssistant && (
-                <span className="ai-chat-avatar">
-                  <CharacterSvg width={42} className={isCharacterSpeaking && message.id === latestMessage?.id ? 'is-speaking' : ''} aria-hidden="true" />
-                </span>
-              )}
-              <div className="ai-chat-message-wrap">
-                <div className="ai-chat-bubble">
-                  <p>{message.text}</p>
-                  {translationVisible && message.translation && <small>{message.translation}</small>}
-                </div>
-                <div className="ai-chat-bubble-actions">
-                  {message.translation && (
-                    <button type="button" onClick={() => toggleTranslation(message.id)}>
-                      {translationVisible ? <FiEyeOff /> : <FiEye />} {translationVisible ? 'Ẩn nghĩa' : 'Xem nghĩa'}
-                    </button>
-                  )}
-                  {isAssistant && <button type="button" onClick={() => playMessage(message.text)}><FiVolume2 /> Nghe</button>}
-                  {!isAssistant && <span className="ai-chat-score"><FiCheckCircle /> {message.score}%</span>}
-                </div>
+              <div className="ai-chat-learner-bubble">
+                <p>{selectedOption.text}</p>
               </div>
+              <span className="ai-chat-learner-avatar">
+                {user?.avatarUrl ? <img src={user.avatarUrl} alt="Avatar" /> : getUserInitial(user)}
+              </span>
             </motion.div>
-          );
-        })}
+          )}
 
-        {conversation.phase === 'awaiting_ai' && (
-          <div className="ai-chat-row is-assistant">
-            <span className="ai-chat-avatar"><CharacterSvg width={42} className="is-thinking" aria-hidden="true" /></span>
-            <div className="ai-chat-typing"><span /><span /><span /></div>
-          </div>
-        )}
-
-        {conversation.aiError && (
-          <div className="ai-chat-retry-card">
-            <p>{conversation.aiError}</p>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => requestNextTurn(conversation)}>
-              <FiRefreshCw /> Thử tạo phản hồi lại
-            </button>
-          </div>
-        )}
-
-        {conversation.phase === 'completed' && (
-          <section className="ai-chat-summary">
-            <FiCheckCircle />
-            <div>
-              <span>Đã hoàn thành</span>
-              <h2>{conversation.summary || 'Bạn đã hoàn thành cuộc hội thoại.'}</h2>
-              <p>{learnerMessages.length} lượt · Điểm phát âm trung bình {conversation.averageScore || averageScore}%</p>
+          {conversation.phase === 'awaiting_ai' && (
+            <div className="ai-chat-thinking-card" aria-label="Đang tạo phản hồi">
+              <div className="ai-chat-typing"><span /><span /><span /></div>
             </div>
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/speaking/ai')}>Tạo hội thoại khác</button>
-          </section>
-        )}
-        <div ref={chatEndRef} />
+          )}
+
+          {conversation.lastAttempt && !conversation.lastAttempt.passed && (
+            <div className="ai-chat-failed-attempt">
+              <strong>Hãy thử lại</strong>
+              {conversation.lastAttempt.transcript && <p>Bạn vừa nói: "{conversation.lastAttempt.transcript}"</p>}
+            </div>
+          )}
+
+          {conversation.aiError && (
+            <div className="ai-chat-retry-card">
+              <p>{conversation.aiError}</p>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => requestNextTurn(conversation)}>
+                <FiRefreshCw /> Thử tạo phản hồi lại
+              </button>
+            </div>
+          )}
+
+          {conversation.phase === 'completed' && (
+            <section className="ai-chat-summary">
+              <div>
+                <span>Đã hoàn thành</span>
+                <h2>{getDisplaySummary(conversation.summary)}</h2>
+                <p>{learnerMessages.length} lượt luyện nói trong cuộc hội thoại này.</p>
+              </div>
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/speaking/ai')}>Tạo hội thoại khác</button>
+            </section>
+          )}
+          <div ref={chatEndRef} />
+        </section>
       </main>
 
       {conversation.phase !== 'completed' && conversation.phase !== 'awaiting_ai' && (
@@ -336,84 +354,53 @@ function SpeakingConversation() {
           <div className="ai-chat-options">
             {currentOptions.map((option) => {
               const selected = option.id === selectedOptionId;
-              const translationKey = `option-${conversation.currentTurn?.id}-${option.id}`;
-              const translationVisible = visibleTranslations.has(translationKey);
               return (
-                <button
-                  type="button"
+                <div
                   key={option.id}
-                  className={`ai-chat-option ${selected ? 'is-selected' : ''}`}
+                  role="button"
+                  tabIndex={busy && !selected ? -1 : 0}
+                  aria-disabled={busy && !selected}
+                  className={`ai-chat-option ${selected ? 'is-selected' : ''} ${busy && !selected ? 'is-disabled' : ''}`}
                   onClick={() => !busy && setSelectedOptionId(option.id)}
-                  disabled={busy && !selected}
+                  onKeyDown={(event) => {
+                    if (busy && !selected) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setSelectedOptionId(option.id);
+                    }
+                  }}
                 >
                   <strong>{option.text}</strong>
-                  {translationVisible && <small>{option.translation}</small>}
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      toggleTranslation(translationKey);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') toggleTranslation(translationKey);
-                    }}
-                  >
-                    {translationVisible ? <FiEyeOff /> : <FiEye />}
+                  <span className="ai-chat-option-actions">
+                    <button
+                      type="button"
+                      className="ai-chat-option-listen"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        playMessage(option.text);
+                      }}
+                      disabled={busy}
+                      aria-label={`Nghe câu trả lời: ${option.text}`}
+                    >
+                      <FiVolume2 />
+                    </button>
                   </span>
-                </button>
+                </div>
               );
             })}
           </div>
 
-          {conversation.lastAttempt && !conversation.lastAttempt.passed && (
-            <div className="ai-chat-failed-attempt">
-              <strong>{conversation.lastAttempt.score}% · Hãy thử lại</strong>
-              <p>{conversation.lastAttempt.feedback}</p>
-              {conversation.lastAttempt.transcript && <small>Bạn nói: “{conversation.lastAttempt.transcript}”</small>}
+          {selectedOption && (
+            <div className={`ai-chat-recorder ${isAnalyzing ? 'is-analyzing' : ''}`}>
+              <Recorder
+                onRecordingComplete={handleRecordingComplete}
+                onRecordingStateChange={handleRecordingState}
+                isAnalyzing={isAnalyzing}
+                maxDuration={recordDuration}
+              />
             </div>
           )}
-
-          <div className="ai-chat-record-row">
-            <div>
-              <span>{selectedOption ? 'Câu đã chọn' : 'Chọn một câu để trả lời'}</span>
-              <strong>{selectedOption?.text || 'Ba hướng trả lời sẽ dẫn cuộc hội thoại đi tiếp.'}</strong>
-            </div>
-            {selectedOption && (
-              <div className="ai-chat-recorder">
-                <Recorder
-                  onRecordingComplete={handleRecordingComplete}
-                  onRecordingStateChange={handleRecordingState}
-                  isAnalyzing={conversation.phase === 'analyzing'}
-                  maxDuration={recordDuration}
-                />
-              </div>
-            )}
-          </div>
         </footer>
-      )}
-
-      {showSettings && (
-        <div className="ai-chat-modal-backdrop">
-          <div className="ai-chat-modal">
-            <div className="ai-chat-modal-head">
-              <h2>Cài đặt hội thoại</h2>
-              <button type="button" onClick={() => setShowSettings(false)}><FiX /></button>
-            </div>
-            <label>
-              <span>Ngưỡng phát âm: {passThreshold}%</span>
-              <input type="range" min="50" max="100" step="5" value={passThreshold} onChange={(event) => setPassThreshold(Number(event.target.value))} />
-            </label>
-            <label>
-              <span>Giọng đọc của Lingo Coach</span>
-              <select value={selectedVoiceURI} onChange={(event) => setSelectedVoiceURI(event.target.value)}>
-                {voices.length === 0 && <option value="">Giọng mặc định</option>}
-                {voices.map((voice) => <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name}</option>)}
-              </select>
-            </label>
-            <button type="button" className="btn btn-primary" onClick={saveSettings}>Lưu cài đặt</button>
-          </div>
-        </div>
       )}
     </div>
   );

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict FnQ4TiPTh6JkIzbiQ2Q2lcdgbVQEQfGASLsoDWiSvKrhqDQrsn8fZUgIs6hJUxE
+\restrict IrQucG3dr8kyR5udjqo4BZcx4mEaPdHvgeRatHohFC15JaHtnPQqpIjQLYSjO5C
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
@@ -20,45 +20,61 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 ALTER TABLE IF EXISTS ONLY public.writingvocab DROP CONSTRAINT IF EXISTS writingvocab_exerciseid_fkey;
+ALTER TABLE IF EXISTS ONLY public.writingprogress DROP CONSTRAINT IF EXISTS writingprogress_userid_fkey;
+ALTER TABLE IF EXISTS ONLY public.writingprogress DROP CONSTRAINT IF EXISTS writingprogress_lessonid_fkey;
 ALTER TABLE IF EXISTS ONLY public.writingexercises DROP CONSTRAINT IF EXISTS writingexercises_lessonid_fkey;
-ALTER TABLE IF EXISTS ONLY public.userweaknesses DROP CONSTRAINT IF EXISTS userweaknesses_userid_fkey;
 ALTER TABLE IF EXISTS ONLY public.userstats DROP CONSTRAINT IF EXISTS userstats_userid_fkey;
 ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_levelid_fkey;
 ALTER TABLE IF EXISTS ONLY public.usergameprogress DROP CONSTRAINT IF EXISTS usergameprogress_userid_fkey;
 ALTER TABLE IF EXISTS ONLY public.usergameprogress DROP CONSTRAINT IF EXISTS usergameprogress_levelid_fkey;
-ALTER TABLE IF EXISTS ONLY public.usererrorevents DROP CONSTRAINT IF EXISTS usererrorevents_userid_fkey;
 ALTER TABLE IF EXISTS ONLY public.usercollectionwords DROP CONSTRAINT IF EXISTS usercollectionwords_collectionid_fkey;
 ALTER TABLE IF EXISTS ONLY public.usercollections DROP CONSTRAINT IF EXISTS usercollections_userid_fkey;
 ALTER TABLE IF EXISTS ONLY public.usercollections DROP CONSTRAINT IF EXISTS usercollections_reviewedby_fkey;
-ALTER TABLE IF EXISTS ONLY public.userachievements DROP CONSTRAINT IF EXISTS userachievements_userid_fkey;
-ALTER TABLE IF EXISTS ONLY public.userachievements DROP CONSTRAINT IF EXISTS userachievements_achievementid_fkey;
+ALTER TABLE IF EXISTS ONLY public.supporttickets DROP CONSTRAINT IF EXISTS supporttickets_userid_fkey;
+ALTER TABLE IF EXISTS ONLY public.supporttickets DROP CONSTRAINT IF EXISTS supporttickets_respondedby_fkey;
+ALTER TABLE IF EXISTS ONLY public.supportticketmessages DROP CONSTRAINT IF EXISTS supportticketmessages_ticketid_fkey;
+ALTER TABLE IF EXISTS ONLY public.supportticketmessages DROP CONSTRAINT IF EXISTS supportticketmessages_senderid_fkey;
 ALTER TABLE IF EXISTS ONLY public.studytimedaily DROP CONSTRAINT IF EXISTS studytimedaily_userid_fkey;
 ALTER TABLE IF EXISTS ONLY public.speakingquestions DROP CONSTRAINT IF EXISTS speakingquestions_lessonid_fkey;
+ALTER TABLE IF EXISTS ONLY public.speakingprogress DROP CONSTRAINT IF EXISTS speakingprogress_userid_fkey;
+ALTER TABLE IF EXISTS ONLY public.speakingprogress DROP CONSTRAINT IF EXISTS speakingprogress_lessonid_fkey;
+ALTER TABLE IF EXISTS ONLY public.spacedrepetitionreviews DROP CONSTRAINT IF EXISTS spacedrepetitionreviews_userid_fkey;
+ALTER TABLE IF EXISTS ONLY public.spacedrepetitionreviews DROP CONSTRAINT IF EXISTS spacedrepetitionreviews_itemid_fkey;
+ALTER TABLE IF EXISTS ONLY public.spacedrepetitionitems DROP CONSTRAINT IF EXISTS spacedrepetitionitems_userid_fkey;
 ALTER TABLE IF EXISTS ONLY public.readingvocabulary DROP CONSTRAINT IF EXISTS readingvocabulary_lessonid_fkey;
 ALTER TABLE IF EXISTS ONLY public.readingquestions DROP CONSTRAINT IF EXISTS readingquestions_lessonid_fkey;
+ALTER TABLE IF EXISTS ONLY public.readingprogress DROP CONSTRAINT IF EXISTS readingprogress_userid_fkey;
 ALTER TABLE IF EXISTS ONLY public.readingprogress DROP CONSTRAINT IF EXISTS readingprogress_lessonid_fkey;
 ALTER TABLE IF EXISTS ONLY public.readingparagraphs DROP CONSTRAINT IF EXISTS readingparagraphs_lessonid_fkey;
 ALTER TABLE IF EXISTS ONLY public.paymentrequests DROP CONSTRAINT IF EXISTS paymentrequests_userid_fkey;
+ALTER TABLE IF EXISTS ONLY public.passwordresetcodes DROP CONSTRAINT IF EXISTS passwordresetcodes_userid_fkey;
+ALTER TABLE IF EXISTS ONLY public.notifications DROP CONSTRAINT IF EXISTS notifications_createdby_fkey;
+ALTER TABLE IF EXISTS ONLY public.notificationrecipients DROP CONSTRAINT IF EXISTS notificationrecipients_userid_fkey;
+ALTER TABLE IF EXISTS ONLY public.notificationrecipients DROP CONSTRAINT IF EXISTS notificationrecipients_notificationid_fkey;
 ALTER TABLE IF EXISTS ONLY public.minigamequestions DROP CONSTRAINT IF EXISTS minigamequestions_levelid_fkey;
 ALTER TABLE IF EXISTS ONLY public.listeningvocabulary DROP CONSTRAINT IF EXISTS listeningvocabulary_lessonid_fkey;
 ALTER TABLE IF EXISTS ONLY public.listeningspeakers DROP CONSTRAINT IF EXISTS listeningspeakers_lessonid_fkey;
 ALTER TABLE IF EXISTS ONLY public.listeningsegments DROP CONSTRAINT IF EXISTS listeningsegments_speakerid_fkey;
 ALTER TABLE IF EXISTS ONLY public.listeningsegments DROP CONSTRAINT IF EXISTS listeningsegments_lessonid_fkey;
 ALTER TABLE IF EXISTS ONLY public.listeningquestions DROP CONSTRAINT IF EXISTS listeningquestions_lessonid_fkey;
+ALTER TABLE IF EXISTS ONLY public.listeningprogress DROP CONSTRAINT IF EXISTS listeningprogress_userid_fkey;
 ALTER TABLE IF EXISTS ONLY public.listeningprogress DROP CONSTRAINT IF EXISTS listeningprogress_lessonid_fkey;
 ALTER TABLE IF EXISTS ONLY public.grammartopics DROP CONSTRAINT IF EXISTS grammartopics_categoryid_fkey;
 ALTER TABLE IF EXISTS ONLY public.grammarquiz DROP CONSTRAINT IF EXISTS grammarquiz_topicid_fkey;
+ALTER TABLE IF EXISTS ONLY public.grammarprogress DROP CONSTRAINT IF EXISTS grammarprogress_userid_fkey;
 ALTER TABLE IF EXISTS ONLY public.grammarprogress DROP CONSTRAINT IF EXISTS grammarprogress_topicid_fkey;
 ALTER TABLE IF EXISTS ONLY public.dailytasks DROP CONSTRAINT IF EXISTS dailytasks_userid_fkey;
 DROP INDEX IF EXISTS public.ux_usergameprogress_user_level;
 DROP INDEX IF EXISTS public.uq_gamelevels_levelnumber;
 DROP INDEX IF EXISTS public.uq_daily_tasks_user_date_order;
 DROP INDEX IF EXISTS public.ix_minigamequestions_level_order;
-DROP INDEX IF EXISTS public.idx_user_weaknesses_user_weight;
-DROP INDEX IF EXISTS public.idx_user_error_events_user_skill;
-DROP INDEX IF EXISTS public.idx_user_error_events_reference;
 DROP INDEX IF EXISTS public.idx_user_email;
 DROP INDEX IF EXISTS public.idx_user_collections_public_review;
+DROP INDEX IF EXISTS public.idx_support_tickets_user_created;
+DROP INDEX IF EXISTS public.idx_support_tickets_status_created;
+DROP INDEX IF EXISTS public.idx_support_ticket_messages_ticket_created;
+DROP INDEX IF EXISTS public.idx_sr_reviews_item;
+DROP INDEX IF EXISTS public.idx_sr_items_due;
 DROP INDEX IF EXISTS public.idx_readingparagraphs_lesson;
 DROP INDEX IF EXISTS public.idx_reading_vocab_lesson;
 DROP INDEX IF EXISTS public.idx_reading_questions_lesson;
@@ -66,6 +82,9 @@ DROP INDEX IF EXISTS public.idx_reading_lessons_order;
 DROP INDEX IF EXISTS public.idx_placement_minigame_active_type;
 DROP INDEX IF EXISTS public.idx_payment_requests_transfer_content;
 DROP INDEX IF EXISTS public.idx_payment_requests_sepay_transaction;
+DROP INDEX IF EXISTS public.idx_password_reset_email_created;
+DROP INDEX IF EXISTS public.idx_notification_recipients_user_created;
+DROP INDEX IF EXISTS public.idx_notification_recipients_notification;
 DROP INDEX IF EXISTS public.idx_listeningsegments_lesson;
 DROP INDEX IF EXISTS public.idx_listening_vocab_lesson;
 DROP INDEX IF EXISTS public.idx_listening_speakers_lesson;
@@ -77,22 +96,24 @@ ALTER TABLE IF EXISTS ONLY public.writingvocab DROP CONSTRAINT IF EXISTS writing
 ALTER TABLE IF EXISTS ONLY public.writingprogress DROP CONSTRAINT IF EXISTS writingprogress_pkey;
 ALTER TABLE IF EXISTS ONLY public.writinglessons DROP CONSTRAINT IF EXISTS writinglessons_pkey;
 ALTER TABLE IF EXISTS ONLY public.writingexercises DROP CONSTRAINT IF EXISTS writingexercises_pkey;
-ALTER TABLE IF EXISTS ONLY public.userweaknesses DROP CONSTRAINT IF EXISTS userweaknesses_userid_skill_errortype_errorkey_key;
-ALTER TABLE IF EXISTS ONLY public.userweaknesses DROP CONSTRAINT IF EXISTS userweaknesses_pkey;
 ALTER TABLE IF EXISTS ONLY public.userstats DROP CONSTRAINT IF EXISTS userstats_pkey;
 ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_username_key;
 ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_pkey;
 ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_email_key;
 ALTER TABLE IF EXISTS ONLY public.usergameprogress DROP CONSTRAINT IF EXISTS usergameprogress_pkey;
-ALTER TABLE IF EXISTS ONLY public.usererrorevents DROP CONSTRAINT IF EXISTS usererrorevents_pkey;
 ALTER TABLE IF EXISTS ONLY public.usercollectionwords DROP CONSTRAINT IF EXISTS usercollectionwords_pkey;
 ALTER TABLE IF EXISTS ONLY public.usercollections DROP CONSTRAINT IF EXISTS usercollections_pkey;
-ALTER TABLE IF EXISTS ONLY public.userachievements DROP CONSTRAINT IF EXISTS userachievements_pkey;
 ALTER TABLE IF EXISTS ONLY public.usergameprogress DROP CONSTRAINT IF EXISTS uq_ugp_user_level;
+ALTER TABLE IF EXISTS ONLY public.supporttickets DROP CONSTRAINT IF EXISTS supporttickets_pkey;
+ALTER TABLE IF EXISTS ONLY public.supportticketmessages DROP CONSTRAINT IF EXISTS supportticketmessages_pkey;
 ALTER TABLE IF EXISTS ONLY public.studytimedaily DROP CONSTRAINT IF EXISTS studytimedaily_pkey;
 ALTER TABLE IF EXISTS ONLY public.speakingquestions DROP CONSTRAINT IF EXISTS speakingquestions_pkey;
 ALTER TABLE IF EXISTS ONLY public.speakingprogress DROP CONSTRAINT IF EXISTS speakingprogress_pkey;
 ALTER TABLE IF EXISTS ONLY public.speakinglessons DROP CONSTRAINT IF EXISTS speakinglessons_pkey;
+ALTER TABLE IF EXISTS ONLY public.spacedrepetitionreviews DROP CONSTRAINT IF EXISTS spacedrepetitionreviews_userid_attemptid_key;
+ALTER TABLE IF EXISTS ONLY public.spacedrepetitionreviews DROP CONSTRAINT IF EXISTS spacedrepetitionreviews_pkey;
+ALTER TABLE IF EXISTS ONLY public.spacedrepetitionitems DROP CONSTRAINT IF EXISTS spacedrepetitionitems_userid_targettype_targetid_key;
+ALTER TABLE IF EXISTS ONLY public.spacedrepetitionitems DROP CONSTRAINT IF EXISTS spacedrepetitionitems_pkey;
 ALTER TABLE IF EXISTS ONLY public.readingvocabulary DROP CONSTRAINT IF EXISTS readingvocabulary_pkey;
 ALTER TABLE IF EXISTS ONLY public.readingquestions DROP CONSTRAINT IF EXISTS readingquestions_pkey;
 ALTER TABLE IF EXISTS ONLY public.readingprogress DROP CONSTRAINT IF EXISTS readingprogress_pkey;
@@ -100,6 +121,10 @@ ALTER TABLE IF EXISTS ONLY public.readingparagraphs DROP CONSTRAINT IF EXISTS re
 ALTER TABLE IF EXISTS ONLY public.readinglessons DROP CONSTRAINT IF EXISTS readinglessons_pkey;
 ALTER TABLE IF EXISTS ONLY public.placementminigamequestions DROP CONSTRAINT IF EXISTS placementminigamequestions_pkey;
 ALTER TABLE IF EXISTS ONLY public.paymentrequests DROP CONSTRAINT IF EXISTS paymentrequests_pkey;
+ALTER TABLE IF EXISTS ONLY public.passwordresetcodes DROP CONSTRAINT IF EXISTS passwordresetcodes_pkey;
+ALTER TABLE IF EXISTS ONLY public.notifications DROP CONSTRAINT IF EXISTS notifications_pkey;
+ALTER TABLE IF EXISTS ONLY public.notificationrecipients DROP CONSTRAINT IF EXISTS notificationrecipients_pkey;
+ALTER TABLE IF EXISTS ONLY public.notificationrecipients DROP CONSTRAINT IF EXISTS notificationrecipients_notificationid_userid_key;
 ALTER TABLE IF EXISTS ONLY public.minigamequestions DROP CONSTRAINT IF EXISTS minigamequestions_pkey;
 ALTER TABLE IF EXISTS ONLY public.listeningvocabulary DROP CONSTRAINT IF EXISTS listeningvocabulary_pkey;
 ALTER TABLE IF EXISTS ONLY public.listeningspeakers DROP CONSTRAINT IF EXISTS listeningspeakers_pkey;
@@ -115,25 +140,25 @@ ALTER TABLE IF EXISTS ONLY public.grammarprogress DROP CONSTRAINT IF EXISTS gram
 ALTER TABLE IF EXISTS ONLY public.grammarcategories DROP CONSTRAINT IF EXISTS grammarcategories_pkey;
 ALTER TABLE IF EXISTS ONLY public.gamelevels DROP CONSTRAINT IF EXISTS gamelevels_pkey;
 ALTER TABLE IF EXISTS ONLY public.dailytasks DROP CONSTRAINT IF EXISTS dailytasks_pkey;
-ALTER TABLE IF EXISTS ONLY public.achievements DROP CONSTRAINT IF EXISTS achievements_pkey;
 ALTER TABLE IF EXISTS public.learninglevels ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.grammarcategories ALTER COLUMN id DROP DEFAULT;
 DROP TABLE IF EXISTS public.writingvocab;
 DROP TABLE IF EXISTS public.writingprogress;
 DROP TABLE IF EXISTS public.writinglessons;
 DROP TABLE IF EXISTS public.writingexercises;
-DROP TABLE IF EXISTS public.userweaknesses;
 DROP TABLE IF EXISTS public.userstats;
 DROP TABLE IF EXISTS public.users;
 DROP TABLE IF EXISTS public.usergameprogress;
-DROP TABLE IF EXISTS public.usererrorevents;
 DROP TABLE IF EXISTS public.usercollectionwords;
 DROP TABLE IF EXISTS public.usercollections;
-DROP TABLE IF EXISTS public.userachievements;
+DROP TABLE IF EXISTS public.supporttickets;
+DROP TABLE IF EXISTS public.supportticketmessages;
 DROP TABLE IF EXISTS public.studytimedaily;
 DROP TABLE IF EXISTS public.speakingquestions;
 DROP TABLE IF EXISTS public.speakingprogress;
 DROP TABLE IF EXISTS public.speakinglessons;
+DROP TABLE IF EXISTS public.spacedrepetitionreviews;
+DROP TABLE IF EXISTS public.spacedrepetitionitems;
 DROP TABLE IF EXISTS public.readingvocabulary;
 DROP TABLE IF EXISTS public.readingquestions;
 DROP TABLE IF EXISTS public.readingprogress;
@@ -141,6 +166,9 @@ DROP TABLE IF EXISTS public.readingparagraphs;
 DROP TABLE IF EXISTS public.readinglessons;
 DROP TABLE IF EXISTS public.placementminigamequestions;
 DROP TABLE IF EXISTS public.paymentrequests;
+DROP TABLE IF EXISTS public.passwordresetcodes;
+DROP TABLE IF EXISTS public.notifications;
+DROP TABLE IF EXISTS public.notificationrecipients;
 DROP TABLE IF EXISTS public.minigamequestions;
 DROP TABLE IF EXISTS public.listeningvocabulary;
 DROP TABLE IF EXISTS public.listeningspeakers;
@@ -157,7 +185,6 @@ DROP SEQUENCE IF EXISTS public.grammarcategories_id_seq;
 DROP TABLE IF EXISTS public.grammarcategories;
 DROP TABLE IF EXISTS public.gamelevels;
 DROP TABLE IF EXISTS public.dailytasks;
-DROP TABLE IF EXISTS public.achievements;
 DROP EXTENSION IF EXISTS pgcrypto;
 DROP SCHEMA IF EXISTS schema;
 --
@@ -186,18 +213,6 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: achievements; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.achievements (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name character varying(100),
-    description character varying(255),
-    condition character varying(255)
-);
-
-
---
 -- Name: dailytasks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -216,7 +231,10 @@ CREATE TABLE public.dailytasks (
     airationale text,
     completedat timestamp without time zone,
     createdat timestamp without time zone DEFAULT now() NOT NULL,
-    rewardexp integer DEFAULT 10 NOT NULL
+    rewardexp integer DEFAULT 10 NOT NULL,
+    planversion smallint DEFAULT 1 NOT NULL,
+    taskmode character varying(20) DEFAULT 'new'::character varying NOT NULL,
+    duedate date
 );
 
 
@@ -468,6 +486,52 @@ CREATE TABLE public.minigamequestions (
 
 
 --
+-- Name: notificationrecipients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.notificationrecipients (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    notificationid uuid NOT NULL,
+    userid uuid NOT NULL,
+    readat timestamp without time zone,
+    emailedat timestamp without time zone,
+    emailerror text,
+    createdat timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: notifications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.notifications (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    title character varying(180) NOT NULL,
+    message text NOT NULL,
+    type character varying(40) DEFAULT 'info'::character varying NOT NULL,
+    linkurl text,
+    audience character varying(30) DEFAULT 'selected'::character varying NOT NULL,
+    createdby uuid,
+    createdat timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: passwordresetcodes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.passwordresetcodes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    userid uuid NOT NULL,
+    email character varying(255) NOT NULL,
+    codehash text NOT NULL,
+    expiresat timestamp without time zone NOT NULL,
+    usedat timestamp without time zone,
+    createdat timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: paymentrequests; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -589,6 +653,52 @@ CREATE TABLE public.readingvocabulary (
 
 
 --
+-- Name: spacedrepetitionitems; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.spacedrepetitionitems (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    userid uuid NOT NULL,
+    targettype character varying(80) NOT NULL,
+    targetid character varying(120) NOT NULL,
+    easefactor numeric(4,2) DEFAULT 2.50 NOT NULL,
+    intervaldays integer DEFAULT 0 NOT NULL,
+    repetitions integer DEFAULT 0 NOT NULL,
+    lapses integer DEFAULT 0 NOT NULL,
+    lastscore integer,
+    lastquality smallint,
+    lastreviewedat timestamp with time zone,
+    duedate date DEFAULT ((now() AT TIME ZONE 'Asia/Ho_Chi_Minh'::text))::date NOT NULL,
+    lastassignedat timestamp with time zone,
+    createdat timestamp with time zone DEFAULT now() NOT NULL,
+    updatedat timestamp with time zone DEFAULT now() NOT NULL,
+    ismastered boolean DEFAULT false NOT NULL,
+    masteredat timestamp with time zone
+);
+
+
+--
+-- Name: spacedrepetitionreviews; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.spacedrepetitionreviews (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    itemid uuid NOT NULL,
+    userid uuid NOT NULL,
+    attemptid uuid NOT NULL,
+    score integer NOT NULL,
+    quality smallint NOT NULL,
+    previouseasefactor numeric(4,2) NOT NULL,
+    nexteasefactor numeric(4,2) NOT NULL,
+    previousintervaldays integer NOT NULL,
+    nextintervaldays integer NOT NULL,
+    previousrepetitions integer NOT NULL,
+    nextrepetitions integer NOT NULL,
+    reviewedat timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: speakinglessons; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -647,13 +757,44 @@ CREATE TABLE public.studytimedaily (
 
 
 --
--- Name: userachievements; Type: TABLE; Schema: public; Owner: -
+-- Name: supportticketmessages; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.userachievements (
+CREATE TABLE public.supportticketmessages (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    ticketid uuid NOT NULL,
+    senderid uuid NOT NULL,
+    senderrole character varying(20) NOT NULL,
+    message text NOT NULL,
+    attachmenturl text,
+    attachmentpublicid character varying(255),
+    attachmentoriginalname character varying(255),
+    attachmentmimetype character varying(120),
+    createdat timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: supporttickets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.supporttickets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     userid uuid NOT NULL,
-    achievementid uuid NOT NULL,
-    unlockedat timestamp without time zone DEFAULT now()
+    email character varying(255) NOT NULL,
+    title character varying(255) NOT NULL,
+    description text NOT NULL,
+    category character varying(80) NOT NULL,
+    status character varying(30) DEFAULT 'open'::character varying NOT NULL,
+    attachmenturl text,
+    attachmentpublicid character varying(255),
+    attachmentoriginalname character varying(255),
+    attachmentmimetype character varying(120),
+    adminresponse text,
+    respondedby uuid,
+    respondedat timestamp without time zone,
+    createdat timestamp without time zone DEFAULT now() NOT NULL,
+    updatedat timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -688,29 +829,6 @@ CREATE TABLE public.usercollectionwords (
     customexample text,
     addedat timestamp without time zone DEFAULT now(),
     updatedat timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: usererrorevents; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.usererrorevents (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    userid uuid NOT NULL,
-    skill character varying(40) NOT NULL,
-    activitytype character varying(60) NOT NULL,
-    referencetype character varying(60),
-    referenceid character varying(120),
-    errortype character varying(80) NOT NULL,
-    errorkey character varying(140) NOT NULL,
-    severity integer DEFAULT 3,
-    prompt text,
-    useranswer text,
-    expectedanswer text,
-    feedback text,
-    metadata jsonb,
-    createdat timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -751,7 +869,7 @@ CREATE TABLE public.users (
     placementlevel character varying(20) DEFAULT 'basic'::character varying,
     placementsource character varying(30) DEFAULT 'legacy'::character varying,
     placementcompletedat timestamp with time zone DEFAULT now(),
-    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'user'::character varying, 'superadmin'::character varying])::text[])))
+    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'user'::character varying])::text[])))
 );
 
 
@@ -765,25 +883,6 @@ CREATE TABLE public.userstats (
     level integer DEFAULT 1,
     streakdays integer DEFAULT 0,
     lastlogin timestamp without time zone
-);
-
-
---
--- Name: userweaknesses; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.userweaknesses (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    userid uuid NOT NULL,
-    skill character varying(40) NOT NULL,
-    errortype character varying(80) NOT NULL,
-    errorkey character varying(140) NOT NULL,
-    label character varying(255) NOT NULL,
-    mistakecount integer DEFAULT 0 NOT NULL,
-    attemptcount integer DEFAULT 0 NOT NULL,
-    weight double precision DEFAULT 0 NOT NULL,
-    lastseenat timestamp without time zone DEFAULT now() NOT NULL,
-    updatedat timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -856,42 +955,10 @@ ALTER TABLE ONLY public.learninglevels ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
--- Data for Name: achievements; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.achievements (id, name, description, condition) FROM stdin;
-\.
-
-
---
 -- Data for Name: dailytasks; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.dailytasks (id, userid, taskdate, skill, targettype, targetid, title, description, reason, status, orderindex, airationale, completedat, createdat, rewardexp) FROM stdin;
-5319e1ab-9988-4410-92d2-4a9118eeb94f	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-06-18	listening	listening_lesson	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Listening: Nghe chữ cái và đánh vần	Luyện nghe chủ đề Alphabet.	Luyện nghe một bài ngắn để làm nóng khả năng phản xạ.	pending	1	daily_plan	\N	2026-06-18 14:54:50.010382	20
-551c04da-a4ae-4525-9742-cfb31c550ec5	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-06-18	speaking	speaking_lesson	dfee0411-e605-429d-9d10-72e817b57863	Speaking: Hỏi và trả lời tuổi	Nghe mẫu và luyện nói lại các câu trọng tâm.	Nói vài câu mẫu để giữ nhịp phát âm mỗi ngày.	pending	2	daily_plan	\N	2026-06-18 14:54:50.011749	25
-a147952c-2164-4ded-97bf-154d5324c1fe	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-06-18	habit	daily_login	today	Đăng nhập hôm nay	Mở hệ thống học tập để giữ nhịp học mỗi ngày.	Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.	completed	0	habit	2026-06-18 14:54:50.014676	2026-06-18 14:54:50.008376	10
-0e14be84-5bac-498c-bf7a-f0356f9603a4	34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-18	listening	listening_lesson	3c3af2dc-5680-4906-a850-58560747cb9f	Listening: Màu sắc và đồ vật quen thuộc	Luyện nghe chủ đề Colors and objects.	Luyện nghe một bài ngắn để làm nóng khả năng phản xạ.	pending	1	daily_plan	\N	2026-06-18 18:58:06.439164	20
-ac4b50b8-04b0-4f1b-ab4d-d7a37870a10d	34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-18	speaking	speaking_lesson	dfee0411-e605-429d-9d10-72e817b57863	Speaking: Hỏi và trả lời tuổi	Nghe mẫu và luyện nói lại các câu trọng tâm.	Nói vài câu mẫu để giữ nhịp phát âm mỗi ngày.	pending	2	daily_plan	\N	2026-06-18 18:58:06.441242	25
-9fabbd43-46bf-488b-8755-72364e9d77d4	34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-18	habit	daily_login	today	Đăng nhập hôm nay	Mở hệ thống học tập để giữ nhịp học mỗi ngày.	Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.	completed	0	habit	2026-06-18 18:58:06.447006	2026-06-18 18:58:06.330557	10
-f71fdebf-65ea-4589-aaec-08f770d657f0	5a708101-a917-4e6f-bf93-0a960a638577	2026-06-19	listening	listening_lesson	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Listening: Nghe chữ cái và đánh vần	Luyện nghe chủ đề Alphabet.	Luyện nghe một bài ngắn để làm nóng khả năng phản xạ.	pending	1	daily_plan	\N	2026-06-19 08:30:06.591555	20
-aec32111-aa9a-485d-9087-8242b2aaf331	5a708101-a917-4e6f-bf93-0a960a638577	2026-06-19	speaking	speaking_lesson	dfee0411-e605-429d-9d10-72e817b57863	Speaking: Hỏi và trả lời tuổi	Nghe mẫu và luyện nói lại các câu trọng tâm.	Nói vài câu mẫu để giữ nhịp phát âm mỗi ngày.	pending	2	daily_plan	\N	2026-06-19 08:30:06.592855	25
-b27a2ef8-5a89-4dde-a292-bb8176aee00b	5a708101-a917-4e6f-bf93-0a960a638577	2026-06-19	habit	daily_login	today	Đăng nhập hôm nay	Mở hệ thống học tập để giữ nhịp học mỗi ngày.	Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.	completed	0	habit	2026-06-19 08:30:06.595731	2026-06-19 08:30:06.586393	10
-0559f7bb-682e-4a6d-8789-b929f5ab5a41	7e4ca808-477c-4cf1-84eb-8d59fa43c580	2026-06-20	listening	listening_lesson	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Listening: Nghe chữ cái và đánh vần	Luyện nghe chủ đề Alphabet.	Luyện nghe một bài ngắn để làm nóng khả năng phản xạ.	pending	1	daily_plan	\N	2026-06-20 15:35:40.574645	20
-ec997ffd-dd98-46c8-84b6-e9298a9dfef9	7e4ca808-477c-4cf1-84eb-8d59fa43c580	2026-06-20	speaking	speaking_lesson	dfee0411-e605-429d-9d10-72e817b57863	Speaking: Hỏi và trả lời tuổi	Nghe mẫu và luyện nói lại các câu trọng tâm.	Nói vài câu mẫu để giữ nhịp phát âm mỗi ngày.	pending	2	daily_plan	\N	2026-06-20 15:35:40.576081	25
-974c87bf-882a-4827-8b4f-b80c8897f905	7e4ca808-477c-4cf1-84eb-8d59fa43c580	2026-06-20	habit	daily_login	today	Đăng nhập hôm nay	Mở hệ thống học tập để giữ nhịp học mỗi ngày.	Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.	completed	0	habit	2026-06-20 15:35:40.579363	2026-06-20 15:35:40.540859	10
-b4d2ceef-e0b3-4eac-ac28-cf513028a085	0a70cf27-dd6e-4891-981f-a6fa185fdbed	2026-06-20	listening	listening_lesson	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Listening: Nghe chữ cái và đánh vần	Luyện nghe chủ đề Alphabet.	Luyện nghe một bài ngắn để làm nóng khả năng phản xạ.	pending	1	daily_plan	\N	2026-06-20 16:12:47.581011	20
-5d09d8eb-acc0-494a-8b6c-c0e275fd3685	0a70cf27-dd6e-4891-981f-a6fa185fdbed	2026-06-20	speaking	speaking_lesson	dfee0411-e605-429d-9d10-72e817b57863	Speaking: Hỏi và trả lời tuổi	Nghe mẫu và luyện nói lại các câu trọng tâm.	Nói vài câu mẫu để giữ nhịp phát âm mỗi ngày.	pending	2	daily_plan	\N	2026-06-20 16:12:47.582887	25
-d8b7eebc-7c3d-4c46-ae43-370f72fbcace	0a70cf27-dd6e-4891-981f-a6fa185fdbed	2026-06-20	habit	daily_login	today	Đăng nhập hôm nay	Mở hệ thống học tập để giữ nhịp học mỗi ngày.	Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.	completed	0	habit	2026-06-20 16:12:47.585974	2026-06-20 16:12:47.574321	10
-b638b063-9bec-4e85-9385-d9a1f4c339f4	7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-20	listening	listening_lesson	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Listening: Nghe chữ cái và đánh vần	Luyện nghe chủ đề Alphabet.	Luyện nghe một bài ngắn để làm nóng khả năng phản xạ.	pending	1	daily_plan	\N	2026-06-20 16:28:03.006702	20
-3375c776-db85-40f6-8bb2-0ade3226646b	7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-20	speaking	speaking_lesson	dfee0411-e605-429d-9d10-72e817b57863	Speaking: Hỏi và trả lời tuổi	Nghe mẫu và luyện nói lại các câu trọng tâm.	Nói vài câu mẫu để giữ nhịp phát âm mỗi ngày.	pending	2	daily_plan	\N	2026-06-20 16:28:03.008289	25
-9d42a844-1d98-449b-b85c-a03d08c52a2d	7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-20	habit	daily_login	today	Đăng nhập hôm nay	Mở hệ thống học tập để giữ nhịp học mỗi ngày.	Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.	completed	0	habit	2026-06-20 16:28:03.01106	2026-06-20 16:28:03.004635	10
-ee466b14-77a4-4569-9f86-5b781fcaa176	5d533fb3-8bab-4e32-8a70-2fd3d523e378	2026-06-22	listening	listening_lesson	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Listening: Nghe chữ cái và đánh vần	Luyện nghe chủ đề Alphabet.	Luyện nghe một bài ngắn để làm nóng khả năng phản xạ.	pending	1	daily_plan	\N	2026-06-22 10:08:59.319746	20
-0624982f-a315-4a7b-8d9b-2afb46b653db	5d533fb3-8bab-4e32-8a70-2fd3d523e378	2026-06-22	speaking	speaking_lesson	dfee0411-e605-429d-9d10-72e817b57863	Speaking: Hỏi và trả lời tuổi	Nghe mẫu và luyện nói lại các câu trọng tâm.	Nói vài câu mẫu để giữ nhịp phát âm mỗi ngày.	pending	2	daily_plan	\N	2026-06-22 10:08:59.321152	25
-740d90ac-782e-4897-a576-16cdb32c2bab	5d533fb3-8bab-4e32-8a70-2fd3d523e378	2026-06-22	habit	daily_login	today	Đăng nhập hôm nay	Mở hệ thống học tập để giữ nhịp học mỗi ngày.	Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.	completed	0	habit	2026-06-22 10:08:59.324649	2026-06-22 10:08:59.285819	10
-69a79297-861a-4b2c-845c-0772d9269750	5a708101-a917-4e6f-bf93-0a960a638577	2026-06-22	listening	listening_lesson	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Listening: Nghe chữ cái và đánh vần	Luyện nghe chủ đề Alphabet.	Luyện nghe một bài ngắn để làm nóng khả năng phản xạ.	pending	1	daily_plan	\N	2026-06-22 15:11:41.311401	20
-79d685e1-8bc8-4c7d-afd8-abf69c513f07	5a708101-a917-4e6f-bf93-0a960a638577	2026-06-22	speaking	speaking_lesson	dfee0411-e605-429d-9d10-72e817b57863	Speaking: Hỏi và trả lời tuổi	Nghe mẫu và luyện nói lại các câu trọng tâm.	Nói vài câu mẫu để giữ nhịp phát âm mỗi ngày.	pending	2	daily_plan	\N	2026-06-22 15:11:41.312975	25
-55c6a834-6a62-486e-92e7-df26887f5d42	5a708101-a917-4e6f-bf93-0a960a638577	2026-06-22	habit	daily_login	today	Đăng nhập hôm nay	Mở hệ thống học tập để giữ nhịp học mỗi ngày.	Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.	completed	0	habit	2026-06-22 15:11:41.31543	2026-06-22 15:11:41.253317	10
+COPY public.dailytasks (id, userid, taskdate, skill, targettype, targetid, title, description, reason, status, orderindex, airationale, completedat, createdat, rewardexp, planversion, taskmode, duedate) FROM stdin;
 \.
 
 
@@ -940,7 +1007,12 @@ COPY public.grammarcategories (id, name, namevi, icon, orderindex) FROM stdin;
 --
 
 COPY public.grammarprogress (userid, topicid, bestscore, lastscore, attempts, status, updatedat) FROM stdin;
-7c142186-bdf1-4dd8-b174-5884468ae26a	8242916c-9535-4e55-893c-7d1338de5ea1	53	53	1	in_progress	2026-06-20 21:31:31.277824
+00000000-0000-4000-8000-000000000101	d773bd1b-24cd-4d51-9fad-bd84fa4cb41a	76	76	1	completed	2026-07-01 19:00:00
+00000000-0000-4000-8000-000000000102	d773bd1b-24cd-4d51-9fad-bd84fa4cb41a	92	92	2	completed	2026-07-01 19:05:00
+00000000-0000-4000-8000-000000000102	e088946a-b0cf-494c-9746-85e1420a95c1	68	68	1	in_progress	2026-07-01 19:10:00
+00000000-0000-4000-8000-000000000103	d773bd1b-24cd-4d51-9fad-bd84fa4cb41a	100	100	1	completed	2026-07-01 19:15:00
+00000000-0000-4000-8000-000000000103	e088946a-b0cf-494c-9746-85e1420a95c1	94	94	2	completed	2026-07-01 19:20:00
+00000000-0000-4000-8000-000000000103	90ad11e3-ee89-49c2-a421-0ef502b8744a	72	72	1	in_progress	2026-07-01 19:25:00
 \.
 
 
@@ -1264,7 +1336,6 @@ COPY public.learninglevels (id, code, name, description) FROM stdin;
 --
 
 COPY public.listeninglessons (id, title, description, level, topic, objective, duration, passagetitle, audiourl, orderindex, createdat, updatedat, isfoundation) FROM stdin;
-6267aa83-f1b9-49ce-bdd3-f3df12db2568	Nghe chữ cái và đánh vần	Luyện nghe bảng chữ cái, cách đánh vần tên và từ ngắn.	A1	Alphabet	Nghe và nhận diện chữ cái tiếng Anh.	8 phút	\N	\N	-50	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:58.675+07	t
 3c3af2dc-5680-4906-a850-58560747cb9f	Màu sắc và đồ vật quen thuộc	Nghe câu ngắn về màu sắc và đồ vật trong lớp học.	A1	Colors and objects	Nhận diện màu sắc và đồ vật qua câu ngắn.	8 phút	\N	\N	-49	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:58.773+07	t
 eb79a03f-9018-410a-937a-6932047adb7d	Thời gian trong ngày	Luyện nghe giờ đơn giản và hoạt động trong ngày.	A1	Time	Nghe giờ và hoạt động thường ngày.	9 phút	\N	\N	-48	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:58.824+07	t
 b01c88a4-3ad5-4f98-999b-553830aaf7e6	Chào hỏi và giới thiệu tên	Nghe các câu chào hỏi rất ngắn cho người mới bắt đầu.	A0	Greetings	Nghe các câu chào hỏi rất ngắn cho người mới bắt đầu.	5 phút	Chào hỏi và giới thiệu tên		-47	2026-06-12 09:39:58.830245+07	2026-06-12 09:40:11.58723+07	t
@@ -1274,6 +1345,7 @@ bd620079-7933-41f4-a825-bbae50ab23c7	A Morning Routine	Nghe hội thoại ngắn
 949f3df4-f7a3-4697-8005-22d7b9deaa73	Ordering Lunch	Listen to a short conversation at a lunch counter.	A1	Food	Understand simple food orders and prices.	10 phút	\N	\N	3	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:58.877+07	f
 073560d6-69c3-4c98-9c63-cf724896c2b2	At The Bus Stop	Listen for route, time, and destination details.	A1	Transport	Catch simple travel information in a short dialogue.	11 phút	\N	\N	4	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:58.927+07	f
 5f7512ec-0338-407b-973b-e383a6a91503	Making An Appointment	Understand a simple phone call about choosing a time.	A2	Appointments	Listen for day, time, and purpose.	12 phút	\N	\N	5	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:58.98+07	f
+6267aa83-f1b9-49ce-bdd3-f3df12db2568	Nghe chữ cái và đánh vần	Luyện nghe bảng chữ cái, cách đánh vần tên và từ ngắn.	A1	Alphabet	Nghe và nhận diện chữ cái tiếng Anh.	8 phút			-50	2026-06-18 14:30:58.633595+07	2026-06-27 23:36:18.194143+07	t
 \.
 
 
@@ -1282,7 +1354,11 @@ bd620079-7933-41f4-a825-bbae50ab23c7	A Morning Routine	Nghe hội thoại ngắn
 --
 
 COPY public.listeningprogress (userid, lessonid, status, score, updatedat) FROM stdin;
-34e079cb-e041-4085-9a31-a0782fdd5af8	6267aa83-f1b9-49ce-bdd3-f3df12db2568	completed	100	2026-06-18 14:53:29.607292+07
+00000000-0000-4000-8000-000000000101	3c3af2dc-5680-4906-a850-58560747cb9f	in_progress	65	2026-07-01 20:00:00+07
+00000000-0000-4000-8000-000000000102	3c3af2dc-5680-4906-a850-58560747cb9f	completed	86	2026-07-01 20:05:00+07
+00000000-0000-4000-8000-000000000102	eb79a03f-9018-410a-937a-6932047adb7d	in_progress	70	2026-07-01 20:10:00+07
+00000000-0000-4000-8000-000000000103	3c3af2dc-5680-4906-a850-58560747cb9f	completed	95	2026-07-01 20:15:00+07
+00000000-0000-4000-8000-000000000103	eb79a03f-9018-410a-937a-6932047adb7d	completed	90	2026-07-01 20:20:00+07
 \.
 
 
@@ -1329,51 +1405,51 @@ d28a7806-ae07-4178-baf5-1202c44c7274	5f7512ec-0338-407b-973b-e383a6a91503	true_f
 --
 
 COPY public.listeningsegments (id, lessonid, speaker, text, orderindex, speakerid) FROM stdin;
-6537a85d-3058-42a2-a436-654a397b3f54	bd620079-7933-41f4-a825-bbae50ab23c7	Ben	I usually wake up at six thirty. I catch the bus at seven fifteen.	1	5ccef698-e87c-4ea2-a9ae-71fcdc8da774
-8b5c1cce-67ab-4dfe-a018-b6a79f3cc1de	bd620079-7933-41f4-a825-bbae50ab23c7	Anna	That is early. I wake up at seven and have breakfast at home.	2	486c650c-f2a5-4818-9e2d-f6095648482b
-34f47f62-1e8a-4fa7-90ce-231cbde74c09	bd620079-7933-41f4-a825-bbae50ab23c7	Ben	What do you eat for breakfast?	3	5ccef698-e87c-4ea2-a9ae-71fcdc8da774
-ab1ef11b-428f-47b6-9492-5835c0b81108	bd620079-7933-41f4-a825-bbae50ab23c7	Anna	I eat bread, drink coffee, and read the news for ten minutes.	4	486c650c-f2a5-4818-9e2d-f6095648482b
-f1ff03e7-10d5-4ec6-9207-84e896293ea7	bd620079-7933-41f4-a825-bbae50ab23c7	Ben	That sounds calm. My mornings are always busy.	5	5ccef698-e87c-4ea2-a9ae-71fcdc8da774
-e5651917-92fd-45b1-9b5d-188f6a773d1f	20abb717-63e6-45d5-a22e-96636beedb50	Receptionist	Good evening. Welcome to Green Lake Hotel. How can I help you?	0	e58de633-6dec-4bd6-936e-3e4ac2ba4edc
-81917098-a9e1-403e-9fc0-b5dd2ea07310	20abb717-63e6-45d5-a22e-96636beedb50	Guest	Hello. I have a reservation under the name Nguyen.	1	8cd641ff-0b7e-4036-a2ef-3497657eace9
-2912a7c6-49ba-498f-a69f-e12f3700065d	20abb717-63e6-45d5-a22e-96636beedb50	Receptionist	Let me check. Yes, one single room for two nights.	2	e58de633-6dec-4bd6-936e-3e4ac2ba4edc
-c3114cc2-f40f-4c12-901b-f814a860b3fe	20abb717-63e6-45d5-a22e-96636beedb50	Guest	That is right. Do you need my passport?	3	8cd641ff-0b7e-4036-a2ef-3497657eace9
-41c137d7-48d9-454b-9fa6-328d74370c7c	20abb717-63e6-45d5-a22e-96636beedb50	Receptionist	Yes, please. Here is your key card. Breakfast is from six thirty to nine.	4	e58de633-6dec-4bd6-936e-3e4ac2ba4edc
-5d4ae71b-f552-4f88-9518-94a1df1e2ee5	20abb717-63e6-45d5-a22e-96636beedb50	Guest	Great. What time is check-out?	5	8cd641ff-0b7e-4036-a2ef-3497657eace9
-8f49814f-ce33-45b5-94f4-bcf067d539a5	20abb717-63e6-45d5-a22e-96636beedb50	Receptionist	Check-out is at eleven in the morning.	6	e58de633-6dec-4bd6-936e-3e4ac2ba4edc
-86739d41-73f5-4c15-bf9d-ea333473edba	bd620079-7933-41f4-a825-bbae50ab23c7	Anna	Hi Ben. What time do you wake up on weekdays?	0	486c650c-f2a5-4818-9e2d-f6095648482b
-cb58cbcb-7f43-4ae1-a6bf-d0810dc87aa0	04ed6a9c-8a8d-4263-b462-b21554d286fe	Mai	How old are you?	1	\N
-a8dfab80-1a65-4ce4-a13c-bbe468bea08a	04ed6a9c-8a8d-4263-b462-b21554d286fe	Tom	I am eighteen years old.	2	\N
-a3798c5c-c1b6-485e-9c54-71570ee31f78	04ed6a9c-8a8d-4263-b462-b21554d286fe	Mai	What is your phone number?	3	\N
-b4cf7bd2-930f-4d63-8956-2150dc3aa0b8	04ed6a9c-8a8d-4263-b462-b21554d286fe	Tom	It is one two three four.	4	\N
-f3c10ed7-d6e7-4b9e-950d-6126ef270755	b01c88a4-3ad5-4f98-999b-553830aaf7e6	anna	Hello. My name is Anna.	1	e53a44a1-806c-48b7-8bf0-cbf280d388b8
-183520fe-29a7-4f4f-b841-b1ef42ffe05b	b01c88a4-3ad5-4f98-999b-553830aaf7e6	ben	Hi Anna. I am Ben.	2	17279189-f681-4e59-8457-4e3f36f3e978
-46d07099-c9f2-430a-bfb0-f14cadc42524	b01c88a4-3ad5-4f98-999b-553830aaf7e6	anna	Nice to meet you, Ben.	3	e53a44a1-806c-48b7-8bf0-cbf280d388b8
-06b8d51c-5595-4788-b71f-6b5113024131	b01c88a4-3ad5-4f98-999b-553830aaf7e6	ben	Nice to meet you too.	4	17279189-f681-4e59-8457-4e3f36f3e978
-dd04e0cd-d4c2-4f8f-a43a-39e67f6581b1	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Teacher	Listen and repeat the letters: A, B, C, D, E.	1	\N
-4af6da85-c47e-4c49-a07f-087b1ad0c082	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Student	A, B, C, D, E.	2	\N
-83cdc1a9-808e-4b3e-91bd-5308adfddb99	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Teacher	How do you spell your name?	3	\N
-8870790f-5d8e-4850-9dd2-b8544cda7b61	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Student	L-I-N-H. Linh.	4	\N
-5b184c60-3e5c-44b8-8258-773f9728ddcf	3c3af2dc-5680-4906-a850-58560747cb9f	Teacher	This is a blue pen.	1	\N
-866021ca-0998-4b61-bad5-b9357b023ae7	3c3af2dc-5680-4906-a850-58560747cb9f	Student	The pen is blue.	2	\N
-c0b91413-6531-4b1f-942b-4c6eb26bcc8d	3c3af2dc-5680-4906-a850-58560747cb9f	Teacher	That is a red notebook.	3	\N
-daa5bf97-5c24-4d70-9776-b1dcef2f4de4	3c3af2dc-5680-4906-a850-58560747cb9f	Student	The notebook is red.	4	\N
-060fbb71-74e3-4935-aeb8-991954e7a099	eb79a03f-9018-410a-937a-6932047adb7d	Anna	I get up at six thirty.	1	\N
-c0a95333-0864-4cb6-86de-4f7bb6aa7cea	eb79a03f-9018-410a-937a-6932047adb7d	Anna	I go to school at seven fifteen.	2	\N
-1f533562-1c62-444e-85b5-adea359d59d6	eb79a03f-9018-410a-937a-6932047adb7d	Mark	I have dinner at seven o clock.	3	\N
-cbdd6734-e63b-47d6-89ba-ad0f8ad92606	eb79a03f-9018-410a-937a-6932047adb7d	Mark	I go to bed at ten.	4	\N
-6f3443e1-0f0c-4e3e-9901-a38d7e0c004c	949f3df4-f7a3-4697-8005-22d7b9deaa73	Cashier	Hello. What would you like for lunch?	1	\N
-52eeb24a-286e-4a52-8700-084520ab4f98	949f3df4-f7a3-4697-8005-22d7b9deaa73	Customer	I would like a chicken sandwich and orange juice.	2	\N
-0d4fb804-3a2c-46e5-b78d-cf13f9113ee8	949f3df4-f7a3-4697-8005-22d7b9deaa73	Cashier	Sure. That is six dollars.	3	\N
-ce78ec4c-148d-46ff-a50e-beb303d352b3	949f3df4-f7a3-4697-8005-22d7b9deaa73	Customer	Here you are. Thank you.	4	\N
-06b5963a-7fbd-45ad-8172-8bb09dbff26e	073560d6-69c3-4c98-9c63-cf724896c2b2	Traveler	Excuse me, does this bus go to the museum?	1	\N
-da20ac6a-4b28-4a97-96cc-1fba13ba0a3d	073560d6-69c3-4c98-9c63-cf724896c2b2	Local	Yes, take bus number twelve.	2	\N
-9e685ef6-f886-4dc1-a154-15b277b01c25	073560d6-69c3-4c98-9c63-cf724896c2b2	Traveler	When does it arrive?	3	\N
-e54020f6-a673-4349-8499-06fe1676b74d	073560d6-69c3-4c98-9c63-cf724896c2b2	Local	It arrives in ten minutes.	4	\N
-5279fb3a-42b8-4b70-ab3e-ff83c94a4102	5f7512ec-0338-407b-973b-e383a6a91503	Receptionist	Good morning. How can I help you?	1	\N
-7c360a7f-7003-4888-be57-70f8039ada22	5f7512ec-0338-407b-973b-e383a6a91503	Caller	I need to make an appointment with Dr. Brown.	2	\N
-30a14cd8-93a4-41b3-8df2-dc32d69e5265	5f7512ec-0338-407b-973b-e383a6a91503	Receptionist	Is Thursday at three o clock okay?	3	\N
-66e41aa7-1a04-497a-8101-833b3effe618	5f7512ec-0338-407b-973b-e383a6a91503	Caller	Yes, Thursday at three is fine.	4	\N
+dd04e0cd-d4c2-4f8f-a43a-39e67f6581b1	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Alex	Listen and repeat the letters: A, B, C, D, E.	1	a48a0184-1989-4327-8f36-c69673ab8de3
+4af6da85-c47e-4c49-a07f-087b1ad0c082	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Emma	A, B, C, D, E.	2	d500acda-ad30-4bb8-b1f6-6594ce7a14d9
+83cdc1a9-808e-4b3e-91bd-5308adfddb99	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Alex	How do you spell your name?	3	a48a0184-1989-4327-8f36-c69673ab8de3
+8870790f-5d8e-4850-9dd2-b8544cda7b61	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Emma	L-I-N-H. Linh.	4	d500acda-ad30-4bb8-b1f6-6594ce7a14d9
+5b184c60-3e5c-44b8-8258-773f9728ddcf	3c3af2dc-5680-4906-a850-58560747cb9f	Alex	This is a blue pen.	1	14631482-12af-47e7-acbb-d02145416b05
+866021ca-0998-4b61-bad5-b9357b023ae7	3c3af2dc-5680-4906-a850-58560747cb9f	Emma	The pen is blue.	2	0c789cab-c2e5-45b5-997d-dff9a418d28b
+c0b91413-6531-4b1f-942b-4c6eb26bcc8d	3c3af2dc-5680-4906-a850-58560747cb9f	Alex	That is a red notebook.	3	14631482-12af-47e7-acbb-d02145416b05
+daa5bf97-5c24-4d70-9776-b1dcef2f4de4	3c3af2dc-5680-4906-a850-58560747cb9f	Emma	The notebook is red.	4	0c789cab-c2e5-45b5-997d-dff9a418d28b
+060fbb71-74e3-4935-aeb8-991954e7a099	eb79a03f-9018-410a-937a-6932047adb7d	Alex	I get up at six thirty.	1	16071faf-02f8-47db-9fa2-1ce7d5388f3d
+c0a95333-0864-4cb6-86de-4f7bb6aa7cea	eb79a03f-9018-410a-937a-6932047adb7d	Emma	I go to school at seven fifteen.	2	75704a2f-c472-42f2-9624-f309d9a07b8d
+1f533562-1c62-444e-85b5-adea359d59d6	eb79a03f-9018-410a-937a-6932047adb7d	Alex	I have dinner at seven o clock.	3	16071faf-02f8-47db-9fa2-1ce7d5388f3d
+cbdd6734-e63b-47d6-89ba-ad0f8ad92606	eb79a03f-9018-410a-937a-6932047adb7d	Emma	I go to bed at ten.	4	75704a2f-c472-42f2-9624-f309d9a07b8d
+f3c10ed7-d6e7-4b9e-950d-6126ef270755	b01c88a4-3ad5-4f98-999b-553830aaf7e6	Alex	Hello. My name is Anna.	1	e1afafac-c870-4f70-a260-465ce60fcb3f
+183520fe-29a7-4f4f-b841-b1ef42ffe05b	b01c88a4-3ad5-4f98-999b-553830aaf7e6	Emma	Hi Anna. I am Ben.	2	114303bd-ac71-4b2c-a71c-98110360bf0b
+46d07099-c9f2-430a-bfb0-f14cadc42524	b01c88a4-3ad5-4f98-999b-553830aaf7e6	Alex	Nice to meet you, Ben.	3	e1afafac-c870-4f70-a260-465ce60fcb3f
+06b8d51c-5595-4788-b71f-6b5113024131	b01c88a4-3ad5-4f98-999b-553830aaf7e6	Emma	Nice to meet you too.	4	114303bd-ac71-4b2c-a71c-98110360bf0b
+cb58cbcb-7f43-4ae1-a6bf-d0810dc87aa0	04ed6a9c-8a8d-4263-b462-b21554d286fe	Alex	How old are you?	1	81f75cdd-adbd-46ef-b59b-0a8dae24aa05
+a8dfab80-1a65-4ce4-a13c-bbe468bea08a	04ed6a9c-8a8d-4263-b462-b21554d286fe	Emma	I am eighteen years old.	2	2d81b37c-f0fd-484c-80bb-e569e4f581aa
+a3798c5c-c1b6-485e-9c54-71570ee31f78	04ed6a9c-8a8d-4263-b462-b21554d286fe	Alex	What is your phone number?	3	81f75cdd-adbd-46ef-b59b-0a8dae24aa05
+b4cf7bd2-930f-4d63-8956-2150dc3aa0b8	04ed6a9c-8a8d-4263-b462-b21554d286fe	Emma	It is one two three four.	4	2d81b37c-f0fd-484c-80bb-e569e4f581aa
+86739d41-73f5-4c15-bf9d-ea333473edba	bd620079-7933-41f4-a825-bbae50ab23c7	Alex	Hi Ben. What time do you wake up on weekdays?	0	1d6e8b8d-e23b-4e80-aaa6-b24d13481239
+6537a85d-3058-42a2-a436-654a397b3f54	bd620079-7933-41f4-a825-bbae50ab23c7	Emma	I usually wake up at six thirty. I catch the bus at seven fifteen.	1	db1cf9ba-a6e6-4264-a867-67e95a6af17b
+8b5c1cce-67ab-4dfe-a018-b6a79f3cc1de	bd620079-7933-41f4-a825-bbae50ab23c7	Alex	That is early. I wake up at seven and have breakfast at home.	2	1d6e8b8d-e23b-4e80-aaa6-b24d13481239
+34f47f62-1e8a-4fa7-90ce-231cbde74c09	bd620079-7933-41f4-a825-bbae50ab23c7	Emma	What do you eat for breakfast?	3	db1cf9ba-a6e6-4264-a867-67e95a6af17b
+5d4ae71b-f552-4f88-9518-94a1df1e2ee5	20abb717-63e6-45d5-a22e-96636beedb50	Emma	Great. What time is check-out?	5	0af21086-2b4c-4910-9f2b-da3507075fb5
+ab1ef11b-428f-47b6-9492-5835c0b81108	bd620079-7933-41f4-a825-bbae50ab23c7	Alex	I eat bread, drink coffee, and read the news for ten minutes.	4	1d6e8b8d-e23b-4e80-aaa6-b24d13481239
+f1ff03e7-10d5-4ec6-9207-84e896293ea7	bd620079-7933-41f4-a825-bbae50ab23c7	Emma	That sounds calm. My mornings are always busy.	5	db1cf9ba-a6e6-4264-a867-67e95a6af17b
+e5651917-92fd-45b1-9b5d-188f6a773d1f	20abb717-63e6-45d5-a22e-96636beedb50	Alex	Good evening. Welcome to Green Lake Hotel. How can I help you?	0	cc3055e2-242c-4bcf-a3ad-d533db052df3
+81917098-a9e1-403e-9fc0-b5dd2ea07310	20abb717-63e6-45d5-a22e-96636beedb50	Emma	Hello. I have a reservation under the name Nguyen.	1	0af21086-2b4c-4910-9f2b-da3507075fb5
+2912a7c6-49ba-498f-a69f-e12f3700065d	20abb717-63e6-45d5-a22e-96636beedb50	Alex	Let me check. Yes, one single room for two nights.	2	cc3055e2-242c-4bcf-a3ad-d533db052df3
+c3114cc2-f40f-4c12-901b-f814a860b3fe	20abb717-63e6-45d5-a22e-96636beedb50	Emma	That is right. Do you need my passport?	3	0af21086-2b4c-4910-9f2b-da3507075fb5
+41c137d7-48d9-454b-9fa6-328d74370c7c	20abb717-63e6-45d5-a22e-96636beedb50	Alex	Yes, please. Here is your key card. Breakfast is from six thirty to nine.	4	cc3055e2-242c-4bcf-a3ad-d533db052df3
+8f49814f-ce33-45b5-94f4-bcf067d539a5	20abb717-63e6-45d5-a22e-96636beedb50	Alex	Check-out is at eleven in the morning.	6	cc3055e2-242c-4bcf-a3ad-d533db052df3
+6f3443e1-0f0c-4e3e-9901-a38d7e0c004c	949f3df4-f7a3-4697-8005-22d7b9deaa73	Alex	Hello. What would you like for lunch?	1	0e344a65-6d74-41b8-832d-6963dd836587
+52eeb24a-286e-4a52-8700-084520ab4f98	949f3df4-f7a3-4697-8005-22d7b9deaa73	Emma	I would like a chicken sandwich and orange juice.	2	e7880692-a342-4d05-908b-5c4b4d1111b9
+0d4fb804-3a2c-46e5-b78d-cf13f9113ee8	949f3df4-f7a3-4697-8005-22d7b9deaa73	Alex	Sure. That is six dollars.	3	0e344a65-6d74-41b8-832d-6963dd836587
+ce78ec4c-148d-46ff-a50e-beb303d352b3	949f3df4-f7a3-4697-8005-22d7b9deaa73	Emma	Here you are. Thank you.	4	e7880692-a342-4d05-908b-5c4b4d1111b9
+06b5963a-7fbd-45ad-8172-8bb09dbff26e	073560d6-69c3-4c98-9c63-cf724896c2b2	Alex	Excuse me, does this bus go to the museum?	1	2aea7d67-3eb9-4b04-af07-654ac03a4f27
+da20ac6a-4b28-4a97-96cc-1fba13ba0a3d	073560d6-69c3-4c98-9c63-cf724896c2b2	Emma	Yes, take bus number twelve.	2	61b741fc-fc80-4047-b115-51692babc35f
+9e685ef6-f886-4dc1-a154-15b277b01c25	073560d6-69c3-4c98-9c63-cf724896c2b2	Alex	When does it arrive?	3	2aea7d67-3eb9-4b04-af07-654ac03a4f27
+e54020f6-a673-4349-8499-06fe1676b74d	073560d6-69c3-4c98-9c63-cf724896c2b2	Emma	It arrives in ten minutes.	4	61b741fc-fc80-4047-b115-51692babc35f
+5279fb3a-42b8-4b70-ab3e-ff83c94a4102	5f7512ec-0338-407b-973b-e383a6a91503	Alex	Good morning. How can I help you?	1	25de0904-1921-4a34-975c-7624c76407bf
+7c360a7f-7003-4888-be57-70f8039ada22	5f7512ec-0338-407b-973b-e383a6a91503	Emma	I need to make an appointment with Dr. Brown.	2	28eec00a-7a3e-40ff-aa11-c353550bce55
+30a14cd8-93a4-41b3-8df2-dc32d69e5265	5f7512ec-0338-407b-973b-e383a6a91503	Alex	Is Thursday at three o clock okay?	3	25de0904-1921-4a34-975c-7624c76407bf
+66e41aa7-1a04-497a-8101-833b3effe618	5f7512ec-0338-407b-973b-e383a6a91503	Emma	Yes, Thursday at three is fine.	4	28eec00a-7a3e-40ff-aa11-c353550bce55
 \.
 
 
@@ -1389,6 +1465,27 @@ e58de633-6dec-4bd6-936e-3e4ac2ba4edc	20abb717-63e6-45d5-a22e-96636beedb50	Recept
 17279189-f681-4e59-8457-4e3f36f3e978	b01c88a4-3ad5-4f98-999b-553830aaf7e6	ben	male			0	2026-06-12 10:21:33.079971+07	2026-06-12 10:21:33.079971+07
 e53a44a1-806c-48b7-8bf0-cbf280d388b8	b01c88a4-3ad5-4f98-999b-553830aaf7e6	anna	female	Microsoft Zira - English (United States)	Microsoft Zira - English (United States)	0	2026-06-12 10:21:24.148593+07	2026-06-12 10:22:58.212088+07
 b661687a-39ab-47ff-a8c5-4f39a65f4a47	6267aa83-f1b9-49ce-bdd3-f3df12db2568	long	male			0	2026-06-18 22:50:08.059952+07	2026-06-18 22:50:08.059952+07
+1ed2d6d8-d537-4e7d-a093-7b0b8d964a0f	6267aa83-f1b9-49ce-bdd3-f3df12db2568	linh	female			0	2026-06-25 08:20:38.325503+07	2026-06-25 08:20:38.325503+07
+a48a0184-1989-4327-8f36-c69673ab8de3	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Alex	male	Microsoft David		1	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+d500acda-ad30-4bb8-b1f6-6594ce7a14d9	6267aa83-f1b9-49ce-bdd3-f3df12db2568	Emma	female	Microsoft Zira		2	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+14631482-12af-47e7-acbb-d02145416b05	3c3af2dc-5680-4906-a850-58560747cb9f	Alex	male	Microsoft David		1	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+0c789cab-c2e5-45b5-997d-dff9a418d28b	3c3af2dc-5680-4906-a850-58560747cb9f	Emma	female	Microsoft Zira		2	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+16071faf-02f8-47db-9fa2-1ce7d5388f3d	eb79a03f-9018-410a-937a-6932047adb7d	Alex	male	Microsoft David		1	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+75704a2f-c472-42f2-9624-f309d9a07b8d	eb79a03f-9018-410a-937a-6932047adb7d	Emma	female	Microsoft Zira		2	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+e1afafac-c870-4f70-a260-465ce60fcb3f	b01c88a4-3ad5-4f98-999b-553830aaf7e6	Alex	male	Microsoft David		1	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+114303bd-ac71-4b2c-a71c-98110360bf0b	b01c88a4-3ad5-4f98-999b-553830aaf7e6	Emma	female	Microsoft Zira		2	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+81f75cdd-adbd-46ef-b59b-0a8dae24aa05	04ed6a9c-8a8d-4263-b462-b21554d286fe	Alex	male	Microsoft David		1	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+2d81b37c-f0fd-484c-80bb-e569e4f581aa	04ed6a9c-8a8d-4263-b462-b21554d286fe	Emma	female	Microsoft Zira		2	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+1d6e8b8d-e23b-4e80-aaa6-b24d13481239	bd620079-7933-41f4-a825-bbae50ab23c7	Alex	male	Microsoft David		1	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+db1cf9ba-a6e6-4264-a867-67e95a6af17b	bd620079-7933-41f4-a825-bbae50ab23c7	Emma	female	Microsoft Zira		2	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+cc3055e2-242c-4bcf-a3ad-d533db052df3	20abb717-63e6-45d5-a22e-96636beedb50	Alex	male	Microsoft David		1	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+0af21086-2b4c-4910-9f2b-da3507075fb5	20abb717-63e6-45d5-a22e-96636beedb50	Emma	female	Microsoft Zira		2	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+0e344a65-6d74-41b8-832d-6963dd836587	949f3df4-f7a3-4697-8005-22d7b9deaa73	Alex	male	Microsoft David		1	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+e7880692-a342-4d05-908b-5c4b4d1111b9	949f3df4-f7a3-4697-8005-22d7b9deaa73	Emma	female	Microsoft Zira		2	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+2aea7d67-3eb9-4b04-af07-654ac03a4f27	073560d6-69c3-4c98-9c63-cf724896c2b2	Alex	male	Microsoft David		1	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+61b741fc-fc80-4047-b115-51692babc35f	073560d6-69c3-4c98-9c63-cf724896c2b2	Emma	female	Microsoft Zira		2	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+25de0904-1921-4a34-975c-7624c76407bf	5f7512ec-0338-407b-973b-e383a6a91503	Alex	male	Microsoft David		1	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
+28eec00a-7a3e-40ff-aa11-c353550bce55	5f7512ec-0338-407b-973b-e383a6a91503	Emma	female	Microsoft Zira		2	2026-06-25 17:02:55.465227+07	2026-06-25 17:02:55.465227+07
 \.
 
 
@@ -1585,20 +1682,34 @@ d37e131d-53ad-4ba7-ad9e-d9f62253ac8f	961a2291-c16b-494d-b250-229f06c1988d	speakr
 
 
 --
+-- Data for Name: notificationrecipients; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.notificationrecipients (id, notificationid, userid, readat, emailedat, emailerror, createdat) FROM stdin;
+\.
+
+
+--
+-- Data for Name: notifications; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.notifications (id, title, message, type, linkurl, audience, createdby, createdat) FROM stdin;
+\.
+
+
+--
+-- Data for Name: passwordresetcodes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.passwordresetcodes (id, userid, email, codehash, expiresat, usedat, createdat) FROM stdin;
+\.
+
+
+--
 -- Data for Name: paymentrequests; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.paymentrequests (id, userid, plan, amount, status, transfercontent, createdat, completedat, gateway, sepaytransactionid, rawpayload) FROM stdin;
-32414d05-1998-4a8c-b252-a5ea6db56b84	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	plus	2000	pending	PLUSF7BA7C84F07E	2026-05-13 10:41:44.875258	\N	sepay	\N	\N
-5acf37bb-c16d-48e4-97d2-f2ac75d294ad	9d4376dd-f532-418c-ad64-5d4861c2271c	plus	2000	completed	SEVQRPLUS9D43765C4AB6	2026-05-13 11:01:14.199987	2026-05-13 11:03:48.45292	sepay	local-test-1778645028169	{"id": "local-test-1778645028169", "content": "Thanh toan SEVQRPLUS9D43765C4AB6", "transferType": "in", "transferAmount": 2000}
-3d2e1ea1-82f2-43aa-9e3b-5c57dc3d434e	3caa9c2a-cbcf-4d47-8949-1a1e6a987926	plus	2000	completed	SEVQRPLUS3CAA9C987E0C	2026-05-13 11:44:55.206943	2026-05-13 11:52:17.654872	sepay	57704578	{"id": "57704578", "raw": {"id": "57704578", "code": null, "amount_in": "2000.00", "amount_out": "0.00", "accumulated": "404204.00", "sub_account": null, "account_number": "108871077057", "bank_account_id": "58889", "bank_brand_name": "VietinBank", "reference_number": "201O4-8945OXsbX", "transaction_date": "2026-05-13 11:45:20", "transaction_content": "129009005376-0984236568-SEVQRPLUS3CAA9C987E0C"}, "source": "sepay-api", "content": "129009005376-0984236568-SEVQRPLUS3CAA9C987E0C", "transferType": "in", "accountNumber": "108871077057", "transferAmount": 2000}
-58e69c32-2c02-4830-a3e5-82d20507b681	e9a6c3ce-b579-4775-9b5b-70641dbb47cd	plus	2000	completed	SEVQRPLUSE9A6C3676B88	2026-05-13 11:52:45.058057	2026-05-13 11:53:10.509244	sepay	57706749	{"id": "57706749", "raw": {"id": "57706749", "code": null, "amount_in": "2000.00", "amount_out": "0.00", "accumulated": "406204.00", "sub_account": null, "account_number": "108871077057", "bank_account_id": "58889", "bank_brand_name": "VietinBank", "reference_number": "248vO-8945uPaAU", "transaction_date": "2026-05-13 11:53:11", "transaction_content": "129010276404-0984236568-SEVQRPLUSE9A6C3676B88"}, "source": "sepay-api", "content": "129010276404-0984236568-SEVQRPLUSE9A6C3676B88", "transferType": "in", "accountNumber": "108871077057", "transferAmount": 2000}
-ddd73403-a34d-4453-aba1-287e5e887b4e	7c142186-bdf1-4dd8-b174-5884468ae26a	plus	2000	completed	SEVQRPLUS7C1421D74C12	2026-05-13 11:20:40.157445	2026-05-13 15:03:14.825296	sepay	57701627	{"id": "57701627", "raw": {"id": "57701627", "code": null, "amount_in": "2000.00", "amount_out": "0.00", "accumulated": "402204.00", "sub_account": null, "account_number": "108871077057", "bank_account_id": "58889", "bank_brand_name": "VietinBank", "reference_number": "1k4Qq-8944i6SAk", "transaction_date": "2026-05-13 11:34:53", "transaction_content": "129007524170-0984236568-SEVQRPLUS7C1421D74C12"}, "source": "sepay-api", "content": "129007524170-0984236568-SEVQRPLUS7C1421D74C12", "transferType": "in", "accountNumber": "108871077057", "transferAmount": 2000}
-269861f5-4ee9-4dac-b7ad-a6e7ea788302	78079a64-de94-4d1d-8e32-e82c30d574b3	plus	2000	completed	SEVQRPLUS78079AFA71F9	2026-05-13 15:03:39.024465	2026-05-13 15:04:06.805062	sepay	57749309	{"id": "57749309", "raw": {"id": "57749309", "code": null, "amount_in": "2000.00", "amount_out": "0.00", "accumulated": "372204.00", "sub_account": null, "account_number": "108871077057", "bank_account_id": "58889", "bank_brand_name": "VietinBank", "reference_number": "249AI-894IPpNJO", "transaction_date": "2026-05-13 15:04:09", "transaction_content": "129030604318-0984236568-SEVQRPLUS78079AFA71F9"}, "source": "sepay-api", "content": "129030604318-0984236568-SEVQRPLUS78079AFA71F9", "transferType": "in", "accountNumber": "108871077057", "transferAmount": 2000}
-eab155e7-95bb-418d-9e65-251c15f22652	4fbfad70-0d7e-4b0a-9836-97fa708177a0	plus	2000	completed	SEVQRPLUS4FBFADC94C60	2026-05-14 09:42:48.934775	2026-05-14 09:43:36.610023	sepay	57951774	{"id": "57951774", "raw": {"id": "57951774", "code": null, "amount_in": "2000.00", "amount_out": "0.00", "accumulated": "349204.00", "sub_account": null, "account_number": "108871077057", "bank_account_id": "58889", "bank_brand_name": "VietinBank", "reference_number": "504S2650MKEX6T9W", "transaction_date": "2026-05-14 09:43:39", "transaction_content": "CT DEN:613420162338 SEVQRPLUS4FBFADC94C60"}, "source": "sepay-api", "content": "CT DEN:613420162338 SEVQRPLUS4FBFADC94C60", "transferType": "in", "accountNumber": "108871077057", "transferAmount": 2000}
-2d491f3f-91f0-4ac8-ac06-0302bbdaad0f	0b44b67d-63b3-4705-9464-c5f6b279866a	plus	2000	pending	SEVQRPLUS0B44B6E39DCB	2026-05-14 22:01:49.730652	\N	sepay	\N	\N
-29bb1dfa-cc93-43f5-b156-05a881752b3e	34e079cb-e041-4085-9a31-a0782fdd5af8	plus	2000	completed	SEVQRPLUS34E07931361F	2026-05-18 15:19:48.543853	2026-05-18 15:20:15.299135	sepay	59199351	{"id": "59199351", "raw": {"id": "59199351", "code": null, "amount_in": "2000.00", "amount_out": "0.00", "accumulated": "701904.00", "sub_account": null, "account_number": "108871077057", "bank_account_id": "58889", "bank_brand_name": "VietinBank", "reference_number": "2FyCy-89Bv1DR0r", "transaction_date": "2026-05-18 15:20:16", "transaction_content": "129715721686-0984236568-SEVQRPLUS34E07931361F"}, "source": "sepay-api", "content": "129715721686-0984236568-SEVQRPLUS34E07931361F", "transferType": "in", "accountNumber": "108871077057", "transferAmount": 2000}
-3f362a09-c012-4a51-af35-2ea9fa538ea0	34e079cb-e041-4085-9a31-a0782fdd5af8	plus	2000	pending	SEVQRPLUS34E07999AA57	2026-06-17 21:27:40.295213	\N	sepay	\N	\N
 \.
 
 
@@ -1607,21 +1718,42 @@ eab155e7-95bb-418d-9e65-251c15f22652	4fbfad70-0d7e-4b0a-9836-97fa708177a0	plus	2
 --
 
 COPY public.placementminigamequestions (id, questiontype, contenten, contentvi, audiourl, imageurl, correctanswer, options, difficulty, pointratio, isactive, orderindex, createdat, updatedat) FROM stdin;
-bb3aa135-3c7b-46df-93da-c9e7ded8ef8b	truefalse	A cat is an animal	Mèo là một con vật	\N	\N	true	\N	easy	1.00	t	10	2026-06-20 15:09:19.76666+07	2026-06-20 16:07:19.195851+07
-f92728be-60ac-4df2-81de-e54596dc45ea	truefalse	The dog is black	Con chó màu trắng	\N	\N	false	\N	easy	1.00	t	11	2026-06-20 15:09:19.76852+07	2026-06-20 16:07:19.197628+07
-b9723572-bc67-42ce-b730-90a8974e11f3	truefalse	He has lived here for three years	Anh ấy đã sống ở đây được ba năm	\N	\N	true	\N	hard	1.50	t	12	2026-06-20 15:09:19.770557+07	2026-06-20 16:07:19.199378+07
-71fc1ab5-f909-46d8-91fe-13e4adb02b65	speakrepeat	I can help you	Tôi có thể giúp bạn	\N	\N	I can help you	{"passScore": 70}	easy	1.00	t	13	2026-06-20 15:09:19.772605+07	2026-06-20 16:07:19.200908+07
-43a73a09-39b6-43f8-9f51-69204c11f9b6	matching	apple	quả táo	\N	\N	quả táo	["quả táo", "quả chuối", "quyển sách"]	easy	1.00	t	1	2026-06-20 15:09:19.739053+07	2026-06-20 16:07:19.179311+07
-ee9b2f2e-6609-4b87-8813-3e64a0babd8b	matching	train	tàu hỏa	\N	\N	tàu hỏa	["xe đạp", "tàu hỏa", "máy bay"]	easy	1.00	t	2	2026-06-20 15:09:19.749508+07	2026-06-20 16:07:19.181331+07
-1dcb9d1b-99e7-4dbf-ba55-e960100d0787	matching	responsibility	trách nhiệm	\N	\N	trách nhiệm	["sự thuận tiện", "trách nhiệm", "lời mời"]	hard	1.50	t	3	2026-06-20 15:09:19.751638+07	2026-06-20 16:07:19.183081+07
-0b719a6e-de4a-4a7e-94e4-9a753545b424	listening	Good morning	Chào buổi sáng	\N	\N	Good morning	["Good morning", "Good night", "Good evening"]	easy	1.00	t	4	2026-06-20 15:09:19.75407+07	2026-06-20 16:07:19.184756+07
-cad61b5d-b7e5-433a-a887-37c903ca4990	listening	I like milk	Tôi thích sữa	\N	\N	I like milk	["I like milk", "I like tea", "I need milk"]	easy	1.00	t	5	2026-06-20 15:09:19.756217+07	2026-06-20 16:07:19.186872+07
-c8d053ad-34d8-4a04-aa2f-3464a631427f	listening	Could you repeat that more slowly?	Bạn có thể nhắc lại chậm hơn không?	\N	\N	Could you repeat that more slowly?	["Could you repeat that more slowly?", "Could you read that more loudly?", "Could you write that down for me?"]	hard	1.50	t	6	2026-06-20 15:09:19.758216+07	2026-06-20 16:07:19.188805+07
-879032b3-4411-4c9c-bbd0-b1f7f137f3a0	speakrepeat	Open the door please	Vui lòng mở cửa	\N	\N	Open the door please	{"passScore": 70}	easy	1.00	t	14	2026-06-20 15:09:19.774587+07	2026-06-20 16:07:19.202807+07
-5e29017f-e4e3-4a0f-9095-5ca313ce8e9c	speakrepeat	The weather changed quickly after lunch	Thời tiết thay đổi nhanh sau bữa trưa	\N	\N	The weather changed quickly after lunch	{"passScore": 75}	hard	1.50	t	15	2026-06-20 15:09:19.776515+07	2026-06-20 16:07:19.204703+07
-58007f9f-8f86-42b0-aa2e-164ae77c05de	listenbuild	I am a student	Tôi là học sinh	\N	\N	I am a student	["I", "am", "a", "student"]	easy	1.00	t	7	2026-06-20 15:09:19.76033+07	2026-06-20 16:13:41.983208+07
-f288aeba-bba6-4f73-b83c-f42548e2482e	listenbuild	We go to school	Chúng tôi đi học	\N	\N	We go to school	["We", "go", "to", "school"]	easy	1.00	t	8	2026-06-20 15:09:19.762362+07	2026-06-20 16:13:53.99482+07
-0b5165ce-97c0-4105-8c69-d131b6df1526	listenbuild	She usually takes the bus to work	Cô ấy thường đi xe buýt đến chỗ làm	\N	\N	She usually takes the bus to work	["She", "usually", "takes", "the", "bus", "to", "work"]	hard	1.50	t	9	2026-06-20 15:09:19.76438+07	2026-06-20 16:14:09.532046+07
+aff99d7a-d404-4f8c-8182-f8c1b9163abc	listening	This is my pen	Đây là bút của tôi	\N	\N	This is my pen	["This is my pen", "This is my bag", "That is my pen", "This is your pen"]	easy	1.00	t	10	2026-06-27 20:57:03.150143+07	2026-06-27 20:57:03.150143+07
+1bd213e9-939c-4b71-845f-897e09f23795	listening	She is happy	Cô ấy vui	\N	\N	She is happy	["She is happy", "She is hungry", "He is happy", "She is busy"]	easy	1.00	t	11	2026-06-27 20:57:03.152916+07	2026-06-27 20:57:03.152916+07
+c8d053ad-34d8-4a04-aa2f-3464a631427f	listening	Could you repeat that more slowly?	Bạn có thể nhắc lại chậm hơn không?	\N	\N	Could you repeat that more slowly?	["Could you repeat that more slowly?", "Could you read that more loudly?", "Could you write that down for me?", "Could you speak to my teacher?"]	hard	1.50	t	12	2026-06-20 15:09:19.758216+07	2026-06-27 20:57:03.1547+07
+6445733f-ffcb-496b-b459-5c7f634981b9	truefalse	The report must be finished before the manager arrives	Bản báo cáo phải được hoàn thành trước khi quản lý đến	\N	\N	true	\N	hard	1.50	t	28	2026-06-27 20:57:03.188943+07	2026-06-27 20:57:03.188943+07
+71fc1ab5-f909-46d8-91fe-13e4adb02b65	speakrepeat	I can help you	Tôi có thể giúp bạn	\N	\N	I can help you	{"passScore": 70}	easy	1.00	t	29	2026-06-20 15:09:19.772605+07	2026-06-27 20:57:03.190969+07
+879032b3-4411-4c9c-bbd0-b1f7f137f3a0	speakrepeat	Open the door please	Vui lòng mở cửa	\N	\N	Open the door please	{"passScore": 70}	easy	1.00	t	30	2026-06-20 15:09:19.774587+07	2026-06-27 20:57:03.1935+07
+207b1e3b-2ee7-493e-90df-2065a3fc8866	speakrepeat	I need a glass of water	Tôi cần một ly nước	\N	\N	I need a glass of water	{"passScore": 70}	easy	1.00	t	31	2026-06-27 20:57:03.195569+07	2026-06-27 20:57:03.195569+07
+34cf7d6f-1b55-4e78-bf78-6d693181601f	listening	The meeting has been moved to Friday afternoon	Cuộc họp đã được chuyển sang chiều thứ sáu	\N	\N	The meeting has been moved to Friday afternoon	["The meeting has been moved to Friday afternoon", "The meeting has been canceled this Friday", "The meeting will start on Monday morning", "The meeting is in the main office"]	hard	1.50	t	13	2026-06-27 20:57:03.156394+07	2026-06-27 20:57:03.156394+07
+b80683d1-3500-4b97-9a9c-62e3f667218e	listening	Students should submit their assignments before midnight	Học sinh nên nộp bài trước nửa đêm	\N	\N	Students should submit their assignments before midnight	["Students should submit their assignments before midnight", "Students can start their assignments after midnight", "Teachers should return assignments before midnight", "Students should print their assignments in class"]	hard	1.50	t	14	2026-06-27 20:57:03.157961+07	2026-06-27 20:57:03.157961+07
+58007f9f-8f86-42b0-aa2e-164ae77c05de	listenbuild	I am a student	Tôi là học sinh	\N	\N	I am a student	["I", "am", "a", "student", "teacher"]	easy	1.00	t	15	2026-06-20 15:09:19.76033+07	2026-06-27 20:57:03.159968+07
+f288aeba-bba6-4f73-b83c-f42548e2482e	listenbuild	We go to school	Chúng tôi đi học	\N	\N	We go to school	["We", "go", "to", "school", "home"]	easy	1.00	t	16	2026-06-20 15:09:19.762362+07	2026-06-27 20:57:03.162328+07
+5ff97a9f-fe26-445f-80bb-d9396d0b175d	listenbuild	They play football	Họ chơi bóng đá	\N	\N	They play football	["They", "play", "football", "watch", "music"]	easy	1.00	t	17	2026-06-27 20:57:03.16454+07	2026-06-27 20:57:03.16454+07
+5e15dd48-39ef-47ad-8a76-f0c147e377eb	listenbuild	My father cooks dinner	Bố tôi nấu bữa tối	\N	\N	My father cooks dinner	["My", "father", "cooks", "dinner", "mother"]	easy	1.00	t	18	2026-06-27 20:57:03.166702+07	2026-06-27 20:57:03.166702+07
+0b5165ce-97c0-4105-8c69-d131b6df1526	listenbuild	She usually takes the bus to work	Cô ấy thường đi xe buýt đến chỗ làm	\N	\N	She usually takes the bus to work	["She", "usually", "takes", "the", "bus", "to", "work", "walks"]	hard	1.50	t	19	2026-06-20 15:09:19.76438+07	2026-06-27 20:57:03.16922+07
+56963467-fad5-4a32-931f-e6a69e609e23	listenbuild	I have never visited that museum before	Tôi chưa từng đến bảo tàng đó trước đây	\N	\N	I have never visited that museum before	["I", "have", "never", "visited", "that", "museum", "before", "often"]	hard	1.50	t	20	2026-06-27 20:57:03.171476+07	2026-06-27 20:57:03.171476+07
+85a92cf9-e8ab-4d0a-afb9-c3f4de621465	listenbuild	The teacher asked us to explain our answer	Giáo viên yêu cầu chúng tôi giải thích câu trả lời	\N	\N	The teacher asked us to explain our answer	["The", "teacher", "asked", "us", "to", "explain", "our", "answer", "question"]	hard	1.50	t	21	2026-06-27 20:57:03.173483+07	2026-06-27 20:57:03.173483+07
+bb3aa135-3c7b-46df-93da-c9e7ded8ef8b	truefalse	A cat is an animal	Mèo là một con vật	\N	\N	true	\N	easy	1.00	t	22	2026-06-20 15:09:19.76666+07	2026-06-27 20:57:03.175986+07
+f92728be-60ac-4df2-81de-e54596dc45ea	truefalse	The dog is black	Con chó màu trắng	\N	\N	false	\N	easy	1.00	t	23	2026-06-20 15:09:19.76852+07	2026-06-27 20:57:03.178419+07
+669dec93-c46a-431a-a78f-f9fa92339409	truefalse	Two plus two equals four	Hai cộng hai bằng bốn	\N	\N	true	\N	easy	1.00	t	24	2026-06-27 20:57:03.18076+07	2026-06-27 20:57:03.18076+07
+2d868243-f549-4fa0-9775-256a5e59dd05	truefalse	Fish can fly in the sky	Cá có thể bay trên trời	\N	\N	false	\N	easy	1.00	t	25	2026-06-27 20:57:03.182573+07	2026-06-27 20:57:03.182573+07
+b9723572-bc67-42ce-b730-90a8974e11f3	truefalse	He has lived here for three years	Anh ấy đã sống ở đây được ba năm	\N	\N	true	\N	hard	1.50	t	26	2026-06-20 15:09:19.770557+07	2026-06-27 20:57:03.184488+07
+32fc1e64-95d5-48fd-9718-55eee56267d9	truefalse	Although it was raining, they cancelled the umbrella	Mặc dù trời mưa, họ đã hủy chiếc ô	\N	\N	false	\N	hard	1.50	t	27	2026-06-27 20:57:03.186559+07	2026-06-27 20:57:03.186559+07
+788cf96f-086b-4dad-91a5-bc5eaa68dfdb	speakrepeat	Can you see the board?	Bạn có thể nhìn thấy bảng không?	\N	\N	Can you see the board?	{"passScore": 70}	easy	1.00	t	32	2026-06-27 20:57:03.197907+07	2026-06-27 20:57:03.197907+07
+578b761e-2a96-4274-bd29-a1ccfdde0257	speakrepeat	I would appreciate it if you could send the file today	Tôi sẽ rất cảm kích nếu bạn có thể gửi tệp hôm nay	\N	\N	I would appreciate it if you could send the file today	{"passScore": 75}	hard	1.50	t	34	2026-06-27 20:57:03.201885+07	2026-06-27 20:57:03.201885+07
+5e29017f-e4e3-4a0f-9095-5ca313ce8e9c	speakrepeat	The weather changed quickly after lunch	Thời tiết thay đổi nhanh sau bữa trưa	\N	\N	The weather changed quickly after lunch	{"passScore": 75}	hard	1.50	t	33	2026-06-20 15:09:19.776515+07	2026-06-27 20:57:03.199842+07
+7aec2652-f25f-4e43-8b13-8318ea10e328	truefalse	cat	con mèo	\N	\N	true	[]	easy	1.00	f	16	2026-06-27 20:49:57.610442+07	2026-06-27 20:57:03.242267+07
+43a73a09-39b6-43f8-9f51-69204c11f9b6	matching	apple	quả táo	\N	\N	quả táo	["quả táo", "quả chuối", "quyển sách", "cái ghế"]	easy	1.00	t	1	2026-06-20 15:09:19.739053+07	2026-06-27 20:57:03.121838+07
+ee9b2f2e-6609-4b87-8813-3e64a0babd8b	matching	train	tàu hỏa	\N	\N	tàu hỏa	["xe đạp", "tàu hỏa", "máy bay", "xe buýt"]	easy	1.00	t	2	2026-06-20 15:09:19.749508+07	2026-06-27 20:57:03.131288+07
+73285637-043a-48a7-a19b-115685d6a050	matching	book	quyển sách	\N	\N	quyển sách	["cây bút", "quyển sách", "cái bàn", "cửa sổ"]	easy	1.00	t	3	2026-06-27 20:57:03.13355+07	2026-06-27 20:57:03.13355+07
+8fa0ab12-5a19-432d-8e93-93f6f48cfe3c	matching	water	nước	\N	\N	nước	["cơm", "sữa", "nước", "bánh mì"]	easy	1.00	t	4	2026-06-27 20:57:03.136409+07	2026-06-27 20:57:03.136409+07
+1dcb9d1b-99e7-4dbf-ba55-e960100d0787	matching	responsibility	trách nhiệm	\N	\N	trách nhiệm	["sự thuận tiện", "trách nhiệm", "lời mời", "kỳ nghỉ"]	hard	1.50	t	5	2026-06-20 15:09:19.751638+07	2026-06-27 20:57:03.138857+07
+d1594696-0288-476c-8f59-a5d61af24b8a	matching	opportunity	cơ hội	\N	\N	cơ hội	["kinh nghiệm", "cơ hội", "thử thách", "mục tiêu"]	hard	1.50	t	6	2026-06-27 20:57:03.14119+07	2026-06-27 20:57:03.14119+07
+ba4fcae3-c276-4ab0-a4a2-a6d46e212eaa	matching	environment	môi trường	\N	\N	môi trường	["môi trường", "giáo dục", "sức khỏe", "công nghệ"]	hard	1.50	t	7	2026-06-27 20:57:03.143563+07	2026-06-27 20:57:03.143563+07
+0b719a6e-de4a-4a7e-94e4-9a753545b424	listening	Good morning	Chào buổi sáng	\N	\N	Good morning	["Good morning", "Good night", "Good evening", "Goodbye"]	easy	1.00	t	8	2026-06-20 15:09:19.75407+07	2026-06-27 20:57:03.145575+07
+cad61b5d-b7e5-433a-a887-37c903ca4990	listening	I like milk	Tôi thích sữa	\N	\N	I like milk	["I like milk", "I like tea", "I need milk", "I drink water"]	easy	1.00	t	9	2026-06-20 15:09:19.756217+07	2026-06-27 20:57:03.147848+07
+db5168c1-a17b-48c0-b1b7-2ae461dc7e94	speakrepeat	Learning a language requires patience and regular practice	Học một ngôn ngữ cần sự kiên nhẫn và luyện tập đều đặn	\N	\N	Learning a language requires patience and regular practice	{"passScore": 75}	hard	1.50	t	35	2026-06-27 20:57:03.203978+07	2026-06-27 20:57:03.203978+07
 \.
 
 
@@ -1630,16 +1762,16 @@ f288aeba-bba6-4f73-b83c-f42548e2482e	listenbuild	We go to school	Chúng tôi đi
 --
 
 COPY public.readinglessons (id, title, description, level, topic, objective, duration, passagetitle, audiourl, orderindex, createdat, updatedat, isfoundation) FROM stdin;
-671cda22-546d-4aee-a195-ec5068c0fc48	A Small Family	Đọc đoạn ngắn về các thành viên trong gia đình.	A1	Family	Nhận biết từ vựng gia đình và thông tin cơ bản.	8 phút	My Family	\N	-50	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:59.058+07	t
-1b1e767c-01e8-470c-a9f3-124b116cfe78	My School Bag	Đọc đoạn ngắn về đồ vật trong cặp sách.	A1	School objects	Hiểu câu mô tả đồ vật quen thuộc.	8 phút	In My Bag	\N	-49	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:59.112+07	t
-f052f18c-d46d-4c5a-ac03-6ddefbdbad07	The Weather Today	Đọc bản tin thời tiết rất ngắn.	A1	Weather	Hiểu từ vựng thời tiết và lời khuyên đơn giản.	9 phút	Sunny Morning	\N	-48	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:59.16+07	t
-2a33464f-ee6a-49e3-bd92-b1de168fe9ed	My Name Is Linh	Đọc đoạn giới thiệu bản thân rất ngắn.	A0	Self introduction	Đọc đoạn giới thiệu bản thân rất ngắn.	5 phút	A Short Introduction		-47	2026-06-12 09:39:59.0561+07	2026-06-12 10:14:13.99879+07	t
-ef44c251-5fbc-48a0-9570-9e492f6d695c	Things In My Classroom	Đọc tên đồ vật quen thuộc trong lớp học.	A0	Classroom	Đọc tên đồ vật quen thuộc trong lớp học.	5 phút	My Classroom		-46	2026-06-12 09:39:59.098622+07	2026-06-12 10:14:14.000089+07	t
-873d0162-3e45-4a54-9b86-5bddd9cc54f4	A Healthy Breakfast	Đọc đoạn văn ngắn về bữa sáng lành mạnh.	A1	Health	Hiểu ý chính, nhận biết thực phẩm và thói quen đơn giản.	7 phút	Why Breakfast Matters		1	2026-05-22 09:40:07.008941+07	2026-06-12 10:14:14.00114+07	f
-357c7c32-c4e6-43e5-8280-8d377a6f94c8	A Weekend Market	Read about a local market and answer detail questions.	A1	Shopping	Understand prices, items, and simple preferences.	10 phút	Saturday Market	\N	2	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:59.212+07	f
-4e681afa-0983-4586-bad2-0f7e55d8dfc8	A New Neighbor	Read a short story about meeting a neighbor.	A2	Community	Identify people, actions, and feelings in a story.	11 phút	Next Door	\N	3	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:59.262+07	f
-c32c90c8-1907-40de-b87b-1e55d70cb505	The City Library	Đọc thông báo về thư viện thành phố.	A2	Community	Tìm thông tin về giờ mở cửa, dịch vụ và quy định.	9 phút	New Services At The City Library		4	2026-05-22 09:40:07.029239+07	2026-06-12 10:14:14.003507+07	f
-5c39d961-4038-4326-8204-3790aa5689f2	Saving Water At Home	Read a practical text about saving water.	A2	Environment	Understand advice and reasons in a simple article.	12 phút	Use Less Water	\N	5	2026-06-18 14:30:58.633595+07	2026-06-18 14:30:59.318+07	f
+671cda22-546d-4aee-a195-ec5068c0fc48	A Small Family	Đọc đoạn ngắn về các thành viên trong gia đình.	A1	Family	Nhận biết từ vựng gia đình và thông tin cơ bản.	8 phút	My Family		1	2026-06-18 14:30:58.633595+07	2026-06-26 00:24:17.893294+07	t
+1b1e767c-01e8-470c-a9f3-124b116cfe78	My School Bag	Đọc đoạn ngắn về đồ vật trong cặp sách.	A1	School objects	Hiểu câu mô tả đồ vật quen thuộc.	8 phút	In My Bag		2	2026-06-18 14:30:58.633595+07	2026-06-26 00:24:17.904639+07	t
+f052f18c-d46d-4c5a-ac03-6ddefbdbad07	The Weather Today	Đọc bản tin thời tiết rất ngắn.	A1	Weather	Hiểu từ vựng thời tiết và lời khuyên đơn giản.	9 phút	Sunny Morning		3	2026-06-18 14:30:58.633595+07	2026-06-26 00:24:17.905874+07	t
+2a33464f-ee6a-49e3-bd92-b1de168fe9ed	My Name Is Linh	Đọc đoạn giới thiệu bản thân rất ngắn.	A0	Self introduction	Đọc đoạn giới thiệu bản thân rất ngắn.	5 phút	A Short Introduction		4	2026-06-12 09:39:59.0561+07	2026-06-26 00:24:17.907289+07	t
+ef44c251-5fbc-48a0-9570-9e492f6d695c	Things In My Classroom	Đọc tên đồ vật quen thuộc trong lớp học.	A0	Classroom	Đọc tên đồ vật quen thuộc trong lớp học.	5 phút	My Classroom		5	2026-06-12 09:39:59.098622+07	2026-06-26 00:24:17.9087+07	t
+873d0162-3e45-4a54-9b86-5bddd9cc54f4	A Healthy Breakfast	Đọc đoạn văn ngắn về bữa sáng lành mạnh.	A1	Health	Hiểu ý chính, nhận biết thực phẩm và thói quen đơn giản.	7 phút	Why Breakfast Matters		6	2026-05-22 09:40:07.008941+07	2026-06-26 00:24:17.910083+07	f
+357c7c32-c4e6-43e5-8280-8d377a6f94c8	A Weekend Market	Read about a local market and answer detail questions.	A1	Shopping	Understand prices, items, and simple preferences.	10 phút	Saturday Market		7	2026-06-18 14:30:58.633595+07	2026-06-26 00:24:17.913427+07	f
+4e681afa-0983-4586-bad2-0f7e55d8dfc8	A New Neighbor	Read a short story about meeting a neighbor.	A2	Community	Identify people, actions, and feelings in a story.	11 phút	Next Door		8	2026-06-18 14:30:58.633595+07	2026-06-26 00:24:17.925501+07	f
+c32c90c8-1907-40de-b87b-1e55d70cb505	The City Library	Đọc thông báo về thư viện thành phố.	A2	Community	Tìm thông tin về giờ mở cửa, dịch vụ và quy định.	9 phút	New Services At The City Library		9	2026-05-22 09:40:07.029239+07	2026-06-26 00:24:17.930019+07	f
+5c39d961-4038-4326-8204-3790aa5689f2	Saving Water At Home	Read a practical text about saving water.	A2	Environment	Understand advice and reasons in a simple article.	12 phút	Use Less Water		10	2026-06-18 14:30:58.633595+07	2026-06-26 00:24:17.9316+07	f
 \.
 
 
@@ -1684,6 +1816,11 @@ d3b05528-184c-41f1-9ef7-38f0add353ff	5c39d961-4038-4326-8204-3790aa5689f2	You ca
 --
 
 COPY public.readingprogress (userid, lessonid, status, score, updatedat) FROM stdin;
+00000000-0000-4000-8000-000000000101	671cda22-546d-4aee-a195-ec5068c0fc48	in_progress	65	2026-07-01 20:00:00+07
+00000000-0000-4000-8000-000000000102	671cda22-546d-4aee-a195-ec5068c0fc48	completed	86	2026-07-01 20:05:00+07
+00000000-0000-4000-8000-000000000102	1b1e767c-01e8-470c-a9f3-124b116cfe78	in_progress	70	2026-07-01 20:10:00+07
+00000000-0000-4000-8000-000000000103	671cda22-546d-4aee-a195-ec5068c0fc48	completed	95	2026-07-01 20:15:00+07
+00000000-0000-4000-8000-000000000103	1b1e767c-01e8-470c-a9f3-124b116cfe78	completed	90	2026-07-01 20:20:00+07
 \.
 
 
@@ -1767,20 +1904,36 @@ ad27bab4-5a64-48bd-b2cf-1cb7fe5c57c6	357c7c32-c4e6-43e5-8280-8d377a6f94c8	market
 
 
 --
+-- Data for Name: spacedrepetitionitems; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.spacedrepetitionitems (id, userid, targettype, targetid, easefactor, intervaldays, repetitions, lapses, lastscore, lastquality, lastreviewedat, duedate, lastassignedat, createdat, updatedat, ismastered, masteredat) FROM stdin;
+\.
+
+
+--
+-- Data for Name: spacedrepetitionreviews; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.spacedrepetitionreviews (id, itemid, userid, attemptid, score, quality, previouseasefactor, nexteasefactor, previousintervaldays, nextintervaldays, previousrepetitions, nextrepetitions, reviewedat) FROM stdin;
+\.
+
+
+--
 -- Data for Name: speakinglessons; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.speakinglessons (id, title, description, orderindex, createdat, isfoundation) FROM stdin;
-dfee0411-e605-429d-9d10-72e817b57863	Hỏi và trả lời tuổi	Luyện nói câu hỏi tuổi và câu trả lời ngắn.	-50	2026-06-18 14:30:58.633595	t
-c50957d1-91e7-400e-b72a-57ae7eb05df3	Nói về đồ vật trong lớp	Luyện trả lời đồ vật và màu sắc đơn giản.	-49	2026-06-18 14:30:58.633595	t
-fdff66ff-ad4b-40c6-990c-162e5cc7b575	Hỏi giờ đơn giản	Luyện nói giờ và hoạt động trong ngày.	-48	2026-06-18 14:30:58.633595	t
-f089e61e-2174-4e93-aecd-409dab19038b	Chào hỏi cơ bản	Tập nói các câu chào hỏi ngắn và rõ.	-47	2026-06-12 09:39:59.112021	t
-f9f85101-9879-42e0-be0f-f51d900291f8	Thông tin cá nhân	Tập trả lời tên, tuổi và nơi sống.	-46	2026-06-12 09:39:59.141162	t
-f7c7bb21-bfad-4d5f-9057-aa493a6a2116	Chào hỏi cơ bản	Các mẫu câu chào hỏi hàng ngày	1	2026-05-11 11:31:32.770487	f
-d3c02bda-d397-43f2-8b34-305067ac0b6d	Giới thiệu bản thân	Nói về bản thân và gia đình	2	2026-05-11 11:31:32.785334	f
-b9dca3c1-75ad-426c-9b3e-76db3df5b9a2	Tại nhà hàng	Giao tiếp khi đi ăn uống	3	2026-05-11 11:31:32.793291	f
-eb5ed411-41ff-4422-bae2-1b551e4cc00e	Hỏi đường	Hỏi và chỉ đường đi	4	2026-05-11 11:31:32.799688	f
-401e2660-0deb-41d5-a1d4-21e546fdff31	Mua sắm	Giao tiếp khi đi mua hàng	5	2026-05-11 11:31:32.806681	f
+f7c7bb21-bfad-4d5f-9057-aa493a6a2116	Chào hỏi cơ bản	Các mẫu câu chào hỏi hàng ngày	6	2026-05-11 11:31:32.770487	f
+d3c02bda-d397-43f2-8b34-305067ac0b6d	Giới thiệu bản thân	Nói về bản thân và gia đình	7	2026-05-11 11:31:32.785334	f
+b9dca3c1-75ad-426c-9b3e-76db3df5b9a2	Tại nhà hàng	Giao tiếp khi đi ăn uống	8	2026-05-11 11:31:32.793291	f
+eb5ed411-41ff-4422-bae2-1b551e4cc00e	Hỏi đường	Hỏi và chỉ đường đi	9	2026-05-11 11:31:32.799688	f
+401e2660-0deb-41d5-a1d4-21e546fdff31	Mua sắm	Giao tiếp khi đi mua hàng	10	2026-05-11 11:31:32.806681	f
+dfee0411-e605-429d-9d10-72e817b57863	Hỏi và trả lời tuổi	Luyện nói câu hỏi tuổi và câu trả lời ngắn.	1	2026-06-18 14:30:58.633595	t
+c50957d1-91e7-400e-b72a-57ae7eb05df3	Nói về đồ vật trong lớp	Luyện trả lời đồ vật và màu sắc đơn giản.	2	2026-06-18 14:30:58.633595	t
+fdff66ff-ad4b-40c6-990c-162e5cc7b575	Hỏi giờ đơn giản	Luyện nói giờ và hoạt động trong ngày.	3	2026-06-18 14:30:58.633595	t
+f089e61e-2174-4e93-aecd-409dab19038b	Chào hỏi cơ bản	Tập nói các câu chào hỏi ngắn và rõ.	4	2026-06-12 09:39:59.112021	t
+f9f85101-9879-42e0-be0f-f51d900291f8	Thông tin cá nhân	Tập trả lời tên, tuổi và nơi sống.	5	2026-06-12 09:39:59.141162	t
 \.
 
 
@@ -1789,7 +1942,11 @@ eb5ed411-41ff-4422-bae2-1b551e4cc00e	Hỏi đường	Hỏi và chỉ đường �
 --
 
 COPY public.speakingprogress (userid, lessonid, status, score, updatedat) FROM stdin;
-e87b1064-01b8-4369-a98f-4c16da9c91fe	dfee0411-e605-429d-9d10-72e817b57863	completed	100	2026-06-18 15:04:12.111091
+00000000-0000-4000-8000-000000000101	f7c7bb21-bfad-4d5f-9057-aa493a6a2116	in_progress	65	2026-07-01 20:00:00+07
+00000000-0000-4000-8000-000000000102	f7c7bb21-bfad-4d5f-9057-aa493a6a2116	completed	86	2026-07-01 20:05:00+07
+00000000-0000-4000-8000-000000000102	d3c02bda-d397-43f2-8b34-305067ac0b6d	in_progress	70	2026-07-01 20:10:00+07
+00000000-0000-4000-8000-000000000103	f7c7bb21-bfad-4d5f-9057-aa493a6a2116	completed	95	2026-07-01 20:15:00+07
+00000000-0000-4000-8000-000000000103	d3c02bda-d397-43f2-8b34-305067ac0b6d	completed	90	2026-07-01 20:20:00+07
 \.
 
 
@@ -1847,876 +2004,26 @@ cb864b93-21e3-4d41-8a12-03f09adc0565	b9dca3c1-75ad-426c-9b3e-76db3df5b9a2	How is
 --
 
 COPY public.studytimedaily (userid, activitydate, activeseconds, updatedat) FROM stdin;
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-11	592	2026-06-11 21:12:22.720462
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-06-02	6480	2026-06-11 09:48:54.650343
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-06-04	6840	2026-06-11 09:48:54.652962
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-06-06	6120	2026-06-11 09:48:54.654455
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-06-08	6480	2026-06-11 09:48:54.655828
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-06-10	6840	2026-06-11 09:48:54.657163
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-05-01	4980	2026-06-11 09:48:54.658519
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-05-07	4980	2026-06-11 09:48:54.659981
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-05-13	4980	2026-06-11 09:48:54.661149
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-05-19	4980	2026-06-11 09:48:54.662327
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-05-25	4980	2026-06-11 09:48:54.663484
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-05-31	4980	2026-06-11 09:48:54.664682
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-04-04	4740	2026-06-11 09:48:54.6659
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-04-10	4740	2026-06-11 09:48:54.667183
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-04-16	4740	2026-06-11 09:48:54.668327
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-04-22	4740	2026-06-11 09:48:54.669385
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-04-28	4740	2026-06-11 09:48:54.670377
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-03-01	4500	2026-06-11 09:48:54.67138
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-03-07	4500	2026-06-11 09:48:54.672422
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-03-13	4500	2026-06-11 09:48:54.673487
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-03-19	4500	2026-06-11 09:48:54.674513
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-03-25	4500	2026-06-11 09:48:54.675514
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-03-31	4500	2026-06-11 09:48:54.676494
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-02-04	5340	2026-06-11 09:48:54.677468
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-02-10	5340	2026-06-11 09:48:54.678494
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-02-16	5340	2026-06-11 09:48:54.679728
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-02-22	5340	2026-06-11 09:48:54.681017
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-02-28	5340	2026-06-11 09:48:54.682567
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-01-01	5100	2026-06-11 09:48:54.683884
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-01-07	5100	2026-06-11 09:48:54.685184
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-01-13	5100	2026-06-11 09:48:54.686318
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-01-19	5100	2026-06-11 09:48:54.687345
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-01-25	5100	2026-06-11 09:48:54.688423
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-01-31	5100	2026-06-11 09:48:54.689477
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-12-04	4860	2026-06-11 09:48:54.690516
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-12-10	4860	2026-06-11 09:48:54.691816
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-12-16	4860	2026-06-11 09:48:54.69289
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-12-22	4860	2026-06-11 09:48:54.693933
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-12-28	4860	2026-06-11 09:48:54.695025
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-11-01	4620	2026-06-11 09:48:54.696052
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-11-07	4620	2026-06-11 09:48:54.697034
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-11-13	4620	2026-06-11 09:48:54.698042
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-11-19	4620	2026-06-11 09:48:54.699016
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-11-25	4620	2026-06-11 09:48:54.699981
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-10-04	5460	2026-06-11 09:48:54.70105
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-10-10	5460	2026-06-11 09:48:54.70209
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-10-16	5460	2026-06-11 09:48:54.703071
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-10-22	5460	2026-06-11 09:48:54.70397
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-10-28	5460	2026-06-11 09:48:54.704899
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-09-01	5220	2026-06-11 09:48:54.705828
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-09-07	5220	2026-06-11 09:48:54.706754
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-09-13	5220	2026-06-11 09:48:54.707671
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-09-19	5220	2026-06-11 09:48:54.708659
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-09-25	5220	2026-06-11 09:48:54.709578
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-08-04	4980	2026-06-11 09:48:54.710615
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-08-10	4980	2026-06-11 09:48:54.711678
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-08-16	4980	2026-06-11 09:48:54.712643
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-08-22	4980	2026-06-11 09:48:54.713636
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-08-28	4980	2026-06-11 09:48:54.714737
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-07-01	4740	2026-06-11 09:48:54.715889
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-07-07	4740	2026-06-11 09:48:54.716899
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-07-13	4740	2026-06-11 09:48:54.717837
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-07-19	4740	2026-06-11 09:48:54.71871
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-07-25	4740	2026-06-11 09:48:54.719624
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2025-07-31	4740	2026-06-11 09:48:54.720671
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-06-01	5760	2026-06-11 09:48:54.722516
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-06-02	6000	2026-06-11 09:48:54.723474
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-06-04	6480	2026-06-11 09:48:54.724345
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-06-05	5640	2026-06-11 09:48:54.725429
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-06-07	6120	2026-06-11 09:48:54.726642
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-06-08	6360	2026-06-11 09:48:54.727922
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-06-10	5760	2026-06-11 09:48:54.729237
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-06-11	6000	2026-06-11 09:48:54.730469
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-01	4620	2026-06-11 09:48:54.73161
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-04	4260	2026-06-11 09:48:54.733005
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-07	4980	2026-06-11 09:48:54.734143
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-10	4620	2026-06-11 09:48:54.735323
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-13	4260	2026-06-11 09:48:54.736395
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-16	4980	2026-06-11 09:48:54.737629
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-19	4620	2026-06-11 09:48:54.738793
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-22	4260	2026-06-11 09:48:54.73999
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-25	4980	2026-06-11 09:48:54.741223
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-28	4620	2026-06-11 09:48:54.742493
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-05-31	4260	2026-06-11 09:48:54.743799
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-01	4140	2026-06-11 09:48:54.744868
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-04	4860	2026-06-11 09:48:54.745913
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-07	4500	2026-06-11 09:48:54.747125
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-10	4140	2026-06-11 09:48:54.74838
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-13	4860	2026-06-11 09:48:54.749504
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-16	4500	2026-06-11 09:48:54.75059
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-19	4140	2026-06-11 09:48:54.751714
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-22	4860	2026-06-11 09:48:54.752795
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-25	4500	2026-06-11 09:48:54.753859
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-28	4140	2026-06-11 09:48:54.754971
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-03-31	4860	2026-06-11 09:48:54.7562
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-02-01	4440	2026-06-11 09:48:54.757492
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-02-04	4080	2026-06-11 09:48:54.758682
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-02-07	4800	2026-06-11 09:48:54.760183
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-02-10	4440	2026-06-11 09:48:54.761464
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-02-13	4080	2026-06-11 09:48:54.762587
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-02-16	4800	2026-06-11 09:48:54.763856
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-02-19	4440	2026-06-11 09:48:54.765329
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-02-22	4080	2026-06-11 09:48:54.766596
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-02-25	4800	2026-06-11 09:48:54.767784
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2026-02-28	4440	2026-06-11 09:48:54.768901
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-01	5040	2026-06-11 09:48:54.769991
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-04	4680	2026-06-11 09:48:54.771031
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-07	4320	2026-06-11 09:48:54.772206
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-10	5040	2026-06-11 09:48:54.77348
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-13	4680	2026-06-11 09:48:54.774596
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-16	4320	2026-06-11 09:48:54.775751
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-19	5040	2026-06-11 09:48:54.776936
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-22	4680	2026-06-11 09:48:54.777963
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-25	4320	2026-06-11 09:48:54.779013
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-28	5040	2026-06-11 09:48:54.780014
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-12-31	4680	2026-06-11 09:48:54.780983
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-11-01	4260	2026-06-11 09:48:54.78194
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-11-04	4980	2026-06-11 09:48:54.782898
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-11-07	4620	2026-06-11 09:48:54.783944
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-11-10	4260	2026-06-11 09:48:54.7851
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-11-13	4980	2026-06-11 09:48:54.786034
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-11-16	4620	2026-06-11 09:48:54.787016
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-11-19	4260	2026-06-11 09:48:54.788466
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-11-22	4980	2026-06-11 09:48:54.789982
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-11-25	4620	2026-06-11 09:48:54.791265
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-11-28	4260	2026-06-11 09:48:54.792509
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-09-01	4860	2026-06-11 09:48:54.793642
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-09-04	4500	2026-06-11 09:48:54.794669
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-09-07	4140	2026-06-11 09:48:54.796789
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-09-10	4860	2026-06-11 09:48:54.798022
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-09-13	4500	2026-06-11 09:48:54.799336
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-09-16	4140	2026-06-11 09:48:54.800581
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-09-19	4860	2026-06-11 09:48:54.801953
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-09-22	4500	2026-06-11 09:48:54.802996
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-09-25	4140	2026-06-11 09:48:54.804029
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-09-28	4860	2026-06-11 09:48:54.805114
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-01	4080	2026-06-11 09:48:54.80626
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-04	4800	2026-06-11 09:48:54.807423
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-07	4440	2026-06-11 09:48:54.808453
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-10	4080	2026-06-11 09:48:54.809459
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-13	4800	2026-06-11 09:48:54.810427
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-16	4440	2026-06-11 09:48:54.811475
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-19	4080	2026-06-11 09:48:54.812657
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-22	4800	2026-06-11 09:48:54.813696
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-25	4440	2026-06-11 09:48:54.814595
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-28	4080	2026-06-11 09:48:54.815475
-22227f57-0aa9-4da0-b6ac-cfd00110b514	2025-08-31	4800	2026-06-11 09:48:54.816376
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-06-01	5220	2026-06-11 09:48:54.818228
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-06-03	5820	2026-06-11 09:48:54.819091
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-06-04	5040	2026-06-11 09:48:54.819905
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-06-06	5640	2026-06-11 09:48:54.820767
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-06-07	5940	2026-06-11 09:48:54.821621
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-06-09	5460	2026-06-11 09:48:54.822479
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-06-10	5760	2026-06-11 09:48:54.823328
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-04-01	4560	2026-06-11 09:48:54.824235
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-04-04	4380	2026-06-11 09:48:54.825109
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-04-07	4200	2026-06-11 09:48:54.82625
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-04-10	4020	2026-06-11 09:48:54.827424
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-04-13	3840	2026-06-11 09:48:54.828738
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-04-16	3660	2026-06-11 09:48:54.829949
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-04-19	4560	2026-06-11 09:48:54.831109
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-04-22	4380	2026-06-11 09:48:54.832271
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-04-25	4200	2026-06-11 09:48:54.8335
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-04-28	4020	2026-06-11 09:48:54.83467
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-01	3780	2026-06-11 09:48:54.835848
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-04	4680	2026-06-11 09:48:54.837125
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-07	4500	2026-06-11 09:48:54.838538
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-10	4320	2026-06-11 09:48:54.839761
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-13	4140	2026-06-11 09:48:54.840927
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-16	3960	2026-06-11 09:48:54.842115
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-19	3780	2026-06-11 09:48:54.84324
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-22	4680	2026-06-11 09:48:54.844375
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-25	4500	2026-06-11 09:48:54.845533
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-28	4320	2026-06-11 09:48:54.846662
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-03-31	4140	2026-06-11 09:48:54.8478
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-01	4380	2026-06-11 09:48:54.848955
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-04	4200	2026-06-11 09:48:54.850111
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-07	4020	2026-06-11 09:48:54.851242
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-10	3840	2026-06-11 09:48:54.852426
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-13	3660	2026-06-11 09:48:54.853628
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-16	4560	2026-06-11 09:48:54.854914
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-19	4380	2026-06-11 09:48:54.856126
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-22	4200	2026-06-11 09:48:54.857273
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-25	4020	2026-06-11 09:48:54.858432
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-28	3840	2026-06-11 09:48:54.85961
-9d4376dd-f532-418c-ad64-5d4861c2271c	2026-01-31	3660	2026-06-11 09:48:54.860837
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-01	4680	2026-06-11 09:48:54.862013
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-04	4500	2026-06-11 09:48:54.863167
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-07	4320	2026-06-11 09:48:54.864335
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-10	4140	2026-06-11 09:48:54.865533
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-13	3960	2026-06-11 09:48:54.866716
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-16	3780	2026-06-11 09:48:54.868137
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-19	4680	2026-06-11 09:48:54.869319
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-22	4500	2026-06-11 09:48:54.870467
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-25	4320	2026-06-11 09:48:54.871629
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-28	4140	2026-06-11 09:48:54.872799
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-12-31	3960	2026-06-11 09:48:54.873955
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-01	4200	2026-06-11 09:48:54.875114
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-04	4020	2026-06-11 09:48:54.876326
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-07	3840	2026-06-11 09:48:54.877585
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-10	3660	2026-06-11 09:48:54.878862
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-13	4560	2026-06-11 09:48:54.879988
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-16	4380	2026-06-11 09:48:54.881169
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-19	4200	2026-06-11 09:48:54.882432
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-22	4020	2026-06-11 09:48:54.883587
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-25	3840	2026-06-11 09:48:54.884764
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-28	3660	2026-06-11 09:48:54.885949
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-10-31	4560	2026-06-11 09:48:54.88708
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-09-01	4500	2026-06-11 09:48:54.888185
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-09-04	4320	2026-06-11 09:48:54.889374
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-09-07	4140	2026-06-11 09:48:54.890408
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-09-10	3960	2026-06-11 09:48:54.89149
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-09-13	3780	2026-06-11 09:48:54.892631
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-09-16	4680	2026-06-11 09:48:54.893735
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-09-19	4500	2026-06-11 09:48:54.894866
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-09-22	4320	2026-06-11 09:48:54.895944
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-09-25	4140	2026-06-11 09:48:54.897053
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-09-28	3960	2026-06-11 09:48:54.898049
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-01	4020	2026-06-11 09:48:54.899075
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-04	3840	2026-06-11 09:48:54.900064
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-07	3660	2026-06-11 09:48:54.901156
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-10	4560	2026-06-11 09:48:54.902261
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-13	4380	2026-06-11 09:48:54.903407
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-16	4200	2026-06-11 09:48:54.90439
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-19	4020	2026-06-11 09:48:54.905407
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-22	3840	2026-06-11 09:48:54.906469
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-25	3660	2026-06-11 09:48:54.907521
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-28	4560	2026-06-11 09:48:55.005594
-9d4376dd-f532-418c-ad64-5d4861c2271c	2025-07-31	4380	2026-06-11 09:48:55.006508
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-01	4680	2026-06-11 09:48:55.008305
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-03	4320	2026-06-11 09:48:55.009217
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-04	4680	2026-06-11 09:48:55.010104
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-05	5040	2026-06-11 09:48:55.012704
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-07	4680	2026-06-11 09:48:55.013596
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-08	5040	2026-06-11 09:48:55.014481
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-09	4320	2026-06-11 09:48:55.015342
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-11	5040	2026-06-11 09:48:55.016211
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-05-04	3900	2026-06-11 09:48:55.017095
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-05-07	3900	2026-06-11 09:48:55.018183
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-05-10	3900	2026-06-11 09:48:55.019293
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-05-16	3900	2026-06-11 09:48:55.020338
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-05-19	3900	2026-06-11 09:48:55.021336
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-05-22	3900	2026-06-11 09:48:55.022245
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-05-28	3900	2026-06-11 09:48:55.023119
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-05-31	3900	2026-06-11 09:48:55.023989
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-04-01	4200	2026-06-11 09:48:55.024867
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-04-07	4200	2026-06-11 09:48:55.025778
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-04-10	4200	2026-06-11 09:48:55.026762
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-04-13	4200	2026-06-11 09:48:55.028286
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-04-19	4200	2026-06-11 09:48:55.029595
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-04-22	4200	2026-06-11 09:48:55.031042
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-04-25	4200	2026-06-11 09:48:55.032612
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-03-01	3420	2026-06-11 09:48:55.033696
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-03-04	3420	2026-06-11 09:48:55.034607
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-03-10	3420	2026-06-11 09:48:55.03546
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-03-13	3420	2026-06-11 09:48:55.036315
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-03-16	3420	2026-06-11 09:48:55.037154
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-03-22	3420	2026-06-11 09:48:55.037993
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-03-25	3420	2026-06-11 09:48:55.038834
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-03-28	3420	2026-06-11 09:48:55.039673
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-02-01	3720	2026-06-11 09:48:55.040516
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-02-04	3720	2026-06-11 09:48:55.041385
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-02-07	3720	2026-06-11 09:48:55.042236
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-02-13	3720	2026-06-11 09:48:55.043081
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-02-16	3720	2026-06-11 09:48:55.044019
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-02-19	3720	2026-06-11 09:48:55.044867
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-02-25	3720	2026-06-11 09:48:55.045717
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-02-28	3720	2026-06-11 09:48:55.046562
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-01-04	4020	2026-06-11 09:48:55.047437
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-01-07	4020	2026-06-11 09:48:55.04829
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-01-10	4020	2026-06-11 09:48:55.049259
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-01-16	4020	2026-06-11 09:48:55.050162
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-01-19	4020	2026-06-11 09:48:55.051033
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-01-22	4020	2026-06-11 09:48:55.051879
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-01-28	4020	2026-06-11 09:48:55.052744
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-01-31	4020	2026-06-11 09:48:55.053621
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-12-01	3240	2026-06-11 09:48:55.05454
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-12-07	3240	2026-06-11 09:48:55.055428
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-12-10	3240	2026-06-11 09:48:55.056268
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-12-13	3240	2026-06-11 09:48:55.057129
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-12-19	3240	2026-06-11 09:48:55.058007
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-12-22	3240	2026-06-11 09:48:55.058855
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-12-25	3240	2026-06-11 09:48:55.059755
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-12-31	3240	2026-06-11 09:48:55.060797
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-11-01	3540	2026-06-11 09:48:55.061672
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-11-04	3540	2026-06-11 09:48:55.06254
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-11-10	3540	2026-06-11 09:48:55.063389
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-11-13	3540	2026-06-11 09:48:55.06424
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-11-16	3540	2026-06-11 09:48:55.065167
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-11-22	3540	2026-06-11 09:48:55.06614
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-11-25	3540	2026-06-11 09:48:55.066976
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-11-28	3540	2026-06-11 09:48:55.067762
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-10-01	3840	2026-06-11 09:48:55.068537
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-10-04	3840	2026-06-11 09:48:55.069316
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-10-07	3840	2026-06-11 09:48:55.070157
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-10-13	3840	2026-06-11 09:48:55.070935
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-10-16	3840	2026-06-11 09:48:55.071717
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-10-19	3840	2026-06-11 09:48:55.072499
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-10-25	3840	2026-06-11 09:48:55.073321
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-10-28	3840	2026-06-11 09:48:55.074087
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-10-31	3840	2026-06-11 09:48:55.074869
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-09-04	4140	2026-06-11 09:48:55.075657
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-09-07	4140	2026-06-11 09:48:55.076415
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-09-10	4140	2026-06-11 09:48:55.077238
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-09-16	4140	2026-06-11 09:48:55.078018
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-09-19	4140	2026-06-11 09:48:55.078801
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-09-22	4140	2026-06-11 09:48:55.079594
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-09-28	4140	2026-06-11 09:48:55.08045
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-08-01	3360	2026-06-11 09:48:55.081465
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-08-07	3360	2026-06-11 09:48:55.08229
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-08-10	3360	2026-06-11 09:48:55.083075
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-08-13	3360	2026-06-11 09:48:55.083828
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-08-19	3360	2026-06-11 09:48:55.084608
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-08-22	3360	2026-06-11 09:48:55.085381
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-08-25	3360	2026-06-11 09:48:55.086167
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-08-31	3360	2026-06-11 09:48:55.086981
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-07-01	3660	2026-06-11 09:48:55.087742
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-07-04	3660	2026-06-11 09:48:55.088606
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-07-10	3660	2026-06-11 09:48:55.089496
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-07-13	3660	2026-06-11 09:48:55.0903
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-07-16	3660	2026-06-11 09:48:55.091137
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-07-22	3660	2026-06-11 09:48:55.091945
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-07-25	3660	2026-06-11 09:48:55.092718
-7c142186-bdf1-4dd8-b174-5884468ae26a	2025-07-28	3660	2026-06-11 09:48:55.09357
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-06-02	4560	2026-06-11 09:48:55.095311
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-06-03	3900	2026-06-11 09:48:55.096216
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-06-04	4320	2026-06-11 09:48:55.097217
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-06-06	4080	2026-06-11 09:48:55.098028
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-06-07	4500	2026-06-11 09:48:55.098836
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-06-08	3840	2026-06-11 09:48:55.099608
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-06-10	4680	2026-06-11 09:48:55.10041
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-06-11	4020	2026-06-11 09:48:55.101173
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-05-01	3540	2026-06-11 09:48:55.101951
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-05-07	2820	2026-06-11 09:48:55.102693
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-05-10	3000	2026-06-11 09:48:55.103472
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-05-13	3180	2026-06-11 09:48:55.104241
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-05-19	3540	2026-06-11 09:48:55.105022
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-05-22	3720	2026-06-11 09:48:55.105879
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-05-25	2820	2026-06-11 09:48:55.10672
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-05-31	3180	2026-06-11 09:48:55.107491
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-04-01	3840	2026-06-11 09:48:55.108336
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-04-04	2940	2026-06-11 09:48:55.109118
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-04-10	3300	2026-06-11 09:48:55.109886
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-04-13	3480	2026-06-11 09:48:55.110751
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-04-16	3660	2026-06-11 09:48:55.111537
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-04-22	2940	2026-06-11 09:48:55.112516
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-04-25	3120	2026-06-11 09:48:55.113413
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-04-28	3300	2026-06-11 09:48:55.114217
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-03-01	3060	2026-06-11 09:48:55.115039
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-03-04	3240	2026-06-11 09:48:55.115857
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-03-07	3420	2026-06-11 09:48:55.116944
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-03-13	3780	2026-06-11 09:48:55.117855
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-03-16	2880	2026-06-11 09:48:55.118736
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-03-19	3060	2026-06-11 09:48:55.119637
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-03-25	3420	2026-06-11 09:48:55.120526
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-03-28	3600	2026-06-11 09:48:55.121427
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-03-31	3780	2026-06-11 09:48:55.12233
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-02-04	3540	2026-06-11 09:48:55.123209
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-02-07	3720	2026-06-11 09:48:55.124088
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-02-10	2820	2026-06-11 09:48:55.125091
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-02-16	3180	2026-06-11 09:48:55.12625
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-02-19	3360	2026-06-11 09:48:55.127207
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-02-22	3540	2026-06-11 09:48:55.128299
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-02-28	2820	2026-06-11 09:48:55.129149
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-01-01	3660	2026-06-11 09:48:55.129952
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-01-07	2940	2026-06-11 09:48:55.130731
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-01-10	3120	2026-06-11 09:48:55.131569
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-01-13	3300	2026-06-11 09:48:55.132419
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-01-19	3660	2026-06-11 09:48:55.133369
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-01-22	3840	2026-06-11 09:48:55.134158
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-01-25	2940	2026-06-11 09:48:55.134916
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2026-01-31	3300	2026-06-11 09:48:55.135706
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-12-01	2880	2026-06-11 09:48:55.136752
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-12-04	3060	2026-06-11 09:48:55.137734
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-12-10	3420	2026-06-11 09:48:55.138676
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-12-13	3600	2026-06-11 09:48:55.13954
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-12-16	3780	2026-06-11 09:48:55.14034
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-12-22	3060	2026-06-11 09:48:55.141139
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-12-25	3240	2026-06-11 09:48:55.141932
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-12-28	3420	2026-06-11 09:48:55.142807
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-11-01	3180	2026-06-11 09:48:55.143818
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-11-04	3360	2026-06-11 09:48:55.144623
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-11-07	3540	2026-06-11 09:48:55.145411
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-11-13	2820	2026-06-11 09:48:55.146176
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-11-16	3000	2026-06-11 09:48:55.147037
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-11-19	3180	2026-06-11 09:48:55.147835
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-11-25	3540	2026-06-11 09:48:55.148636
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-11-28	3720	2026-06-11 09:48:55.149394
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-10-04	3660	2026-06-11 09:48:55.150158
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-10-07	3840	2026-06-11 09:48:55.150908
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-10-10	2940	2026-06-11 09:48:55.151697
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-10-16	3300	2026-06-11 09:48:55.152567
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-10-19	3480	2026-06-11 09:48:55.153476
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-10-22	3660	2026-06-11 09:48:55.154363
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-10-28	2940	2026-06-11 09:48:55.155278
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-10-31	3120	2026-06-11 09:48:55.156133
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-09-01	3780	2026-06-11 09:48:55.156961
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-09-07	3060	2026-06-11 09:48:55.157767
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-09-10	3240	2026-06-11 09:48:55.1589
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-09-13	3420	2026-06-11 09:48:55.15993
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-09-19	3780	2026-06-11 09:48:55.160967
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-09-22	2880	2026-06-11 09:48:55.161962
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-09-25	3060	2026-06-11 09:48:55.162976
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-08-01	3000	2026-06-11 09:48:55.164005
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-08-04	3180	2026-06-11 09:48:55.165162
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-08-10	3540	2026-06-11 09:48:55.166218
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-08-13	3720	2026-06-11 09:48:55.16745
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-08-16	2820	2026-06-11 09:48:55.168464
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-08-22	3180	2026-06-11 09:48:55.169488
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-08-25	3360	2026-06-11 09:48:55.170487
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-08-28	3540	2026-06-11 09:48:55.171444
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-07-01	3300	2026-06-11 09:48:55.172426
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-07-04	3480	2026-06-11 09:48:55.173672
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-07-07	3660	2026-06-11 09:48:55.174807
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-07-13	2940	2026-06-11 09:48:55.175941
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-07-16	3120	2026-06-11 09:48:55.177017
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-07-19	3300	2026-06-11 09:48:55.178001
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-07-25	3660	2026-06-11 09:48:55.179005
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-07-28	3840	2026-06-11 09:48:55.180222
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	2025-07-31	2940	2026-06-11 09:48:55.181271
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-06-02	4080	2026-06-11 09:48:55.183246
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-06-03	3480	2026-06-11 09:48:55.184241
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-06-04	3960	2026-06-11 09:48:55.185171
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-06-05	3360	2026-06-11 09:48:55.18611
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-06-07	3240	2026-06-11 09:48:55.187086
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-06-08	3720	2026-06-11 09:48:55.188082
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-06-09	3120	2026-06-11 09:48:55.189077
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-06-10	3600	2026-06-11 09:48:55.190096
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-05-01	3180	2026-06-11 09:48:55.190962
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-05-04	2460	2026-06-11 09:48:55.191885
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-05-07	2820	2026-06-11 09:48:55.192779
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-05-13	2460	2026-06-11 09:48:55.193703
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-05-16	2820	2026-06-11 09:48:55.194815
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-05-19	3180	2026-06-11 09:48:55.195952
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-05-22	2460	2026-06-11 09:48:55.197064
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-05-28	3180	2026-06-11 09:48:55.198128
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-05-31	2460	2026-06-11 09:48:55.199184
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-04-01	2400	2026-06-11 09:48:55.200271
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-04-07	3120	2026-06-11 09:48:55.201382
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-04-10	2400	2026-06-11 09:48:55.202469
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-04-13	2760	2026-06-11 09:48:55.20361
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-04-16	3120	2026-06-11 09:48:55.204803
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-04-22	2760	2026-06-11 09:48:55.206329
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-04-25	3120	2026-06-11 09:48:55.207559
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-04-28	2400	2026-06-11 09:48:55.208818
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-03-01	2700	2026-06-11 09:48:55.209974
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-03-04	3060	2026-06-11 09:48:55.211009
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-03-07	3420	2026-06-11 09:48:55.212049
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-03-10	2700	2026-06-11 09:48:55.212923
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-03-16	3420	2026-06-11 09:48:55.213772
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-03-19	2700	2026-06-11 09:48:55.214621
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-03-22	3060	2026-06-11 09:48:55.215471
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-03-25	3420	2026-06-11 09:48:55.21634
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-03-31	3060	2026-06-11 09:48:55.217196
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-02-01	3000	2026-06-11 09:48:55.218064
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-02-04	3360	2026-06-11 09:48:55.218879
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-02-10	3000	2026-06-11 09:48:55.219719
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-02-13	3360	2026-06-11 09:48:55.220865
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-02-16	2640	2026-06-11 09:48:55.221825
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-02-19	3000	2026-06-11 09:48:55.222752
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-02-25	2640	2026-06-11 09:48:55.223624
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-02-28	3000	2026-06-11 09:48:55.224435
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-01-04	2580	2026-06-11 09:48:55.225493
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-01-07	2940	2026-06-11 09:48:55.226327
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-01-10	3300	2026-06-11 09:48:55.227178
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-01-13	2580	2026-06-11 09:48:55.227988
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-01-19	3300	2026-06-11 09:48:55.228815
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-01-22	2580	2026-06-11 09:48:55.229616
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-01-25	2940	2026-06-11 09:48:55.230406
-78079a64-de94-4d1d-8e32-e82c30d574b3	2026-01-28	3300	2026-06-11 09:48:55.231171
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-12-01	2520	2026-06-11 09:48:55.231976
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-12-04	2880	2026-06-11 09:48:55.232781
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-12-07	3240	2026-06-11 09:48:55.233589
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-12-13	2880	2026-06-11 09:48:55.234341
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-12-16	3240	2026-06-11 09:48:55.235136
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-12-19	2520	2026-06-11 09:48:55.236083
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-12-22	2880	2026-06-11 09:48:55.237011
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-12-28	2520	2026-06-11 09:48:55.237796
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-12-31	2880	2026-06-11 09:48:55.238548
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-11-01	2820	2026-06-11 09:48:55.239294
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-11-07	2460	2026-06-11 09:48:55.240042
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-11-10	2820	2026-06-11 09:48:55.240767
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-11-13	3180	2026-06-11 09:48:55.241635
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-11-16	2460	2026-06-11 09:48:55.24246
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-11-22	3180	2026-06-11 09:48:55.243223
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-11-25	2460	2026-06-11 09:48:55.243968
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-11-28	2820	2026-06-11 09:48:55.244701
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-10-01	3120	2026-06-11 09:48:55.245443
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-10-04	2400	2026-06-11 09:48:55.246194
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-10-07	2760	2026-06-11 09:48:55.246935
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-10-10	3120	2026-06-11 09:48:55.24771
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-10-16	2760	2026-06-11 09:48:55.248453
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-10-19	3120	2026-06-11 09:48:55.249185
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-10-22	2400	2026-06-11 09:48:55.249991
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-10-25	2760	2026-06-11 09:48:55.250939
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-10-31	2400	2026-06-11 09:48:55.251881
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-09-01	3420	2026-06-11 09:48:55.252655
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-09-04	2700	2026-06-11 09:48:55.253548
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-09-10	3420	2026-06-11 09:48:55.254846
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-09-13	2700	2026-06-11 09:48:55.255974
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-09-16	3060	2026-06-11 09:48:55.257616
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-09-19	3420	2026-06-11 09:48:55.258769
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-09-25	3060	2026-06-11 09:48:55.260108
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-09-28	3420	2026-06-11 09:48:55.262171
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-08-04	3000	2026-06-11 09:48:55.263836
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-08-07	3360	2026-06-11 09:48:55.265792
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-08-10	2640	2026-06-11 09:48:55.267072
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-08-13	3000	2026-06-11 09:48:55.268247
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-08-19	2640	2026-06-11 09:48:55.269462
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-08-22	3000	2026-06-11 09:48:55.270899
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-08-25	3360	2026-06-11 09:48:55.272108
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-08-28	2640	2026-06-11 09:48:55.273077
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-07-01	2940	2026-06-11 09:48:55.273911
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-07-04	3300	2026-06-11 09:48:55.274954
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-07-07	2580	2026-06-11 09:48:55.275873
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-07-13	3300	2026-06-11 09:48:55.276716
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-07-16	2580	2026-06-11 09:48:55.277564
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-07-19	2940	2026-06-11 09:48:55.278362
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-07-22	3300	2026-06-11 09:48:55.279132
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-07-28	2940	2026-06-11 09:48:55.27991
-78079a64-de94-4d1d-8e32-e82c30d574b3	2025-07-31	3300	2026-06-11 09:48:55.280682
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-06-01	3060	2026-06-11 09:48:55.282145
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-06-02	2520	2026-06-11 09:48:55.282984
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-06-03	3060	2026-06-11 09:48:55.283731
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-06-04	2520	2026-06-11 09:48:55.28445
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-06-06	2520	2026-06-11 09:48:55.285162
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-06-07	3060	2026-06-11 09:48:55.285885
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-06-08	2520	2026-06-11 09:48:55.286689
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-06-09	3060	2026-06-11 09:48:55.287422
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-06-11	3060	2026-06-11 09:48:55.288146
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-05-01	2820	2026-06-11 09:48:55.288855
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-05-07	2820	2026-06-11 09:48:55.289557
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-05-10	2280	2026-06-11 09:48:55.290261
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-05-13	2820	2026-06-11 09:48:55.291152
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-05-16	2280	2026-06-11 09:48:55.292034
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-05-22	2280	2026-06-11 09:48:55.292844
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-05-25	2820	2026-06-11 09:48:55.293829
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-05-28	2280	2026-06-11 09:48:55.294568
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-05-31	2820	2026-06-11 09:48:55.295281
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-04-01	2040	2026-06-11 09:48:55.295988
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-04-04	2580	2026-06-11 09:48:55.296688
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-04-07	2040	2026-06-11 09:48:55.297383
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-04-10	2580	2026-06-11 09:48:55.298443
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-04-16	2580	2026-06-11 09:48:55.299326
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-04-19	2040	2026-06-11 09:48:55.300071
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-04-22	2580	2026-06-11 09:48:55.300798
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-04-25	2040	2026-06-11 09:48:55.301512
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-03-01	2340	2026-06-11 09:48:55.302224
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-03-04	2880	2026-06-11 09:48:55.302928
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-03-10	2880	2026-06-11 09:48:55.303634
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-03-13	2340	2026-06-11 09:48:55.304352
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-03-16	2880	2026-06-11 09:48:55.305061
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-03-19	2340	2026-06-11 09:48:55.305772
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-03-25	2340	2026-06-11 09:48:55.306471
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-03-28	2880	2026-06-11 09:48:55.307169
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-03-31	2340	2026-06-11 09:48:55.30792
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-02-04	2100	2026-06-11 09:48:55.308994
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-02-07	2640	2026-06-11 09:48:55.309865
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-02-10	2100	2026-06-11 09:48:55.310663
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-02-13	2640	2026-06-11 09:48:55.31146
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-02-19	2640	2026-06-11 09:48:55.312445
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-02-22	2100	2026-06-11 09:48:55.313517
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-02-25	2640	2026-06-11 09:48:55.314601
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-02-28	2100	2026-06-11 09:48:55.315462
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-01-01	2940	2026-06-11 09:48:55.316294
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-01-04	2400	2026-06-11 09:48:55.317088
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-01-07	2940	2026-06-11 09:48:55.317882
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-01-13	2940	2026-06-11 09:48:55.318639
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-01-16	2400	2026-06-11 09:48:55.319448
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-01-19	2940	2026-06-11 09:48:55.320259
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-01-22	2400	2026-06-11 09:48:55.321083
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-01-28	2400	2026-06-11 09:48:55.321964
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2026-01-31	2940	2026-06-11 09:48:55.322754
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-12-01	2160	2026-06-11 09:48:55.323519
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-12-07	2160	2026-06-11 09:48:55.324304
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-12-10	2700	2026-06-11 09:48:55.325177
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-12-13	2160	2026-06-11 09:48:55.325974
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-12-16	2700	2026-06-11 09:48:55.32671
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-12-22	2700	2026-06-11 09:48:55.32745
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-12-25	2160	2026-06-11 09:48:55.32824
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-12-28	2700	2026-06-11 09:48:55.329213
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-12-31	2160	2026-06-11 09:48:55.330012
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-11-01	2460	2026-06-11 09:48:55.330834
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-11-04	3000	2026-06-11 09:48:55.331619
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-11-07	2460	2026-06-11 09:48:55.332374
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-11-10	3000	2026-06-11 09:48:55.333112
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-11-16	3000	2026-06-11 09:48:55.333875
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-11-19	2460	2026-06-11 09:48:55.334614
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-11-22	3000	2026-06-11 09:48:55.335349
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-11-25	2460	2026-06-11 09:48:55.336108
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-10-01	2760	2026-06-11 09:48:55.336833
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-10-04	2220	2026-06-11 09:48:55.337578
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-10-10	2220	2026-06-11 09:48:55.338294
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-10-13	2760	2026-06-11 09:48:55.33904
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-10-16	2220	2026-06-11 09:48:55.339754
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-10-19	2760	2026-06-11 09:48:55.340467
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-10-25	2760	2026-06-11 09:48:55.341215
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-10-28	2220	2026-06-11 09:48:55.342077
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-10-31	2760	2026-06-11 09:48:55.342809
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-09-04	2520	2026-06-11 09:48:55.343518
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-09-07	1980	2026-06-11 09:48:55.344327
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-09-10	2520	2026-06-11 09:48:55.345118
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-09-13	1980	2026-06-11 09:48:55.345845
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-09-19	1980	2026-06-11 09:48:55.346562
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-09-22	2520	2026-06-11 09:48:55.347287
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-09-25	1980	2026-06-11 09:48:55.347993
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-09-28	2520	2026-06-11 09:48:55.348697
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-08-01	2280	2026-06-11 09:48:55.349473
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-08-04	2820	2026-06-11 09:48:55.350216
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-08-07	2280	2026-06-11 09:48:55.350937
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-08-13	2280	2026-06-11 09:48:55.351653
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-08-16	2820	2026-06-11 09:48:55.352361
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-08-19	2280	2026-06-11 09:48:55.353057
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-08-22	2820	2026-06-11 09:48:55.353761
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-08-28	2820	2026-06-11 09:48:55.354479
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-08-31	2280	2026-06-11 09:48:55.355181
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-07-01	2580	2026-06-11 09:48:55.355875
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-07-07	2580	2026-06-11 09:48:55.356574
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-07-10	2040	2026-06-11 09:48:55.357271
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-07-13	2580	2026-06-11 09:48:55.358009
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-07-16	2040	2026-06-11 09:48:55.358716
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-07-22	2040	2026-06-11 09:48:55.359459
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-07-25	2580	2026-06-11 09:48:55.360237
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-07-28	2040	2026-06-11 09:48:55.360939
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	2025-07-31	2580	2026-06-11 09:48:55.361653
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-01	2520	2026-06-11 09:48:55.363083
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-02	2040	2026-06-11 09:48:55.363787
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-03	2640	2026-06-11 09:48:55.364489
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-04	2160	2026-06-11 09:48:55.365184
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-05	2760	2026-06-11 09:48:55.365881
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-07	2880	2026-06-11 09:48:55.366572
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-08	2400	2026-06-11 09:48:55.367255
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-09	1920	2026-06-11 09:48:55.367949
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-10	2520	2026-06-11 09:48:55.368638
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-11	2040	2026-06-11 09:48:55.369373
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-01	2460	2026-06-11 09:48:55.370076
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-04	2100	2026-06-11 09:48:55.370775
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-07	1740	2026-06-11 09:48:55.371477
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-10	2460	2026-06-11 09:48:55.372165
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-13	2100	2026-06-11 09:48:55.372864
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-16	1740	2026-06-11 09:48:55.373554
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-19	2460	2026-06-11 09:48:55.374234
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-22	2100	2026-06-11 09:48:55.375111
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-25	1740	2026-06-11 09:48:55.375877
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-28	2460	2026-06-11 09:48:55.376563
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-05-31	2100	2026-06-11 09:48:55.377306
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-04-01	1680	2026-06-11 09:48:55.378194
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-04-07	2040	2026-06-11 09:48:55.378928
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-04-13	2400	2026-06-11 09:48:55.379641
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-04-19	1680	2026-06-11 09:48:55.380314
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-04-25	2040	2026-06-11 09:48:55.381023
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-01	1980	2026-06-11 09:48:55.381694
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-04	1620	2026-06-11 09:48:55.382371
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-07	2340	2026-06-11 09:48:55.383042
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-10	1980	2026-06-11 09:48:55.383733
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-13	1620	2026-06-11 09:48:55.384407
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-16	2340	2026-06-11 09:48:55.38511
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-19	1980	2026-06-11 09:48:55.385778
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-22	1620	2026-06-11 09:48:55.386452
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-25	2340	2026-06-11 09:48:55.38712
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-28	1980	2026-06-11 09:48:55.387857
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-03-31	1620	2026-06-11 09:48:55.388533
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-02-01	2280	2026-06-11 09:48:55.389199
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-02-04	1920	2026-06-11 09:48:55.390037
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-02-07	1560	2026-06-11 09:48:55.390767
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-02-10	2280	2026-06-11 09:48:55.391473
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-02-13	1920	2026-06-11 09:48:55.392149
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-02-16	1560	2026-06-11 09:48:55.392845
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-02-19	2280	2026-06-11 09:48:55.393522
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-02-22	1920	2026-06-11 09:48:55.39421
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-02-25	1560	2026-06-11 09:48:55.394924
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-02-28	2280	2026-06-11 09:48:55.39561
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-01-04	2220	2026-06-11 09:48:55.396398
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-01-10	2580	2026-06-11 09:48:55.397118
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-01-16	1860	2026-06-11 09:48:55.397846
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-01-22	2220	2026-06-11 09:48:55.398521
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-01-28	2580	2026-06-11 09:48:55.399197
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-01	1800	2026-06-11 09:48:55.399868
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-04	2520	2026-06-11 09:48:55.400595
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-07	2160	2026-06-11 09:48:55.401272
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-10	1800	2026-06-11 09:48:55.401919
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-13	2520	2026-06-11 09:48:55.4026
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-16	2160	2026-06-11 09:48:55.403319
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-19	1800	2026-06-11 09:48:55.404088
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-22	2520	2026-06-11 09:48:55.404795
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-25	2160	2026-06-11 09:48:55.405609
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-28	1800	2026-06-11 09:48:55.406442
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-12-31	2520	2026-06-11 09:48:55.407176
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-11-01	2100	2026-06-11 09:48:55.407889
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-11-04	1740	2026-06-11 09:48:55.408572
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-11-07	2460	2026-06-11 09:48:55.40941
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-11-10	2100	2026-06-11 09:48:55.410124
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-11-13	1740	2026-06-11 09:48:55.410802
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-11-16	2460	2026-06-11 09:48:55.411475
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-11-19	2100	2026-06-11 09:48:55.412144
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-11-22	1740	2026-06-11 09:48:55.412838
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-11-25	2460	2026-06-11 09:48:55.413504
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-11-28	2100	2026-06-11 09:48:55.414197
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-10-01	2400	2026-06-11 09:48:55.414863
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-10-07	1680	2026-06-11 09:48:55.415546
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-10-13	2040	2026-06-11 09:48:55.416221
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-10-19	2400	2026-06-11 09:48:55.416912
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-10-25	1680	2026-06-11 09:48:55.417608
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-10-31	2040	2026-06-11 09:48:55.41829
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-09-01	1620	2026-06-11 09:48:55.418984
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-09-04	2340	2026-06-11 09:48:55.419684
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-09-07	1980	2026-06-11 09:48:55.420366
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-09-10	1620	2026-06-11 09:48:55.421162
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-09-13	2340	2026-06-11 09:48:55.422052
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-09-16	1980	2026-06-11 09:48:55.422889
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-09-19	1620	2026-06-11 09:48:55.423685
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-09-22	2340	2026-06-11 09:48:55.424429
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-09-25	1980	2026-06-11 09:48:55.425143
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-09-28	1620	2026-06-11 09:48:55.42586
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-01	1920	2026-06-11 09:48:55.426555
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-04	1560	2026-06-11 09:48:55.427258
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-07	2280	2026-06-11 09:48:55.427951
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-10	1920	2026-06-11 09:48:55.428638
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-13	1560	2026-06-11 09:48:55.429321
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-16	2280	2026-06-11 09:48:55.430013
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-19	1920	2026-06-11 09:48:55.430712
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-22	1560	2026-06-11 09:48:55.431417
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-25	2280	2026-06-11 09:48:55.432145
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-28	1920	2026-06-11 09:48:55.432832
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-08-31	1560	2026-06-11 09:48:55.433551
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-07-04	1860	2026-06-11 09:48:55.43428
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-07-10	2220	2026-06-11 09:48:55.434944
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-07-16	2580	2026-06-11 09:48:55.435646
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-07-22	1860	2026-06-11 09:48:55.436479
-0b44b67d-63b3-4705-9464-c5f6b279866a	2025-07-28	2220	2026-06-11 09:48:55.437282
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-01	1980	2026-06-11 09:48:55.438833
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-02	1560	2026-06-11 09:48:55.439553
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-03	2220	2026-06-11 09:48:55.440224
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-04	1800	2026-06-11 09:48:55.440898
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-06	2040	2026-06-11 09:48:55.441597
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-07	1620	2026-06-11 09:48:55.442269
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-08	2280	2026-06-11 09:48:55.442962
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-09	1860	2026-06-11 09:48:55.443637
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-10	1440	2026-06-11 09:48:55.444321
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-05-01	2100	2026-06-11 09:48:55.445005
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-05-07	1740	2026-06-11 09:48:55.445681
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-05-13	1380	2026-06-11 09:48:55.446374
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-05-19	2100	2026-06-11 09:48:55.447047
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-05-25	1740	2026-06-11 09:48:55.447725
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-05-31	1380	2026-06-11 09:48:55.448443
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-04-01	1320	2026-06-11 09:48:55.449123
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-04-04	1140	2026-06-11 09:48:55.449801
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-04-07	2040	2026-06-11 09:48:55.450476
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-04-10	1860	2026-06-11 09:48:55.45114
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-04-13	1680	2026-06-11 09:48:55.451999
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-04-16	1500	2026-06-11 09:48:55.452855
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-04-19	1320	2026-06-11 09:48:55.453562
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-04-22	1140	2026-06-11 09:48:55.454296
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-04-25	2040	2026-06-11 09:48:55.454996
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-04-28	1860	2026-06-11 09:48:55.45567
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-01	1620	2026-06-11 09:48:55.456374
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-04	1440	2026-06-11 09:48:55.457031
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-07	1260	2026-06-11 09:48:55.457725
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-10	2160	2026-06-11 09:48:55.458435
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-13	1980	2026-06-11 09:48:55.459116
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-16	1800	2026-06-11 09:48:55.459814
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-19	1620	2026-06-11 09:48:55.460508
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-22	1440	2026-06-11 09:48:55.46118
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-25	1260	2026-06-11 09:48:55.461845
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-28	2160	2026-06-11 09:48:55.462515
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-03-31	1980	2026-06-11 09:48:55.463209
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-02-04	1740	2026-06-11 09:48:55.463859
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-02-10	1380	2026-06-11 09:48:55.464537
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-02-16	2100	2026-06-11 09:48:55.46526
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-02-22	1740	2026-06-11 09:48:55.465943
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-02-28	1380	2026-06-11 09:48:55.466615
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-01	1140	2026-06-11 09:48:55.467387
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-04	2040	2026-06-11 09:48:55.468115
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-07	1860	2026-06-11 09:48:55.468792
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-10	1680	2026-06-11 09:48:55.46949
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-13	1500	2026-06-11 09:48:55.470164
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-16	1320	2026-06-11 09:48:55.470836
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-19	1140	2026-06-11 09:48:55.471552
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-22	2040	2026-06-11 09:48:55.472241
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-25	1860	2026-06-11 09:48:55.472926
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-28	1680	2026-06-11 09:48:55.473619
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-01-31	1500	2026-06-11 09:48:55.474336
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-01	1440	2026-06-11 09:48:55.475029
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-04	1260	2026-06-11 09:48:55.475719
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-07	2160	2026-06-11 09:48:55.476396
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-10	1980	2026-06-11 09:48:55.477087
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-13	1800	2026-06-11 09:48:55.477762
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-16	1620	2026-06-11 09:48:55.478441
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-19	1440	2026-06-11 09:48:55.479107
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-22	1260	2026-06-11 09:48:55.479777
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-25	2160	2026-06-11 09:48:55.480437
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-28	1980	2026-06-11 09:48:55.481106
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-12-31	1800	2026-06-11 09:48:55.481782
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-11-01	1740	2026-06-11 09:48:55.482674
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-11-07	1380	2026-06-11 09:48:55.483481
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-11-13	2100	2026-06-11 09:48:55.484323
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-11-19	1740	2026-06-11 09:48:55.485018
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-11-25	1380	2026-06-11 09:48:55.485698
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-01	2040	2026-06-11 09:48:55.486385
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-04	1860	2026-06-11 09:48:55.487059
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-07	1680	2026-06-11 09:48:55.48774
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-10	1500	2026-06-11 09:48:55.488426
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-13	1320	2026-06-11 09:48:55.489162
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-16	1140	2026-06-11 09:48:55.490143
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-19	2040	2026-06-11 09:48:55.490939
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-22	1860	2026-06-11 09:48:55.491704
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-25	1680	2026-06-11 09:48:55.492414
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-28	1500	2026-06-11 09:48:55.493086
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-10-31	1320	2026-06-11 09:48:55.49386
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-09-01	1260	2026-06-11 09:48:55.494553
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-09-04	2160	2026-06-11 09:48:55.49522
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-09-07	1980	2026-06-11 09:48:55.495944
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-09-10	1800	2026-06-11 09:48:55.496636
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-09-13	1620	2026-06-11 09:48:55.4973
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-09-16	1440	2026-06-11 09:48:55.498143
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-09-19	1260	2026-06-11 09:48:55.499111
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-09-22	2160	2026-06-11 09:48:55.500049
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-09-25	1980	2026-06-11 09:48:55.501077
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-09-28	1800	2026-06-11 09:48:55.502141
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-08-04	1380	2026-06-11 09:48:55.503046
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-08-10	2100	2026-06-11 09:48:55.503919
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-08-16	1740	2026-06-11 09:48:55.504743
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-08-22	1380	2026-06-11 09:48:55.505546
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-08-28	2100	2026-06-11 09:48:55.506341
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-01	1860	2026-06-11 09:48:55.507141
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-04	1680	2026-06-11 09:48:55.507953
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-07	1500	2026-06-11 09:48:55.50872
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-10	1320	2026-06-11 09:48:55.509481
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-13	1140	2026-06-11 09:48:55.510231
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-16	2040	2026-06-11 09:48:55.510991
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-19	1860	2026-06-11 09:48:55.511749
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-22	1680	2026-06-11 09:48:55.512541
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-25	1500	2026-06-11 09:48:55.513304
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-28	1320	2026-06-11 09:48:55.514214
-34e079cb-e041-4085-9a31-a0782fdd5af8	2025-07-31	1140	2026-06-11 09:48:55.515044
-0b44b67d-63b3-4705-9464-c5f6b279866a	2026-06-17	7	2026-06-17 15:04:24.990854
-0a70cf27-dd6e-4891-981f-a6fa185fdbed	2026-06-17	170	2026-06-17 16:03:37.045185
-7806ded9-937b-4975-83ea-a9336f9c9a73	2026-06-18	181	2026-06-18 09:47:40.687317
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-22	150	2026-06-22 20:02:00.059213
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-12	1642	2026-06-12 13:25:51.000242
-5d533fb3-8bab-4e32-8a70-2fd3d523e378	2026-06-22	570	2026-06-22 15:02:40.569352
-5a708101-a917-4e6f-bf93-0a960a638577	2026-06-19	1455	2026-06-19 09:41:16.176405
-dac8e393-f03e-4776-a6c5-6a3fcba12943	2026-06-20	53	2026-06-20 15:29:43.64386
-0a70cf27-dd6e-4891-981f-a6fa185fdbed	2026-06-20	26	2026-06-20 16:13:08.888084
-212f41f2-9c73-4550-9baf-03116c6ce289	2026-06-12	13	2026-06-12 09:46:08.453921
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-06-18	12	2026-06-18 14:55:01.291775
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-16	412	2026-06-16 23:55:41.795563
-d01930fd-10cb-4705-82f3-de179a2c514f	2026-06-12	321	2026-06-12 09:54:47.467135
-29954a24-1c8a-4878-a70b-5c226a02a94b	2026-06-12	172	2026-06-12 10:31:09.808214
-3b7eda8e-0bc1-4c47-bf69-6ccebb484d4a	2026-06-12	9	2026-06-12 10:35:04.32319
-9cb5fd28-5944-4407-9ed5-a1c6522f0b42	2026-06-12	85	2026-06-12 10:37:06.786186
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-20	2068	2026-06-20 21:49:51.9575
-6e77fac8-4f86-4f0f-ba81-be4e9d51c977	2026-06-17	46	2026-06-17 21:59:06.187606
-e5f739d4-47d8-43fa-bb54-dfb074511cb4	2026-06-17	38	2026-06-17 22:02:50.644741
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-17	1728	2026-06-17 22:12:03.707687
-ae23b160-380d-4fc9-ba21-7dd6fbe04d54	2026-06-17	5	2026-06-17 22:29:43.722566
-e87b1064-01b8-4369-a98f-4c16da9c91fe	2026-06-18	460	2026-06-18 15:54:19.313271
-5a708101-a917-4e6f-bf93-0a960a638577	2026-06-22	1592	2026-06-22 20:53:30.289997
-7c142186-bdf1-4dd8-b174-5884468ae26a	2026-06-21	248	2026-06-21 07:46:30.358155
-34e079cb-e041-4085-9a31-a0782fdd5af8	2026-06-18	1737	2026-06-18 19:01:17.782013
-5a708101-a917-4e6f-bf93-0a960a638577	2026-06-18	72	2026-06-18 22:37:31.766411
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	2026-06-22	44	2026-06-22 19:46:07.353591
+00000000-0000-4000-8000-000000000101	2026-07-01	1260	2026-07-01 21:50:00
+00000000-0000-4000-8000-000000000101	2026-07-02	840	2026-07-02 09:30:00
+00000000-0000-4000-8000-000000000102	2026-07-01	2280	2026-07-01 21:55:00
+00000000-0000-4000-8000-000000000103	2026-07-01	3180	2026-07-01 22:00:00
 \.
 
 
 --
--- Data for Name: userachievements; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: supportticketmessages; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.userachievements (userid, achievementid, unlockedat) FROM stdin;
+COPY public.supportticketmessages (id, ticketid, senderid, senderrole, message, attachmenturl, attachmentpublicid, attachmentoriginalname, attachmentmimetype, createdat) FROM stdin;
+\.
+
+
+--
+-- Data for Name: supporttickets; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.supporttickets (id, userid, email, title, description, category, status, attachmenturl, attachmentpublicid, attachmentoriginalname, attachmentmimetype, adminresponse, respondedby, respondedat, createdat, updatedat) FROM stdin;
 \.
 
 
@@ -2725,12 +2032,6 @@ COPY public.userachievements (userid, achievementid, unlockedat) FROM stdin;
 --
 
 COPY public.usercollections (id, userid, name, description, createdat, ispublic, reviewstatus, submittedat, reviewedat, reviewedby, updatedat) FROM stdin;
-8e17afd7-b5f3-4931-be51-09ff4ff5332a	7c142186-bdf1-4dd8-b174-5884468ae26a	fruit	\N	2026-05-14 09:02:45.087206	f	approved	\N	\N	\N	2026-06-05 09:36:40.973499+07
-3bb2b53a-6723-498d-bc1f-174bc86b118b	63067d89-05de-4a11-9fe9-1fba5b52ea9e	Daily Conversations A1-A2	Từ vựng giao tiếp hằng ngày cho chào hỏi, lịch trình và tình huống quen thuộc.	2026-06-05 09:59:50.716151	t	approved	2026-06-05 09:59:50.716151+07	2026-06-05 09:59:50.716151+07	63067d89-05de-4a11-9fe9-1fba5b52ea9e	2026-06-05 09:59:50.754417+07
-878650b5-f646-4c01-b91a-a2b2fdf963b1	63067d89-05de-4a11-9fe9-1fba5b52ea9e	Travel & Services A2-B1	Từ vựng dùng khi đi du lịch, đặt dịch vụ, hỏi đường và xử lý sự cố đơn giản.	2026-06-05 09:59:50.756691	t	approved	2026-06-05 09:59:50.756691+07	2026-06-05 09:59:50.756691+07	63067d89-05de-4a11-9fe9-1fba5b52ea9e	2026-06-05 09:59:50.786321+07
-72a27d3e-3c8f-4978-b142-4392b45cfc04	63067d89-05de-4a11-9fe9-1fba5b52ea9e	Work & Study B1	Từ vựng học tập và công việc: deadline, họp nhóm, phản hồi và tiến độ.	2026-06-05 09:59:50.78841	t	approved	2026-06-05 09:59:50.78841+07	2026-06-05 09:59:50.78841+07	63067d89-05de-4a11-9fe9-1fba5b52ea9e	2026-06-05 09:59:50.836679+07
-fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	63067d89-05de-4a11-9fe9-1fba5b52ea9e	IELTS Topic Vocabulary B1-B2	Từ vựng nền cho các chủ đề IELTS phổ biến như môi trường, xã hội và giáo dục.	2026-06-05 09:59:50.838736	t	approved	2026-06-05 09:59:50.838736+07	2026-06-05 09:59:50.838736+07	63067d89-05de-4a11-9fe9-1fba5b52ea9e	2026-06-05 09:59:50.869047+07
-0c7c0175-304a-42ec-985c-13fd46a9dba8	34e079cb-e041-4085-9a31-a0782fdd5af8	hihi	chàoo	2026-06-05 10:07:37.421127	t	approved	2026-06-12 10:08:42.509966+07	2026-06-18 22:36:14.844029+07	63067d89-05de-4a11-9fe9-1fba5b52ea9e	2026-06-18 22:36:14.844029+07
 \.
 
 
@@ -2739,120 +2040,6 @@ fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	63067d89-05de-4a11-9fe9-1fba5b52ea9e	IELTS 
 --
 
 COPY public.usercollectionwords (id, collectionid, customword, custommeaning, customexample, addedat, updatedat) FROM stdin;
-42438c18-bc28-4927-9bd7-b1c6eb6df905	3bb2b53a-6723-498d-bc1f-174bc86b118b	greeting	lời chào	A friendly greeting can start a good conversation.	2026-06-05 09:59:50.722521	2026-06-05 09:59:50.722521+07
-0d17b1a8-f523-4321-9ea0-208e72c4daea	3bb2b53a-6723-498d-bc1f-174bc86b118b	appointment	cuộc hẹn	I have a doctor appointment at three oclock.	2026-06-05 09:59:50.725607	2026-06-05 09:59:50.725607+07
-8ea6c92d-8066-4709-a30a-706ffc473c2f	3bb2b53a-6723-498d-bc1f-174bc86b118b	schedule	lịch trình	My schedule is full this morning.	2026-06-05 09:59:50.7306	2026-06-05 09:59:50.7306+07
-f520c223-7daf-41bb-bbbc-0e1ef0d69831	3bb2b53a-6723-498d-bc1f-174bc86b118b	nearby	ở gần đây	Is there a pharmacy nearby?	2026-06-05 09:59:50.733532	2026-06-05 09:59:50.733532+07
-f656ef07-d966-4954-92f4-c75beb372430	3bb2b53a-6723-498d-bc1f-174bc86b118b	available	có sẵn, rảnh	Are you available after lunch?	2026-06-05 09:59:50.736122	2026-06-05 09:59:50.736122+07
-79ab8cb1-c1d2-4bab-b6d9-7e6fbfc0035c	3bb2b53a-6723-498d-bc1f-174bc86b118b	prefer	thích hơn	I prefer tea to coffee.	2026-06-05 09:59:50.738213	2026-06-05 09:59:50.738213+07
-40526b48-6424-43f0-bca1-f9bc6d24e2ed	3bb2b53a-6723-498d-bc1f-174bc86b118b	usually	thường xuyên	I usually wake up at six thirty.	2026-06-05 09:59:50.740126	2026-06-05 09:59:50.740126+07
-00fa7db2-ddba-4d09-9021-16add9aaad7e	3bb2b53a-6723-498d-bc1f-174bc86b118b	borrow	mượn	Can I borrow your pen for a minute?	2026-06-05 09:59:50.742597	2026-06-05 09:59:50.742597+07
-56cfd7b5-566f-424c-a6cc-df72d22e1e6f	3bb2b53a-6723-498d-bc1f-174bc86b118b	receipt	hóa đơn	Please keep the receipt.	2026-06-05 09:59:50.74656	2026-06-05 09:59:50.74656+07
-b1ae5327-8393-4417-8076-4c9193dbb710	3bb2b53a-6723-498d-bc1f-174bc86b118b	crowded	đông đúc	The bus is crowded today.	2026-06-05 09:59:50.74932	2026-06-05 09:59:50.74932+07
-13e2bb30-ce0a-4abe-aaa5-f30bcc22cf7f	3bb2b53a-6723-498d-bc1f-174bc86b118b	polite	lịch sự	It is polite to say thank you.	2026-06-05 09:59:50.751298	2026-06-05 09:59:50.751298+07
-a2805afb-65c9-409d-8ade-ca78ad101647	3bb2b53a-6723-498d-bc1f-174bc86b118b	remind	nhắc nhở	Please remind me to call Anna.	2026-06-05 09:59:50.753251	2026-06-05 09:59:50.753251+07
-db9e21c4-4cbe-4ff3-9956-2a879aa66655	878650b5-f646-4c01-b91a-a2b2fdf963b1	reservation	sự đặt chỗ	We have a reservation for two nights.	2026-06-05 09:59:50.759062	2026-06-05 09:59:50.759062+07
-8b264739-5a3b-49d1-aab0-f38cd1e37152	878650b5-f646-4c01-b91a-a2b2fdf963b1	luggage	hành lý	My luggage is near the taxi.	2026-06-05 09:59:50.762382	2026-06-05 09:59:50.762382+07
-50719b07-c7aa-4778-9948-489885e7bff2	878650b5-f646-4c01-b91a-a2b2fdf963b1	boarding pass	thẻ lên máy bay	Please show your boarding pass at the gate.	2026-06-05 09:59:50.765264	2026-06-05 09:59:50.765264+07
-e740a447-5680-4595-81a6-19bd3e2d9a7f	878650b5-f646-4c01-b91a-a2b2fdf963b1	delay	sự chậm trễ, trì hoãn	The flight has a short delay.	2026-06-05 09:59:50.7671	2026-06-05 09:59:50.7671+07
-9be5b340-bcf0-42cd-acfe-534af449ae7e	878650b5-f646-4c01-b91a-a2b2fdf963b1	cancel	hủy	I need to cancel my booking.	2026-06-05 09:59:50.769109	2026-06-05 09:59:50.769109+07
-8180a15f-a125-4862-b854-937bf7b90c2c	878650b5-f646-4c01-b91a-a2b2fdf963b1	entrance fee	phí vào cửa	The entrance fee is five dollars.	2026-06-05 09:59:50.771151	2026-06-05 09:59:50.771151+07
-f8ce8ee7-b5d3-4a77-907d-6c305f448abc	878650b5-f646-4c01-b91a-a2b2fdf963b1	itinerary	lịch trình chuyến đi	Our itinerary includes three cities.	2026-06-05 09:59:50.773045	2026-06-05 09:59:50.773045+07
-4eafa4d3-d6d7-4f0b-b146-bbf38b1282fc	878650b5-f646-4c01-b91a-a2b2fdf963b1	directions	chỉ dẫn đường đi	Can you give me directions to the station?	2026-06-05 09:59:50.774749	2026-06-05 09:59:50.774749+07
-5c6a932a-b2fa-4112-af36-023f66a95f94	878650b5-f646-4c01-b91a-a2b2fdf963b1	exchange	đổi, trao đổi	Where can I exchange money?	2026-06-05 09:59:50.777099	2026-06-05 09:59:50.777099+07
-fa20fdb7-72e8-4120-ad95-2607d4cba0c4	878650b5-f646-4c01-b91a-a2b2fdf963b1	recommend	giới thiệu, đề xuất	Can you recommend a local restaurant?	2026-06-05 09:59:50.780963	2026-06-05 09:59:50.780963+07
-f1ace5ff-5574-44c0-8069-452120143cc9	878650b5-f646-4c01-b91a-a2b2fdf963b1	single room	phòng đơn	I booked a single room for tonight.	2026-06-05 09:59:50.782905	2026-06-05 09:59:50.782905+07
-12ac9192-6928-4c0f-9462-f917d78b348a	878650b5-f646-4c01-b91a-a2b2fdf963b1	customer service	dịch vụ khách hàng	Customer service helped me change the ticket.	2026-06-05 09:59:50.784926	2026-06-05 09:59:50.784926+07
-017b9933-3906-4863-a576-5361b70eed2a	72a27d3e-3c8f-4978-b142-4392b45cfc04	deadline	hạn chót	The deadline for the report is Friday.	2026-06-05 09:59:50.790669	2026-06-05 09:59:50.790669+07
-34a57f49-56d1-4255-b4cd-63727d16dca4	72a27d3e-3c8f-4978-b142-4392b45cfc04	assignment	bài tập được giao	The teacher gave us a writing assignment.	2026-06-05 09:59:50.792576	2026-06-05 09:59:50.792576+07
-28630f28-2998-44f1-bf54-50d0126572dd	72a27d3e-3c8f-4978-b142-4392b45cfc04	attend	tham dự	I will attend the meeting online.	2026-06-05 09:59:50.79623	2026-06-05 09:59:50.79623+07
-eb479fba-1847-4968-9ccf-5594c5490e5d	72a27d3e-3c8f-4978-b142-4392b45cfc04	submit	nộp	Please submit your homework before midnight.	2026-06-05 09:59:50.817681	2026-06-05 09:59:50.817681+07
-66a59bc6-a1e5-4964-880c-5590a79a29cc	72a27d3e-3c8f-4978-b142-4392b45cfc04	colleague	đồng nghiệp	My colleague helped me prepare the slides.	2026-06-05 09:59:50.819635	2026-06-05 09:59:50.819635+07
-93ec78b2-d9ae-46a6-a297-fa7f87128c4b	72a27d3e-3c8f-4978-b142-4392b45cfc04	presentation	bài thuyết trình	Her presentation was clear and confident.	2026-06-05 09:59:50.821544	2026-06-05 09:59:50.821544+07
-3dd84225-bdb9-40de-b3e4-419ad9304120	72a27d3e-3c8f-4978-b142-4392b45cfc04	research	nghiên cứu	We need more research before making a decision.	2026-06-05 09:59:50.823535	2026-06-05 09:59:50.823535+07
-b7da0d2c-dc54-4456-9003-7b41758884a8	72a27d3e-3c8f-4978-b142-4392b45cfc04	feedback	phản hồi	The manager gave useful feedback.	2026-06-05 09:59:50.82535	2026-06-05 09:59:50.82535+07
-1b9579ec-0b2e-40a9-aec3-255388f399d7	72a27d3e-3c8f-4978-b142-4392b45cfc04	priority	việc ưu tiên	Improving speaking is my priority this month.	2026-06-05 09:59:50.828135	2026-06-05 09:59:50.828135+07
-1a360752-a0c4-4381-b905-f34d673c9b6f	72a27d3e-3c8f-4978-b142-4392b45cfc04	requirement	yêu cầu	The course has a final project requirement.	2026-06-05 09:59:50.831378	2026-06-05 09:59:50.831378+07
-07b75902-6c4a-44be-8ed1-fa6642a3335f	72a27d3e-3c8f-4978-b142-4392b45cfc04	progress	tiến độ	I can see progress after two weeks.	2026-06-05 09:59:50.833503	2026-06-05 09:59:50.833503+07
-962fa159-2b5c-4368-9307-338ace80098e	72a27d3e-3c8f-4978-b142-4392b45cfc04	improve	cải thiện	Practice helps you improve your pronunciation.	2026-06-05 09:59:50.835541	2026-06-05 09:59:50.835541+07
-9faccd99-5853-46e7-b5b4-148b3560d46e	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	sustainable	bền vững	Cities need sustainable transport systems.	2026-06-05 09:59:50.841358	2026-06-05 09:59:50.841358+07
-8f0bbb3b-793b-4546-9ec8-65456859b3ae	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	emissions	khí thải	Car emissions can harm air quality.	2026-06-05 09:59:50.843201	2026-06-05 09:59:50.843201+07
-c5e49181-5f54-4199-a575-460a4862ed1a	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	conserve	bảo tồn, tiết kiệm	We should conserve water during dry seasons.	2026-06-05 09:59:50.847593	2026-06-05 09:59:50.847593+07
-34dc9ac3-af3a-4f9c-8cbc-648148ee135d	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	impact	tác động	Technology has a major impact on education.	2026-06-05 09:59:50.849807	2026-06-05 09:59:50.849807+07
-62edee37-0b95-4c1c-ac83-4598be4a4ffd	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	evidence	bằng chứng	The report provides clear evidence.	2026-06-05 09:59:50.851632	2026-06-05 09:59:50.851632+07
-e72d62e4-3bc9-41f9-9001-8b6658324eeb	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	policy	chính sách	The new policy supports online learning.	2026-06-05 09:59:50.853364	2026-06-05 09:59:50.853364+07
-3d54a9d0-13ac-4574-8580-afb44c00876c	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	shortage	sự thiếu hụt	Some areas have a shortage of clean water.	2026-06-05 09:59:50.855424	2026-06-05 09:59:50.855424+07
-7ef20eda-379f-4d94-8e7e-86ad04e5e872	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	significant	đáng kể, quan trọng	There was a significant increase in sales.	2026-06-05 09:59:50.857473	2026-06-05 09:59:50.857473+07
-bc6e82a0-8f73-4441-9958-8b5651dc7342	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	reliable	đáng tin cậy	Students need reliable information sources.	2026-06-05 09:59:50.859491	2026-06-05 09:59:50.859491+07
-e9c1e01c-e179-4b61-ac49-7191f0516b9b	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	challenge	thách thức	Time management is a common challenge.	2026-06-05 09:59:50.863171	2026-06-05 09:59:50.863171+07
-879a4f80-3b05-4267-ba14-0f6202b2c62a	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	factor	yếu tố	Cost is an important factor for many families.	2026-06-05 09:59:50.866087	2026-06-05 09:59:50.866087+07
-6b7c9477-e8e0-45cb-86da-68883948225d	fbee136d-1a3a-41d9-bd87-c8b32c65b1bf	solution	giải pháp	Public transport can be part of the solution.	2026-06-05 09:59:50.867986	2026-06-05 09:59:50.867986+07
-b3b10733-7b91-4d12-b312-ae410c2b1db1	0c7c0175-304a-42ec-985c-13fd46a9dba8	hi	chào	\N	2026-06-05 10:19:49.561246	2026-06-05 10:19:49.561246+07
-bbde9709-e287-411c-ae51-26bc3a63b6f8	0c7c0175-304a-42ec-985c-13fd46a9dba8	chicken	con gà	\N	2026-06-05 10:20:00.237382	2026-06-05 10:20:00.237382+07
-9292374b-0270-4ee0-95b4-65b0f3766dc4	0c7c0175-304a-42ec-985c-13fd46a9dba8	eafewfewe	test	\N	2026-06-05 10:20:11.170712	2026-06-05 10:20:11.170712+07
-3b2c9ec0-13af-4fd4-bfcc-cdba5c9df272	0c7c0175-304a-42ec-985c-13fd46a9dba8	.	.	\N	2026-06-05 10:20:21.249701	2026-06-05 10:20:23.924667+07
-3a40685c-cc27-4efa-8c39-5728e5472211	0c7c0175-304a-42ec-985c-13fd46a9dba8	foundation	thành lập,sáng lập; tổ chức; sự thành lập; Sự thành lập	The foundation of his institute has been wrought with difficulty.	2026-06-12 10:08:42.489563	2026-06-12 10:08:42.489563+07
-\.
-
-
---
--- Data for Name: usererrorevents; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.usererrorevents (id, userid, skill, activitytype, referencetype, referenceid, errortype, errorkey, severity, prompt, useranswer, expectedanswer, feedback, metadata, createdat) FROM stdin;
-83e43233-37fc-4919-9b07-2036011e09e0	7c142186-bdf1-4dd8-b174-5884468ae26a	listening	listening_comprehension	listening_question	4d4d168b-58fb-4681-bd76-f320268af0ff	multiple_choice	listening_multiple_choice	5	What is the conversation mainly about?	A bus ticket	Morning routines	Anna and Ben talk about waking up, breakfast, and going out in the morning.	{"score": 0, "lessonId": "bd620079-7933-41f4-a825-bbae50ab23c7", "completed": false}	2026-05-24 14:13:07.148824
-a8a985b2-5f23-4dee-9035-961abb14bc5d	7c142186-bdf1-4dd8-b174-5884468ae26a	listening	listening_comprehension	listening_question	ad0ebb3c-8467-4c13-a904-39c530f04a90	true_false	listening_true_false	5	Ben catches the bus at seven fifteen.	false	true	Ben says he catches the bus at seven fifteen.	{"score": 0, "lessonId": "bd620079-7933-41f4-a825-bbae50ab23c7", "completed": false}	2026-05-24 14:13:07.163827
-5fe656fe-5d6c-4008-9a4b-e7f69b05bd96	7c142186-bdf1-4dd8-b174-5884468ae26a	listening	listening_comprehension	listening_question	1d7c3f57-2f8d-40fc-b383-8cbb2e9171b3	fill_blank	listening_fill_blank	5	Anna drinks coffee and reads the ____.	sds	news	The missing word is "news".	{"score": 0, "lessonId": "bd620079-7933-41f4-a825-bbae50ab23c7", "completed": false}	2026-05-24 14:13:07.167983
-5d3b3284-72c8-4d5b-ae03-ae0473a6ffab	7c142186-bdf1-4dd8-b174-5884468ae26a	reading	reading_comprehension	reading_question	285dd15c-e630-4d7a-863a-a0c176a99e08	multiple_choice	reading_multiple_choice	5	1	4	6	7	{"score": 25, "lessonId": "873d0162-3e45-4a54-9b86-5bddd9cc54f4", "completed": false}	2026-05-24 14:14:19.930819
-170cb4cd-2fe5-4a99-a073-7797b82e19e1	7c142186-bdf1-4dd8-b174-5884468ae26a	reading	reading_comprehension	reading_question	e54fd0b6-0d91-402c-ba58-827dc892ce9b	true_false	reading_true_false	5	A healthy breakfast must be complicated.	true	false	The passage says a healthy breakfast does not need to be complicated.	{"score": 25, "lessonId": "873d0162-3e45-4a54-9b86-5bddd9cc54f4", "completed": false}	2026-05-24 14:14:19.943016
-3a884df8-801d-4031-ad3c-42a8e8e65b78	7c142186-bdf1-4dd8-b174-5884468ae26a	reading	reading_comprehension	reading_question	17fb01c1-336a-4d21-a76a-3346c85e05ca	fill_blank	reading_fill_blank	5	It is better to drink water or ____ instead of sweet drinks.	sds	milk	The final paragraph mentions water or milk.	{"score": 25, "lessonId": "873d0162-3e45-4a54-9b86-5bddd9cc54f4", "completed": false}	2026-05-24 14:14:19.947467
-357e62e9-9706-4a0c-8347-802c0388b73c	7c142186-bdf1-4dd8-b174-5884468ae26a	writing	writing_check	writing_exercise	ec47499f-c5a0-4392-9f83-efd484dd8668	writing_accuracy	cau_viet_chua_at_o_chinh_xac	5	Tháng trước, lớp tôi tham gia một cuộc thi nói tiếng Anh ở trường.	sdsdsd	Last month, my class joined an English speaking contest at school.	Chưa đủ chính xác, hãy xem lại đáp án nhé.	{"score": 6, "source": "similarity", "lessonId": "a1775087-7de6-46f1-89db-012fac05246b", "exerciseId": "ec47499f-c5a0-4392-9f83-efd484dd8668", "grammarNotes": [], "correctedText": "Last month, my class joined an English speaking contest at school.", "naturalnessNotes": []}	2026-05-24 14:14:33.308635
-d7d3b88e-958e-4262-ac74-4e420337fc40	7c142186-bdf1-4dd8-b174-5884468ae26a	grammar	grammar_quiz	grammar_quiz	30faf047-71f8-48fd-9842-71b46204adfc	grammar_topic	ong_tu_khuyet_thieu_can_could_must_should_may_might	4	It's Sunday. I ___ go to work today.	D	B	= Không cần đi làm (vì Chủ nhật). don't have to = không cần.	{"topicId": "ae1a29d5-7711-46ff-bfed-f66c51979174", "categoryId": 42, "topicTitle": "Modal Verbs", "topicTitleVI": "Động từ khuyết thiếu: can, could, must, should, may, might"}	2026-05-24 14:15:36.58407
-34e0a17e-34c9-4454-a98b-b152eac61d50	7c142186-bdf1-4dd8-b174-5884468ae26a	grammar	grammar_quiz	grammar_quiz	9c55d75a-a4b0-4f7b-a2a9-450c548174b5	grammar_topic	ong_tu_khuyet_thieu_can_could_must_should_may_might	4	___ I use your phone, please?	B	C	Xin phép lịch sự → May I...?	{"topicId": "ae1a29d5-7711-46ff-bfed-f66c51979174", "categoryId": 42, "topicTitle": "Modal Verbs", "topicTitleVI": "Động từ khuyết thiếu: can, could, must, should, may, might"}	2026-05-24 14:15:36.597531
-fe9a4bdb-c1fa-4fad-b0ea-4027b8b30bc1	7c142186-bdf1-4dd8-b174-5884468ae26a	grammar	grammar_quiz	grammar_quiz	5fd4ee9c-4b20-4169-8b71-a9f4919c7c15	grammar_topic	ong_tu_khuyet_thieu_can_could_must_should_may_might	4	She ___ be at home. Her car is in the driveway.	C	A	Suy đoán chắc chắn (có bằng chứng: xe đỗ ở đó) → must.	{"topicId": "ae1a29d5-7711-46ff-bfed-f66c51979174", "categoryId": 42, "topicTitle": "Modal Verbs", "topicTitleVI": "Động từ khuyết thiếu: can, could, must, should, may, might"}	2026-05-24 14:15:36.602504
-9017f2d6-3f73-4df1-b68e-38aab37813c5	7c142186-bdf1-4dd8-b174-5884468ae26a	grammar	grammar_quiz	grammar_quiz	874334c2-36d9-4c81-9f48-1afaeaf513ae	grammar_topic	gioi_tu_chi_thoi_gian_in_on_at_va_noi_chon	4	She was born ___ 1995.	A	B	Năm → in.	{"topicId": "d773bd1b-24cd-4d51-9fad-bd84fa4cb41a", "categoryId": 46, "topicTitle": "Prepositions of Time & Place", "topicTitleVI": "Giới từ chỉ thời gian (in, on, at) và nơi chốn"}	2026-05-24 14:16:11.760537
-71e8e6f7-54eb-473c-9d11-c9efe835460c	7c142186-bdf1-4dd8-b174-5884468ae26a	grammar	grammar_quiz	grammar_quiz	0ac3241c-122c-4171-aed9-92d2ba0ed238	grammar_topic	gioi_tu_chi_thoi_gian_in_on_at_va_noi_chon	4	The meeting is ___ Monday ___ 9 AM.	C	B	Thứ → on. Giờ → at.	{"topicId": "d773bd1b-24cd-4d51-9fad-bd84fa4cb41a", "categoryId": 46, "topicTitle": "Prepositions of Time & Place", "topicTitleVI": "Giới từ chỉ thời gian (in, on, at) và nơi chốn"}	2026-05-24 14:16:11.771435
-faeceba8-6497-40fa-9527-dfcadc0fb8ff	7c142186-bdf1-4dd8-b174-5884468ae26a	grammar	grammar_quiz	grammar_quiz	908ba7f3-471f-474b-addb-661b3f409cc5	grammar_topic	gioi_tu_chi_thoi_gian_in_on_at_va_noi_chon	4	There is a picture ___ the wall.	D	B	Trên bề mặt tường → on the wall.	{"topicId": "d773bd1b-24cd-4d51-9fad-bd84fa4cb41a", "categoryId": 46, "topicTitle": "Prepositions of Time & Place", "topicTitleVI": "Giới từ chỉ thời gian (in, on, at) và nơi chốn"}	2026-05-24 14:16:11.774833
-0b682551-9fa3-4395-9f09-2cfb09389654	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-2	speaking_accuracy	unsportsmanlike	4	Why did the referee give a yellow card?	for unspoken man-gly's behavior.	For unsportsmanlike behavior	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: unsportsmanlike.	{"score": 56, "lessonId": "41c60189-522a-4c29-83ce-9ec076f96648", "threshold": 80, "extraWords": ["unspoken", "man", "gly's"], "questionId": "ai-q-2", "missingWords": ["unsportsmanlike"]}	2026-05-24 21:06:42.983907
-03250330-22fe-41a0-ab7d-f4a75148ee7e	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-2	speaking_accuracy	foul	4	Why did the referee give a yellow card?	Saw a minor fall.	For a minor foul	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: foul.	{"score": 53, "lessonId": "41c60189-522a-4c29-83ce-9ec076f96648", "threshold": 80, "extraWords": ["saw", "fall"], "questionId": "ai-q-2", "missingWords": ["foul"]}	2026-05-24 21:07:02.264983
-17db10b1-1739-4fa0-8495-884836dfee77	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-2	speaking_accuracy	foul	3	Why did the referee give a yellow card?	For a minor part.	For a minor foul	Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự. Cần chú ý: foul.	{"score": 68, "lessonId": "41c60189-522a-4c29-83ce-9ec076f96648", "threshold": 80, "extraWords": ["part"], "questionId": "ai-q-2", "missingWords": ["foul"]}	2026-05-24 21:07:15.54005
-3ed27d1c-2086-4646-af80-ce0852aac0e6	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-2	speaking_accuracy	foul	3	Why did the referee give a yellow card?	For a minor fall	For a minor foul	Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự. Cần chú ý: foul.	{"score": 68, "lessonId": "41c60189-522a-4c29-83ce-9ec076f96648", "threshold": 80, "extraWords": ["fall"], "questionId": "ai-q-2", "missingWords": ["foul"]}	2026-05-24 21:07:35.430764
-d9fcaed7-83c4-46f5-9eef-a8e3d5e5c0a5	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-4	speaking_accuracy	will	4	What's the coach's strategy for the second half?	We focus on the face.	We'll focus on defense	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: will, defense.	{"score": 59, "lessonId": "41c60189-522a-4c29-83ce-9ec076f96648", "threshold": 80, "extraWords": ["face"], "questionId": "ai-q-4", "missingWords": ["will", "defense"]}	2026-05-24 21:08:27.942799
-b3ef27a1-89bc-4fc1-bd08-5bfc41b33dd5	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-6	speaking_accuracy	first	4	What's the team's current ranking?	We are close please.	We're in first place	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: first, place.	{"score": 48, "lessonId": "41c60189-522a-4c29-83ce-9ec076f96648", "threshold": 80, "extraWords": ["close", "please"], "questionId": "ai-q-6", "missingWords": ["first", "place"]}	2026-05-24 21:09:06.91887
-ce812c9b-4a7f-4d89-bd70-959ba7f1c339	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-6	speaking_accuracy	last	3	What's the team's current ranking?	We are in the next place.	We're in last place	Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự. Cần chú ý: last.	{"score": 77, "lessonId": "41c60189-522a-4c29-83ce-9ec076f96648", "threshold": 80, "extraWords": ["next"], "questionId": "ai-q-6", "missingWords": ["last"]}	2026-05-24 21:09:18.578567
-3febc98b-c61b-4fe6-8dd7-a508843c53ae	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-6	speaking_accuracy	we	5	What's the team's current ranking?	Where is the next place?	We're in last place	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: we, are, last.	{"score": 29, "lessonId": "41c60189-522a-4c29-83ce-9ec076f96648", "threshold": 80, "extraWords": ["where", "is", "next"], "questionId": "ai-q-6", "missingWords": ["we", "are", "last"]}	2026-05-24 21:09:29.977603
-8b856cd3-4b29-4193-a739-e17ffe4e9332	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-7	speaking_accuracy	it	5	Can you describe the stadium?	is the best modern studio.	It's a big, modern stadium	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: it, big, stadium.	{"score": 41, "lessonId": "41c60189-522a-4c29-83ce-9ec076f96648", "threshold": 80, "extraWords": ["best", "studio"], "questionId": "ai-q-7", "missingWords": ["it", "big", "stadium"]}	2026-05-24 21:09:52.669382
-174f3916-98c0-4dd4-b9cc-13de8fdd9b54	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-7	speaking_accuracy	it	5	Can you describe the stadium?	Isman, Australia	It's a small, old stadium	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: it, is, small, old, stadium.	{"score": 3, "lessonId": "41c60189-522a-4c29-83ce-9ec076f96648", "threshold": 80, "extraWords": ["isman", "australia"], "questionId": "ai-q-7", "missingWords": ["it", "is", "small", "old", "stadium"]}	2026-05-24 21:10:04.320681
-3a2a9c0f-84e7-48b2-aa4f-4c8b6dd8441f	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-1	speaking_accuracy	your	4	What do you like about me?	Y'all smiley.	Your smile	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: your.	{"score": 46, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["y'all"], "questionId": "ai-q-1", "missingWords": ["your"]}	2026-05-24 21:11:20.86213
-d0bb7903-74db-4afe-96b4-92946df6b55a	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-1	speaking_accuracy	your	5	What do you like about me?	Josh Miley	Your smile	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: your, smile.	{"score": 8, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["josh", "miley"], "questionId": "ai-q-1", "missingWords": ["your", "smile"]}	2026-05-24 21:11:31.900881
-19bbf855-fb5a-46b1-92d9-8008b4813e59	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-3	speaking_accuracy	go	4	What do you like to do on dates?	Roto a movie.	Go to a movie	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: go.	{"score": 53, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["roto"], "questionId": "ai-q-3", "missingWords": ["go"]}	2026-05-24 21:12:03.622023
-c0f1cce1-4f82-45a6-98a6-c2835853f4e5	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-3	speaking_accuracy	try	5	What do you like to do on dates?	So I do rest.	Try a new restaurant	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: try, new, restaurant.	{"score": 8, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["so", "i", "do", "rest"], "questionId": "ai-q-3", "missingWords": ["try", "new", "restaurant"]}	2026-05-24 21:12:14.162905
-7ff731a8-4233-4a14-8647-0366ba5a9ba5	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-3	speaking_accuracy	try	3	What do you like to do on dates?	So I a new restaurant.	Try a new restaurant	Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự. Cần chú ý: try.	{"score": 70, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["so", "i"], "questionId": "ai-q-3", "missingWords": ["try"]}	2026-05-24 21:12:26.568342
-025a6540-33a4-491a-9a11-2a4b08d47222	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-3	speaking_accuracy	try	5	What do you like to do on dates?	Go for a walk.	Try a new restaurant	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: try, new, restaurant.	{"score": 20, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["go", "walk"], "questionId": "ai-q-3", "missingWords": ["try", "new", "restaurant"]}	2026-05-24 21:12:36.154959
-505bd5e5-17ac-44ad-bc9e-c56e3e5ccf90	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-4	speaking_accuracy	them	3	Do you like romantic getaways?	Yes, I love love.	Yes, I love them	Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự. Cần chú ý: them.	{"score": 77, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["love"], "questionId": "ai-q-4", "missingWords": ["them"]}	2026-05-24 21:12:57.19949
-e0691c41-0028-4126-8139-c535682dffd9	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-4	speaking_accuracy	i	4	Do you like romantic getaways?	Yes, and the turn.	Yes, I love them	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: i, love.	{"score": 50, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["turn"], "questionId": "ai-q-4", "missingWords": ["i", "love"]}	2026-05-24 21:13:05.508046
-38294214-fb9b-4eba-b148-11e681ca6708	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-7	speaking_accuracy	go	3	What do you like to do on a first date?	We're to a coffee shop.	Go to a coffee shop	Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự. Cần chú ý: go.	{"score": 73, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["we", "are"], "questionId": "ai-q-7", "missingWords": ["go"]}	2026-05-24 21:15:20.550755
-cfe98a7b-3cb2-459e-82a9-21f27b2204cc	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-7	speaking_accuracy	go	5	What do you like to do on a first date?	Hello, Joe Amusea.	Go to a museum	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: go, museum.	{"score": 6, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["hello", "joe", "amusea"], "questionId": "ai-q-7", "missingWords": ["go", "museum"]}	2026-05-24 21:15:30.899284
-828d22ab-9d8a-41fd-ba7d-3d6516232469	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-7	speaking_accuracy	go	5	What do you like to do on a first date?	Take a walk in the park.	Go to a museum	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: go, museum.	{"score": 19, "lessonId": "d5373d1a-28da-4ba1-a22c-a8b447139d07", "threshold": 80, "extraWords": ["take", "walk", "park"], "questionId": "ai-q-7", "missingWords": ["go", "museum"]}	2026-05-24 21:15:39.565834
-51beb963-1eff-477a-b484-fd13ef64714e	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-2	speaking_accuracy	i	5	Can you make it stronger?	Yes, okay.	Yes, I can	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: i, can.	{"score": 37, "lessonId": "03ca82c7-fe72-4fdb-accd-1e751535b957", "threshold": 80, "extraWords": ["okay"], "questionId": "ai-q-2", "missingWords": ["i", "can"]}	2026-05-26 16:51:27.708526
-bf4b2eef-acc9-4b4c-a820-e221eadac092	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	f9b77c4d-e3d7-4df3-b29e-7f8a9c166774	speaking_accuracy	john	3	What is your name?	My name is Son.	My name is John.	Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự. Cần chú ý: john.	{"score": 77, "lessonId": "f7c7bb21-bfad-4d5f-9057-aa493a6a2116", "threshold": 80, "extraWords": ["son"], "questionId": "f9b77c4d-e3d7-4df3-b29e-7f8a9c166774", "missingWords": ["john"]}	2026-05-26 18:53:13.595407
-687b9501-87dd-41d1-bd59-c46e62c3fc0c	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	9447a5a9-b62e-4934-950c-a84663561683	speaking_accuracy	from	4	Tell me about yourself.	I am a student for all of it now.	I am a student from Vietnam.	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: from, vietnam.	{"score": 62, "lessonId": "d3c02bda-d397-43f2-8b34-305067ac0b6d", "threshold": 80, "extraWords": ["all", "it", "now"], "questionId": "9447a5a9-b62e-4934-950c-a84663561683", "missingWords": ["from", "vietnam"]}	2026-05-27 20:54:46.635068
-f7b97d27-9db0-47d3-85e2-571fec485699	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	9447a5a9-b62e-4934-950c-a84663561683	speaking_accuracy	work	5	Tell me about yourself.	I will come to teach him.	I work as a teacher.	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: work, as, teacher.	{"score": 27, "lessonId": "d3c02bda-d397-43f2-8b34-305067ac0b6d", "threshold": 80, "extraWords": ["will", "come", "teach", "him"], "questionId": "9447a5a9-b62e-4934-950c-a84663561683", "missingWords": ["work", "as", "teacher"]}	2026-05-27 20:54:59.253964
-5ef40cd1-5f21-4c50-b9ba-26bf61cd105f	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	9447a5a9-b62e-4934-950c-a84663561683	speaking_accuracy	love	4	Tell me about yourself.	I look travelling at Whitney.	I love traveling and reading.	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: love, reading.	{"score": 47, "lessonId": "d3c02bda-d397-43f2-8b34-305067ac0b6d", "threshold": 80, "extraWords": ["look", "whitney"], "questionId": "9447a5a9-b62e-4934-950c-a84663561683", "missingWords": ["love", "reading"]}	2026-05-27 20:55:09.471852
-987a540b-5124-4be1-8db9-3a9456eff895	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	9447a5a9-b62e-4934-950c-a84663561683	speaking_accuracy	reading	3	Tell me about yourself.	I love traveling and everything.	I love traveling and reading.	Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự. Cần chú ý: reading.	{"score": 79, "lessonId": "d3c02bda-d397-43f2-8b34-305067ac0b6d", "threshold": 80, "extraWords": ["everything"], "questionId": "9447a5a9-b62e-4934-950c-a84663561683", "missingWords": ["reading"]}	2026-05-27 20:55:18.007413
-ca6d0b6f-da15-43d4-a059-071c1a80f7ba	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	f9b77c4d-e3d7-4df3-b29e-7f8a9c166774	speaking_accuracy	sarah	3	What is your name?	I am Sean O'Hall.	I am Sarah.	Khá ổn, nhưng còn vài từ chưa rõ hoặc chưa đúng thứ tự. Cần chú ý: sarah.	{"score": 65, "lessonId": "f7c7bb21-bfad-4d5f-9057-aa493a6a2116", "threshold": 80, "extraWords": ["sean", "o'hall"], "questionId": "f9b77c4d-e3d7-4df3-b29e-7f8a9c166774", "missingWords": ["sarah"]}	2026-05-27 23:52:09.958694
-26d72a9d-162d-4017-aca0-12ddd935eedc	34e079cb-e041-4085-9a31-a0782fdd5af8	writing	writing_check	writing_exercise	f13e6609-0bdf-4465-a08e-2b750f9d4394	grammar	su_dung_my_name_is_e_gioi_thieu_ten_va_them_am_sau_i	3	Xin chào, tên tôi là Nam và tôi 25 tuổi.	Hi, i am Nam and I 25 years old	Hello, my name is Nam and I am 25 years old.	Bạn cần thêm từ 'hello' hoặc 'hi' ở đầu câu và sử dụng 'my name is' để giới thiệu tên. Ngữ pháp: Sử dụng 'my name is' để giới thiệu tên và thêm 'am' sau 'I'	{"score": 80, "source": "ai", "lessonId": "689823c2-883f-4eec-9dce-f93820865502", "exerciseId": "f13e6609-0bdf-4465-a08e-2b750f9d4394", "grammarNotes": ["Sử dụng 'my name is' để giới thiệu tên và thêm 'am' sau 'I'"], "correctedText": "Hello, my name is Nam and I am 25 years old.", "naturalnessNotes": []}	2026-05-27 23:52:52.376302
-6b194e08-6a88-488d-a260-cc996a3288a9	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-2	speaking_accuracy	five	5	How much is this?	Find all of us	Five dollars	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: five, dollars.	{"score": 4, "lessonId": "4313ca7c-e7f0-4776-a2f1-7201285e95d0", "threshold": 80, "extraWords": ["find", "all", "us"], "questionId": "ai-q-2", "missingWords": ["five", "dollars"]}	2026-05-28 00:31:24.964173
-bdc7cc43-9aba-43d5-8961-47e27a207094	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_pronunciation	speaking_question	ai-q-2	speaking_accuracy	three	5	How much is this?	Trace the mouse	Three dollars	Chưa chính xác lắm, hãy nghe mẫu và thử nói chậm, rõ từng cụm. Cần chú ý: three, dollars.	{"score": 5, "lessonId": "4313ca7c-e7f0-4776-a2f1-7201285e95d0", "threshold": 80, "extraWords": ["trace", "mouse"], "questionId": "ai-q-2", "missingWords": ["three", "dollars"]}	2026-05-28 00:31:36.206717
-c50a3f32-d80d-4893-865e-fd0e0b53d723	4fbfad70-0d7e-4b0a-9836-97fa708177a0	listening	listening_comprehension	listening_question	4d4d168b-58fb-4681-bd76-f320268af0ff	multiple_choice	listening_multiple_choice	5	What is the conversation mainly about?	Weekend plans	Morning routines	Anna and Ben talk about waking up, breakfast, and going out in the morning.	{"score": 33, "lessonId": "bd620079-7933-41f4-a825-bbae50ab23c7", "completed": false}	2026-05-29 09:04:42.775018
-a207d121-23c8-429c-9f53-e42afc388087	4fbfad70-0d7e-4b0a-9836-97fa708177a0	listening	listening_comprehension	listening_question	1d7c3f57-2f8d-40fc-b383-8cbb2e9171b3	fill_blank	listening_fill_blank	5	Anna drinks coffee and reads the ____.	ưqwdqw	news	The missing word is "news".	{"score": 33, "lessonId": "bd620079-7933-41f4-a825-bbae50ab23c7", "completed": false}	2026-05-29 09:04:42.89512
-b8584379-7b72-4215-9508-f5d8c1f506b3	4fbfad70-0d7e-4b0a-9836-97fa708177a0	listening	listening_comprehension	listening_question	1d7c3f57-2f8d-40fc-b383-8cbb2e9171b3	fill_blank	listening_fill_blank	3	Anna drinks coffee and reads the ____.	231	news	The missing word is "news".	{"score": 67, "lessonId": "bd620079-7933-41f4-a825-bbae50ab23c7", "completed": false}	2026-05-29 09:05:00.325484
-24d1cf52-587a-441b-81e1-fd5acffc4c25	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	game	mini_game	game_question	676e9351-ea3a-4dec-a09b-7c9f788a1af5	matching	game_matching	3	Apple	Nước	Apple	Đáp án đúng: Apple	{"passed": true, "levelId": "272f6249-9f90-4839-b660-f7fbc4e98927", "duration": 255, "scorePercent": 80}	2026-05-29 09:18:06.478084
-87267dee-0729-4097-9831-610319055616	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	game	mini_game	game_question	495d4e79-10d6-49b0-b889-d3934b11fdda	truefalse	game_truefalse	3	Cat	true	false	Đáp án đúng: false	{"passed": true, "levelId": "272f6249-9f90-4839-b660-f7fbc4e98927", "duration": 255, "scorePercent": 80}	2026-05-29 09:18:06.483572
-d74bf741-a0f7-452d-9698-fba31936732a	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	writing	writing_check	writing_exercise	f13e6609-0bdf-4465-a08e-2b750f9d4394	writing_accuracy	cau_viet_chua_at_o_chinh_xac	5	Xin chào, tên tôi là Nam và tôi 25 tuổi.	è	Hello, my name is Nam and I am 25 years old.	Chưa đủ chính xác, hãy xem lại đáp án nhé.	{"score": 0, "source": "similarity", "lessonId": "689823c2-883f-4eec-9dce-f93820865502", "exerciseId": "f13e6609-0bdf-4465-a08e-2b750f9d4394", "grammarNotes": [], "correctedText": "Hello, my name is Nam and I am 25 years old.", "naturalnessNotes": []}	2026-05-29 10:01:36.791423
-d2fdb957-bc61-43f6-a405-4136e3921f49	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	writing	writing_check	writing_exercise	66cb5b77-e581-4805-8bf2-ab69c96febde	grammar	tu_from_thuong_i_truoc_quoc_gia_con_live_in_thuong_i_sau_quoc_gia	4	Tôi đến từ Việt Nam nhưng hiện tại tôi sống ở Nhật Bản.	i live in Viet Nam but currently i live in Japan	I am from Vietnam but currently I live in Japan.	Sai cách sử dụng dấu câu và từ 'from' trong câu. Ngữ pháp: Từ 'from' thường đi trước quốc gia, còn 'live in' thường đi sau quốc gia.	{"score": 67, "source": "ai", "lessonId": "689823c2-883f-4eec-9dce-f93820865502", "exerciseId": "66cb5b77-e581-4805-8bf2-ab69c96febde", "grammarNotes": ["Từ 'from' thường đi trước quốc gia, còn 'live in' thường đi sau quốc gia."], "correctedText": "I am from Vietnam but currently I live in Japan.", "naturalnessNotes": []}	2026-05-29 10:02:38.073069
-15f2d307-b8d8-4a70-9dc7-e7e6e9f18563	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	game	mini_game	game_question	b5e41ef9-6fc1-4f64-860b-8d32e73007ff	truefalse	game_truefalse	3	Dogs can fly	true	false	Đáp án đúng: false	{"passed": true, "levelId": "013fdce3-0f74-4768-a98a-f512e26b0574", "duration": 40, "scorePercent": 90}	2026-05-29 10:28:10.099776
-7564ecbb-a175-4870-a298-7ae48fa2b90b	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	game	mini_game	game_question	0d0706f9-782d-4a81-8163-13a42a4bbd09	truefalse	game_truefalse	3	Paris is the capital of Germany	true	false	Đáp án đúng: false	{"passed": true, "levelId": "c6ad2ac8-29c2-4e8d-99e3-8542ac56410e", "duration": 62, "scorePercent": 90}	2026-05-29 10:29:15.699452
 \.
 
 
@@ -2861,24 +2048,10 @@ d2fdb957-bc61-43f6-a405-4136e3921f49	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	writin
 --
 
 COPY public.usergameprogress (id, userid, levelid, score, stars, iscompleted, besttime, attempts, completedat) FROM stdin;
-1eb4e935-5d36-4f66-bd8a-07f84407c817	3caa9c2a-cbcf-4d47-8949-1a1e6a987926	272f6249-9f90-4839-b660-f7fbc4e98927	70	2	t	75	1	2026-05-13 17:03:04.710961
-2f71b73c-3388-4d8a-ae32-7fc23235b774	7c142186-bdf1-4dd8-b174-5884468ae26a	c6ad2ac8-29c2-4e8d-99e3-8542ac56410e	80	2	t	52	1	2026-05-15 09:29:08.772861
-a4308e69-2cfc-4559-9bf0-6da0866b3fd5	7c142186-bdf1-4dd8-b174-5884468ae26a	c13eed73-58fc-4b72-8d11-0afc9232a2f9	60	1	t	60	1	2026-05-15 09:30:12.355892
-654bbe43-f3d1-4787-92e1-64821dfc3bf9	7c142186-bdf1-4dd8-b174-5884468ae26a	0f74d8a0-b845-4939-95fa-15cbe624b29f	70	2	t	45	2	2026-05-15 09:32:15.430794
-3985fc20-5928-4d2e-85d0-ba865e5a5bf9	34e079cb-e041-4085-9a31-a0782fdd5af8	272f6249-9f90-4839-b660-f7fbc4e98927	100	3	t	32	3	2026-05-18 16:17:37.460582
-fd895391-f64b-4f83-b2b7-73f77a989621	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	272f6249-9f90-4839-b660-f7fbc4e98927	80	2	t	255	1	2026-05-29 09:18:06.432268
-1f902d5a-9b4c-4d93-bedd-2370ebfbbc0b	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	c6ad2ac8-29c2-4e8d-99e3-8542ac56410e	90	3	t	62	1	2026-05-29 10:29:15.688647
-8fa8ffbe-fdbd-4cf6-8e80-93c528dc9ca0	34e079cb-e041-4085-9a31-a0782fdd5af8	013fdce3-0f74-4768-a98a-f512e26b0574	100	3	t	36	3	2026-06-16 21:50:18.856892
-92d336fc-6709-4688-aee9-e189bc19240a	5a708101-a917-4e6f-bf93-0a960a638577	c6ad2ac8-29c2-4e8d-99e3-8542ac56410e	100	3	t	73	1	2026-06-19 08:37:39.613535
-4bae94b6-bc84-4a04-940f-e5ab6c922b04	5a708101-a917-4e6f-bf93-0a960a638577	c13eed73-58fc-4b72-8d11-0afc9232a2f9	100	3	t	115	1	2026-06-19 08:40:28.576057
-b195f5e4-d83f-4b31-85e3-20f8859f212b	5a708101-a917-4e6f-bf93-0a960a638577	0f74d8a0-b845-4939-95fa-15cbe624b29f	100	3	t	83	1	2026-06-19 08:41:58.286806
-8980b1f0-f66a-407b-b30a-2eabb61a97aa	5d533fb3-8bab-4e32-8a70-2fd3d523e378	272f6249-9f90-4839-b660-f7fbc4e98927	0	0	f	121	2	\N
-811d71bf-5e05-418c-a8d5-1095dd99cf68	5a708101-a917-4e6f-bf93-0a960a638577	013fdce3-0f74-4768-a98a-f512e26b0574	100	3	t	44	7	2026-06-19 08:36:22.857412
-b7ce0f7f-627b-4310-b03d-dbdd09866d26	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	013fdce3-0f74-4768-a98a-f512e26b0574	90	3	t	34	2	2026-05-29 10:28:09.851394
-949d446a-a2ed-41af-b26a-7293ee1b5f52	7c142186-bdf1-4dd8-b174-5884468ae26a	272f6249-9f90-4839-b660-f7fbc4e98927	100	3	t	29	5	2026-05-13 18:34:25.835721
-fca2e33d-34ad-40dc-8fc1-7ed330196e23	7c142186-bdf1-4dd8-b174-5884468ae26a	013fdce3-0f74-4768-a98a-f512e26b0574	80	2	t	41	5	2026-05-14 23:58:10.866925
-a4f71d94-08f5-4493-b53c-b48945f1f783	5a708101-a917-4e6f-bf93-0a960a638577	272f6249-9f90-4839-b660-f7fbc4e98927	100	3	t	28	9	2026-06-19 08:20:38.600513
-7cf42018-4891-4409-957d-833c20dc8d8e	5a708101-a917-4e6f-bf93-0a960a638577	146f267b-a919-48cb-bcb8-bd2b72042a41	75	2	f	65	5	\N
+10000000-0000-4000-8000-000000000101	00000000-0000-4000-8000-000000000101	146f267b-a919-48cb-bcb8-bd2b72042a41	72	2	t	54	2	2026-07-01 18:00:00
+10000000-0000-4000-8000-000000000102	00000000-0000-4000-8000-000000000102	146f267b-a919-48cb-bcb8-bd2b72042a41	91	3	t	39	2	2026-07-01 18:05:00
+10000000-0000-4000-8000-000000000103	00000000-0000-4000-8000-000000000103	146f267b-a919-48cb-bcb8-bd2b72042a41	100	3	t	31	1	2026-07-01 18:10:00
+10000000-0000-4000-8000-000000000104	00000000-0000-4000-8000-000000000103	2ef484dc-eba4-4c72-bb6d-93e22387ea22	96	3	t	34	1	2026-07-01 18:15:00
 \.
 
 
@@ -2887,33 +2060,11 @@ a4f71d94-08f5-4493-b53c-b48945f1f783	5a708101-a917-4e6f-bf93-0a960a638577	272f62
 --
 
 COPY public.users (id, username, email, passwordhash, role, levelid, isactive, createdat, plan, plusexpiresat, avatarurl, onboardingcompleted, placementlevel, placementsource, placementcompletedat) FROM stdin;
-63067d89-05de-4a11-9fe9-1fba5b52ea9e	superadmin	superadmin@system.com	$2a$10$ky8AGBo.xvidPAN79So9GOWk5ne6z3BhSOnm5TUomsKDmDUrwQPN.	superadmin	\N	t	2026-05-11 18:40:55.960678	free	\N	\N	t	basic	legacy	2026-06-12 09:22:58.353466+07
-212f41f2-9c73-4550-9baf-03116c6ce289	iii	iii@gmail.com	$2a$10$zTXiEVVufaXt2s0.5lU9VOb/twyVYpppieZkIoptppGbs97MpOk6a	user	\N	t	2026-06-12 09:38:25.788062	free	\N	\N	t	basic	test	2026-06-12 09:45:33.931+07
-3b7eda8e-0bc1-4c47-bf69-6ccebb484d4a	philong123	philong123@gmail.com	$2a$10$C01wgbKekKGueI9mGxy97ucVV9ggZOzNGP7M7qyAkFrqw6J9vVjVC	user	\N	t	2026-06-12 10:32:37.56889	free	\N	\N	t	basic	test	2026-06-12 10:34:49.288+07
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	philong	culitete@gmail.com	$2a$10$.OrVNcBONA8Mjn1a8FCY7./wRZmtcuCybNDkUBcWNbL4Js3bodlRm	user	\N	t	2026-05-11 10:37:31.936624	free	\N	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-e9a6c3ce-b579-4775-9b5b-70641dbb47cd	qwe	qwe@gmail.com	$2a$10$3rG7ZoHF8mG4pSQM5hf6gONsJupq7zmGymGbXuse5v7UcXfZFSJAC	admin	\N	t	2026-05-13 11:52:40.540308	plus	2026-06-12 11:53:10.503328	\N	t	basic	legacy	2026-06-12 09:22:58.353466+07
-22227f57-0aa9-4da0-b6ac-cfd00110b514	testuser_gemini	testuser_gemini@example.com	$2a$10$C7hAmcq0OG.anoJycEN2P.V9kiVN9lmQxcElLZfLz0EqQpzSS2ouu	user	\N	t	2026-05-11 10:57:55.45399	free	\N	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-9d4376dd-f532-418c-ad64-5d4861c2271c	philongg	123@gmail.com	$2a$10$kNlPcMW.v7PA0H2Oc3b6JezrqYaY6NUXwRIQUgOtdZg4AYHH45dnW	user	\N	t	2026-05-13 11:01:09.595934	plus	2026-06-12 11:03:48.383128	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-7806ded9-937b-4975-83ea-a9336f9c9a73	mmm	mmm@gmail.com	$2a$10$yUqyA..4A.o5C3bAIyTCSuI4h7pEWtZryfUbs//WGSX9ZBa9G4nTS	user	\N	t	2026-06-17 22:51:37.175118	free	\N	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-78079a64-de94-4d1d-8e32-e82c30d574b3	zxc	zxc@gmail.com	$2a$10$e5jbmEvkTwB9sc2LRB0UfORdiTahFYK68ud0MxQ5BtCgCega07/sm	user	\N	t	2026-05-13 15:03:36.391521	plus	2026-06-12 15:04:06.800961	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	vcx	asd@gmail.com	$2a$10$FDhykvph3JvG4uEobm3dQ.QPgRJpg7Ccjy28.WpVH.Fq4ma46g2wC	user	\N	t	2026-05-13 11:44:51.457469	plus	2026-06-12 11:52:17.56918	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-d01930fd-10cb-4705-82f3-de179a2c514f	ccc	ccc@gmail.com	$2a$10$/KlLrH8MeJh3t7DswCKHAOxymlN/5BjVWp0amNPG8Sbnk2TTmyE96	user	\N	t	2026-06-12 09:47:09.306901	free	\N	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	qaz	qaz@gmail.com	$2a$10$U/xDSMGewrkdJ/6908.nCOfzBG7tzsmhKWz6VgJljBR37Yxv/mdxu	user	\N	t	2026-05-14 09:42:31.241459	plus	2026-06-13 09:43:36.549543	https://res.cloudinary.com/dxw3kllnb/image/upload/v1778767654/lingoweb/avatars/user_4fbfad70-0d7e-4b0a-9836-97fa708177a0.jpg	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-0b44b67d-63b3-4705-9464-c5f6b279866a	ttt	ttt@gmail.com	$2a$10$avTgeqFukYERaRveIMc8DeqkeBdxjV1qAWXa/KirqVYXHNWZe7mz.	user	\N	t	2026-05-14 22:01:27.451321	free	\N	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-34e079cb-e041-4085-9a31-a0782fdd5af8	anhthu	anhthu@gmail.com	$2a$10$849dznlVtDLKlLhyMuhfReFdakpLMjrpTknclCVctZ433qhChRagq	admin	\N	t	2026-05-18 15:19:33.228358	plus	2026-06-17 15:20:15.158453	https://res.cloudinary.com/dxw3kllnb/image/upload/v1779370755/lingoweb/avatars/user_34e079cb-e041-4085-9a31-a0782fdd5af8.jpg	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-29954a24-1c8a-4878-a70b-5c226a02a94b	zxcv	zxcv@gmail.com	$2a$10$Od0HVFSOOY5ZTvttAuKAyuB7NYkrGJ7WWAaKCYv/qNKyrkYcXUM5O	user	\N	t	2026-06-12 09:29:15.012448	free	\N	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-9cb5fd28-5944-4407-9ed5-a1c6522f0b42	yyyy	yyyy@gmail.com	$2a$10$5v7B3k8/sMSUwWQu78NXbunuA.1VSPE3uYPZFTepfXRzMwpAFiJty	user	\N	t	2026-06-12 10:35:35.440151	free	\N	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-7c142186-bdf1-4dd8-b174-5884468ae26a	abc	abc@gmail.com	$2a$10$20WUXR9vW8kqK0Awd1bcHu4v/xVSE3i4Qe2NxHyiBlTzSoL8NewHa	user	\N	t	2026-05-13 11:20:36.033911	plus	2026-06-12 15:03:14.720743	\N	t	new	survey	2026-06-20 16:28:21.569978+07
-5a708101-a917-4e6f-bf93-0a960a638577	bbb	bbb@gmail.com	$2a$10$8nqzmfUo9dZB/rVXdgTv6ucqo4w0CKUuUaX4DDIi1RKqAF3Y.puMO	user	\N	t	2026-06-18 14:26:55.478835	free	\N	https://res.cloudinary.com/dxw3kllnb/image/upload/v1781836877/lingoweb/avatars/user_5a708101-a917-4e6f-bf93-0a960a638577.jpg	t	basic	test	2026-06-22 20:08:33.449759+07
-6e77fac8-4f86-4f0f-ba81-be4e9d51c977	ssd	ssd@gmail.com	$2a$10$wQHsZmetYEmvkvgbLHl/0eHsXhrYM24FYTz7A8evCLCV3St4qmgHC	user	\N	t	2026-06-17 21:56:36.925853	free	\N	\N	t	basic	test	2026-06-17 21:57:43.506+07
-ae23b160-380d-4fc9-ba21-7dd6fbe04d54	zxz	zxz@gmail.com	$2a$10$yIcx/69kriWsBWI2JEnxOOoxRHnkpqkTa6a1er8blLgz5OLF9Qx0a	user	\N	t	2026-06-17 22:24:32.066484	free	\N	\N	t	new	test	2026-06-17 22:29:22.994+07
-e5f739d4-47d8-43fa-bb54-dfb074511cb4	rrr	rrr@gmail.com	$2a$10$lQaIb5caKg7qhPXHPaEhkecBhjfS//sL0T6O7jD90c1z2sx.66hZm	user	\N	t	2026-06-17 22:02:09.748712	free	\N	\N	t	basic	restored_default_basic	2026-06-18 14:58:15.206348+07
-e87b1064-01b8-4369-a98f-4c16da9c91fe	uuu	uuu@gmail.com	$2a$10$YKjxHaJw/6exJGQHBZtiyuonQJmuVARBosMWnAMPN1uRvgbfADZq6	user	\N	t	2026-06-18 15:00:46.961278	free	\N	\N	t	new	survey	2026-06-18 15:00:48.566081+07
-7717dfeb-efb1-4180-a1b7-8c6fc6e90cf1	philongne	philongne@system.com	$2a$10$iK6M0n0wfqUcf/ODwkb.euPYAhO006KmtP/QLl.DLNEpDMRYjq/oi	user	\N	t	2026-06-19 08:06:40.528271	free	\N	\N	t	new	survey	2026-06-19 08:08:04.727902+07
-dac8e393-f03e-4776-a6c5-6a3fcba12943	longne	longne@gmail.com	$2a$10$kYIUtoU0tOEjidCRkQUfl.08ieZTWcKdIWaeiIawe8Cbg6lLSsg92	user	\N	t	2026-06-20 15:14:32.737314	free	\N	\N	t	basic	survey	2026-06-20 15:15:07.926139+07
-7e4ca808-477c-4cf1-84eb-8d59fa43c580	cvc	cvc@gmail.com	$2a$10$sACCDwP0G6KxMbWaF3S/5Oojcwp7nP9hsdsdKYM/dymwrHVLrHbTy	user	\N	t	2026-06-20 15:29:59.930117	free	\N	\N	t	new	test	2026-06-20 15:35:34.812391+07
-0a70cf27-dd6e-4891-981f-a6fa185fdbed	vvv	vvv@system.com	$2a$10$fGGpNe4zs5PcBnn3BkeQxOmHgaTmwufdkNFu.dgZJHNcDDNbXNyYW	user	\N	t	2026-06-17 15:05:17.95129	free	\N	\N	t	new	test	2026-06-20 16:11:20.723579+07
-5d533fb3-8bab-4e32-8a70-2fd3d523e378	john	john@gmail.com	$2a$10$mICM/xerzgpxkWUZuUnAve/4pSOcfmw0JLUBR3dW79A82V83KC.nO	user	\N	t	2026-06-22 10:07:13.840108	free	\N	\N	t	new	survey	2026-06-22 10:08:18.225947+07
+00000000-0000-4000-8000-000000000001	admin_primary	admin.primary@system.com	$2a$10$ZHD.AVau1zRXJEdxx9yjyevkrSuCEbX4sZIcsnwbLv3E/nyyLm1Lm	admin	1	t	2026-07-01 08:00:00+07	free	\N	\N	t	basic	seed	2026-07-01 08:00:00+07
+00000000-0000-4000-8000-000000000002	admin	admin@system.com	$2a$10$ZHD.AVau1zRXJEdxx9yjyevkrSuCEbX4sZIcsnwbLv3E/nyyLm1Lm	admin	1	t	2026-07-01 08:05:00+07	free	\N	\N	t	basic	seed	2026-07-01 08:05:00+07
+00000000-0000-4000-8000-000000000101	hocvien_basic	hocvien.basic@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	1	t	2026-07-01 09:00:00+07	free	\N	\N	t	basic	seed	2026-07-01 09:00:00+07
+00000000-0000-4000-8000-000000000102	hocvien_intermediate	hocvien.intermediate@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	1	t	2026-07-01 09:05:00+07	free	\N	\N	t	intermediate	seed	2026-07-01 09:05:00+07
+00000000-0000-4000-8000-000000000103	hocvien_advanced	hocvien.advanced@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	1	t	2026-07-01 09:10:00+07	free	\N	\N	t	advanced	seed	2026-07-01 09:10:00+07
 \.
 
 
@@ -2922,77 +2073,11 @@ dac8e393-f03e-4776-a6c5-6a3fcba12943	longne	longne@gmail.com	$2a$10$kYIUtoU0tOEj
 --
 
 COPY public.userstats (userid, exp, level, streakdays, lastlogin) FROM stdin;
-7e4ca808-477c-4cf1-84eb-8d59fa43c580	10	1	0	2026-06-20 15:29:59.932705
-22227f57-0aa9-4da0-b6ac-cfd00110b514	3571	9	19	2026-05-11 10:57:55.515252
-9d4376dd-f532-418c-ad64-5d4861c2271c	2754	8	17	2026-05-13 11:01:09.764201
-3caa9c2a-cbcf-4d47-8949-1a1e6a987926	1470	6	13	2026-05-13 15:04:27.438963
-78079a64-de94-4d1d-8e32-e82c30d574b3	1003	5	11	2026-05-13 15:03:36.396003
-4fbfad70-0d7e-4b0a-9836-97fa708177a0	636	4	9	2026-05-29 09:03:58.979875
-0a70cf27-dd6e-4891-981f-a6fa185fdbed	20	1	1	2026-06-20 16:09:54.374437
-5d533fb3-8bab-4e32-8a70-2fd3d523e378	10	1	0	2026-06-22 10:07:14.00427
-212f41f2-9c73-4550-9baf-03116c6ce289	0	1	0	2026-06-12 09:38:25.790533
-d01930fd-10cb-4705-82f3-de179a2c514f	30	1	0	2026-06-12 09:47:09.317571
-29954a24-1c8a-4878-a70b-5c226a02a94b	10	1	0	2026-06-12 10:23:07.003649
-3b7eda8e-0bc1-4c47-bf69-6ccebb484d4a	10	1	0	2026-06-12 10:32:37.617673
-9cb5fd28-5944-4407-9ed5-a1c6522f0b42	0	1	0	2026-06-12 10:35:35.454166
-63067d89-05de-4a11-9fe9-1fba5b52ea9e	60	1	3	2026-06-22 19:42:14.350891
-e9a6c3ce-b579-4775-9b5b-70641dbb47cd	0	1	1	2026-06-22 19:42:26.993639
-0b44b67d-63b3-4705-9464-c5f6b279866a	369	3	1	2026-06-17 15:04:16.031119
-f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	4610	10	1	2026-06-22 19:45:22.308116
-6e77fac8-4f86-4f0f-ba81-be4e9d51c977	10	1	0	2026-06-17 21:56:36.930557
-e5f739d4-47d8-43fa-bb54-dfb074511cb4	0	1	0	2026-06-17 22:02:09.751662
-ae23b160-380d-4fc9-ba21-7dd6fbe04d54	0	1	0	2026-06-17 22:24:32.0706
-7806ded9-937b-4975-83ea-a9336f9c9a73	10	1	0	2026-06-17 22:51:37.17842
-7c142186-bdf1-4dd8-b174-5884468ae26a	2132	7	1	2026-06-22 19:57:33.494122
-34e079cb-e041-4085-9a31-a0782fdd5af8	459	3	1	2026-06-22 20:02:10.78618
-5a708101-a917-4e6f-bf93-0a960a638577	330	3	1	2026-06-22 20:07:00.380272
-e87b1064-01b8-4369-a98f-4c16da9c91fe	45	1	0	2026-06-18 15:00:46.965074
-7717dfeb-efb1-4180-a1b7-8c6fc6e90cf1	0	1	0	2026-06-19 08:06:40.681508
-dac8e393-f03e-4776-a6c5-6a3fcba12943	0	1	0	2026-06-20 15:14:32.849915
-\.
-
-
---
--- Data for Name: userweaknesses; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.userweaknesses (id, userid, skill, errortype, errorkey, label, mistakecount, attemptcount, weight, lastseenat, updatedat) FROM stdin;
-e87121a1-16a2-4c96-8426-589148f8a03f	7c142186-bdf1-4dd8-b174-5884468ae26a	listening	multiple_choice	listening_multiple_choice	Nghe hiểu	1	1	7.5	2026-05-24 14:13:07.159528	2026-05-24 14:13:07.159528
-262eeb85-9b62-4034-8c43-92437b784996	7c142186-bdf1-4dd8-b174-5884468ae26a	listening	true_false	listening_true_false	Nghe hiểu	1	1	7.5	2026-05-24 14:13:07.165951	2026-05-24 14:13:07.165951
-5c8546e8-7c6e-4302-9e69-ea4bedfd46d7	7c142186-bdf1-4dd8-b174-5884468ae26a	listening	fill_blank	listening_fill_blank	Nghe hiểu	1	1	7.5	2026-05-24 14:13:07.169648	2026-05-24 14:13:07.169648
-7544f8d4-2c8f-4da6-9d77-41ec026bb220	7c142186-bdf1-4dd8-b174-5884468ae26a	reading	multiple_choice	reading_multiple_choice	Đọc hiểu	1	1	7.5	2026-05-24 14:14:19.939246	2026-05-24 14:14:19.939246
-bacb07d1-a09e-4371-ad7e-0e57a7287fa0	7c142186-bdf1-4dd8-b174-5884468ae26a	reading	true_false	reading_true_false	Đọc hiểu	1	1	7.5	2026-05-24 14:14:19.945064	2026-05-24 14:14:19.945064
-699ce5fe-044d-492f-af24-f0a9c0e81cd4	7c142186-bdf1-4dd8-b174-5884468ae26a	reading	fill_blank	reading_fill_blank	Đọc hiểu	1	1	7.5	2026-05-24 14:14:19.949143	2026-05-24 14:14:19.949143
-1a65fd6c-b70f-463f-a5bf-480f9fe8e200	7c142186-bdf1-4dd8-b174-5884468ae26a	writing	writing_accuracy	cau_viet_chua_at_o_chinh_xac	Độ chính xác bài viết	1	1	7.5	2026-05-24 14:14:33.316895	2026-05-24 14:14:33.316895
-23ad2a2e-d5c8-4bd6-9de2-dbdbf19ec39f	7c142186-bdf1-4dd8-b174-5884468ae26a	grammar	grammar_topic	ong_tu_khuyet_thieu_can_could_must_should_may_might	Động từ khuyết thiếu: can, could, must, should, may, might	3	3	18	2026-05-24 14:15:36.685665	2026-05-24 14:15:36.685665
-bd4a9582-835b-4b62-bd3e-b0de999ca526	7c142186-bdf1-4dd8-b174-5884468ae26a	grammar	grammar_topic	gioi_tu_chi_thoi_gian_in_on_at_va_noi_chon	Giới từ chỉ thời gian (in, on, at) và nơi chốn	3	3	18	2026-05-24 14:16:11.776503	2026-05-24 14:16:11.776503
-73c69be0-db54-405e-8c7a-70b79ce6efbc	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	unsportsmanlike	Nói thiếu/chưa rõ: unsportsmanlike	1	1	6	2026-05-24 21:06:43.567834	2026-05-24 21:06:43.567834
-cf3a961f-220c-4297-b045-4990f6b70d65	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	foul	Nói thiếu/chưa rõ: foul	3	3	15	2026-05-24 21:07:35.468056	2026-05-24 21:07:35.468056
-50ccac89-2889-489b-a4a3-16a66ca0b6f9	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	will	Nói thiếu/chưa rõ: will, defense	1	1	6	2026-05-24 21:08:27.954762	2026-05-24 21:08:27.954762
-11984dc2-4007-4e9b-8fd5-9f1170f6d466	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	first	Nói thiếu/chưa rõ: first, place	1	1	6	2026-05-24 21:09:06.934481	2026-05-24 21:09:06.934481
-0923a914-b476-48ae-b83d-be275ade012f	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	last	Nói thiếu/chưa rõ: last	1	1	4.5	2026-05-24 21:09:18.58304	2026-05-24 21:09:18.58304
-71b165aa-b56d-420c-b2da-2a036e931691	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	we	Nói thiếu/chưa rõ: we, are, last	1	1	7.5	2026-05-24 21:09:29.979716	2026-05-24 21:09:29.979716
-f613565f-59e0-41f1-8887-c693344bb53f	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	it	Nói thiếu/chưa rõ: it, is, small, old, stadium	2	2	15	2026-05-24 21:10:04.323326	2026-05-24 21:10:04.323326
-85c20b90-25e1-4b8d-9595-692690d6e862	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	your	Nói thiếu/chưa rõ: your, smile	2	2	13.5	2026-05-24 21:11:31.904929	2026-05-24 21:11:31.904929
-a1879f41-540c-4d9b-8fd6-c752d6849be7	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	try	Nói thiếu/chưa rõ: try, new, restaurant	3	3	19.5	2026-05-24 21:12:36.156973	2026-05-24 21:12:36.156973
-8129c87a-33fe-4012-8b77-60964bfe1d9c	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	them	Nói thiếu/chưa rõ: them	1	1	4.5	2026-05-24 21:12:57.201955	2026-05-24 21:12:57.201955
-79501836-5e59-4f16-970f-44be396172e4	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	go	Nói thiếu/chưa rõ: go, museum	4	4	25.5	2026-05-24 21:15:39.568283	2026-05-24 21:15:39.568283
-d5090081-9faa-46d3-adf0-3d3f51ad53c3	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	i	Nói thiếu/chưa rõ: i, can	2	2	13.5	2026-05-26 16:51:27.963712	2026-05-26 16:51:27.963712
-9381a3c5-9b32-4141-8cd4-343ebfb499cd	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	john	Nói thiếu/chưa rõ: john	1	1	4.5	2026-05-26 18:53:14.753071	2026-05-26 18:53:14.753071
-847acccf-7518-4dc8-9188-8e9c5c0094fc	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	from	Nói thiếu/chưa rõ: from, vietnam	1	1	6	2026-05-27 20:54:46.983929	2026-05-27 20:54:46.983929
-93baef31-66f2-4a37-b705-81892b6ed3c8	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	work	Nói thiếu/chưa rõ: work, as, teacher	1	1	7.5	2026-05-27 20:54:59.25639	2026-05-27 20:54:59.25639
-e81e7bcd-9de8-4eca-b0ac-3e07ec46eb00	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	love	Nói thiếu/chưa rõ: love, reading	1	1	6	2026-05-27 20:55:09.474032	2026-05-27 20:55:09.474032
-babcd51a-c0ae-4f39-93db-c56522cf33cb	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	reading	Nói thiếu/chưa rõ: reading	1	1	4.5	2026-05-27 20:55:18.040091	2026-05-27 20:55:18.040091
-7de9e036-e575-46e7-8294-889cd0a5f8ac	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	sarah	Nói thiếu/chưa rõ: sarah	1	1	4.5	2026-05-27 23:52:10.14509	2026-05-27 23:52:10.14509
-b7490b21-083a-4aa6-a130-ccd405f28b21	34e079cb-e041-4085-9a31-a0782fdd5af8	writing	grammar	su_dung_my_name_is_e_gioi_thieu_ten_va_them_am_sau_i	Ngữ pháp: Sử dụng 'my name is' để giới thiệu tên và thêm 'am' sau 'I'	1	1	4.5	2026-05-27 23:52:52.458715	2026-05-27 23:52:52.458715
-7513754b-b4f1-4d93-b8bc-8da3103f5bf9	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	five	Nói thiếu/chưa rõ: five, dollars	1	1	7.5	2026-05-28 00:31:25.054016	2026-05-28 00:31:25.054016
-a1dde1f9-0c7e-4bc3-954a-4de908fab78e	34e079cb-e041-4085-9a31-a0782fdd5af8	speaking	speaking_accuracy	three	Nói thiếu/chưa rõ: three, dollars	1	1	7.5	2026-05-28 00:31:36.342783	2026-05-28 00:31:36.342783
-1e813c29-dac7-4c97-a710-2a7b26feeec7	4fbfad70-0d7e-4b0a-9836-97fa708177a0	listening	multiple_choice	listening_multiple_choice	Nghe hiểu	1	1	7.5	2026-05-29 09:04:42.890921	2026-05-29 09:04:42.890921
-363f44a3-11cd-4461-a597-b0ca331feab7	4fbfad70-0d7e-4b0a-9836-97fa708177a0	listening	fill_blank	listening_fill_blank	Nghe hiểu	2	2	12	2026-05-29 09:05:00.326925	2026-05-29 09:05:00.326925
-4a9457c9-046e-4fcb-ac89-0c40d7d48b1d	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	game	matching	game_matching	Mini game nối từ	1	1	4.5	2026-05-29 09:18:06.480764	2026-05-29 09:18:06.480764
-cffd9b8a-6847-403e-b083-e41dd1b2e8e5	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	writing	writing_accuracy	cau_viet_chua_at_o_chinh_xac	Độ chính xác bài viết	1	1	7.5	2026-05-29 10:01:37.01145	2026-05-29 10:01:37.01145
-f4e12e94-9225-455d-b4d6-ced2d8c83d7e	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	writing	grammar	tu_from_thuong_i_truoc_quoc_gia_con_live_in_thuong_i_sau_quoc_gia	Ngữ pháp: Từ 'from' thường đi trước quốc gia, còn 'live in' thường đi sau quốc gia.	1	1	6	2026-05-29 10:02:38.084158	2026-05-29 10:02:38.084158
-41540718-5495-428b-a56c-3ff736aacef4	f7ba7c39-ecfb-4b7e-aca2-23bd434ca863	game	truefalse	game_truefalse	Mini game đúng sai	3	3	13.5	2026-05-29 10:29:15.701832	2026-05-29 10:29:15.701832
+00000000-0000-4000-8000-000000000001	0	1	0	2026-07-02 08:00:00
+00000000-0000-4000-8000-000000000002	0	1	0	2026-07-02 08:05:00
+00000000-0000-4000-8000-000000000101	180	2	2	2026-07-02 09:00:00
+00000000-0000-4000-8000-000000000102	520	4	5	2026-07-02 09:05:00
+00000000-0000-4000-8000-000000000103	960	7	9	2026-07-02 09:10:00
 \.
 
 
@@ -3061,7 +2146,11 @@ a1775087-7de6-46f1-89db-012fac05246b	Kỷ niệm ở trường	Viết đoạn v�
 --
 
 COPY public.writingprogress (userid, lessonid, status, score, updatedat) FROM stdin;
-7c142186-bdf1-4dd8-b174-5884468ae26a	14b9ef31-c1b6-4ccf-ac0d-abba8f5a1c60	completed	100	2026-06-20 21:33:55.039541
+00000000-0000-4000-8000-000000000101	689823c2-883f-4eec-9dce-f93820865502	in_progress	65	2026-07-01 20:00:00+07
+00000000-0000-4000-8000-000000000102	689823c2-883f-4eec-9dce-f93820865502	completed	86	2026-07-01 20:05:00+07
+00000000-0000-4000-8000-000000000102	69ea9e12-4230-45a7-ab24-53bf55c1ce99	in_progress	70	2026-07-01 20:10:00+07
+00000000-0000-4000-8000-000000000103	689823c2-883f-4eec-9dce-f93820865502	completed	95	2026-07-01 20:15:00+07
+00000000-0000-4000-8000-000000000103	69ea9e12-4230-45a7-ab24-53bf55c1ce99	completed	90	2026-07-01 20:20:00+07
 \.
 
 
@@ -3133,14 +2222,6 @@ SELECT pg_catalog.setval('public.grammarcategories_id_seq', 49, true);
 --
 
 SELECT pg_catalog.setval('public.learninglevels_id_seq', 3, true);
-
-
---
--- Name: achievements achievements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.achievements
-    ADD CONSTRAINT achievements_pkey PRIMARY KEY (id);
 
 
 --
@@ -3264,6 +2345,38 @@ ALTER TABLE ONLY public.minigamequestions
 
 
 --
+-- Name: notificationrecipients notificationrecipients_notificationid_userid_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notificationrecipients
+    ADD CONSTRAINT notificationrecipients_notificationid_userid_key UNIQUE (notificationid, userid);
+
+
+--
+-- Name: notificationrecipients notificationrecipients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notificationrecipients
+    ADD CONSTRAINT notificationrecipients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: passwordresetcodes passwordresetcodes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passwordresetcodes
+    ADD CONSTRAINT passwordresetcodes_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: paymentrequests paymentrequests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3320,6 +2433,38 @@ ALTER TABLE ONLY public.readingvocabulary
 
 
 --
+-- Name: spacedrepetitionitems spacedrepetitionitems_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.spacedrepetitionitems
+    ADD CONSTRAINT spacedrepetitionitems_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: spacedrepetitionitems spacedrepetitionitems_userid_targettype_targetid_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.spacedrepetitionitems
+    ADD CONSTRAINT spacedrepetitionitems_userid_targettype_targetid_key UNIQUE (userid, targettype, targetid);
+
+
+--
+-- Name: spacedrepetitionreviews spacedrepetitionreviews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.spacedrepetitionreviews
+    ADD CONSTRAINT spacedrepetitionreviews_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: spacedrepetitionreviews spacedrepetitionreviews_userid_attemptid_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.spacedrepetitionreviews
+    ADD CONSTRAINT spacedrepetitionreviews_userid_attemptid_key UNIQUE (userid, attemptid);
+
+
+--
 -- Name: speakinglessons speakinglessons_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3352,19 +2497,27 @@ ALTER TABLE ONLY public.studytimedaily
 
 
 --
+-- Name: supportticketmessages supportticketmessages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.supportticketmessages
+    ADD CONSTRAINT supportticketmessages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: supporttickets supporttickets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.supporttickets
+    ADD CONSTRAINT supporttickets_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: usergameprogress uq_ugp_user_level; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.usergameprogress
     ADD CONSTRAINT uq_ugp_user_level UNIQUE (userid, levelid);
-
-
---
--- Name: userachievements userachievements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.userachievements
-    ADD CONSTRAINT userachievements_pkey PRIMARY KEY (userid, achievementid);
 
 
 --
@@ -3381,14 +2534,6 @@ ALTER TABLE ONLY public.usercollections
 
 ALTER TABLE ONLY public.usercollectionwords
     ADD CONSTRAINT usercollectionwords_pkey PRIMARY KEY (id);
-
-
---
--- Name: usererrorevents usererrorevents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.usererrorevents
-    ADD CONSTRAINT usererrorevents_pkey PRIMARY KEY (id);
 
 
 --
@@ -3429,22 +2574,6 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.userstats
     ADD CONSTRAINT userstats_pkey PRIMARY KEY (userid);
-
-
---
--- Name: userweaknesses userweaknesses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.userweaknesses
-    ADD CONSTRAINT userweaknesses_pkey PRIMARY KEY (id);
-
-
---
--- Name: userweaknesses userweaknesses_userid_skill_errortype_errorkey_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.userweaknesses
-    ADD CONSTRAINT userweaknesses_userid_skill_errortype_errorkey_key UNIQUE (userid, skill, errortype, errorkey);
 
 
 --
@@ -3529,6 +2658,27 @@ CREATE INDEX idx_listeningsegments_lesson ON public.listeningsegments USING btre
 
 
 --
+-- Name: idx_notification_recipients_notification; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notification_recipients_notification ON public.notificationrecipients USING btree (notificationid);
+
+
+--
+-- Name: idx_notification_recipients_user_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notification_recipients_user_created ON public.notificationrecipients USING btree (userid, createdat DESC);
+
+
+--
+-- Name: idx_password_reset_email_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_password_reset_email_created ON public.passwordresetcodes USING btree (email, createdat DESC);
+
+
+--
 -- Name: idx_payment_requests_sepay_transaction; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3578,6 +2728,41 @@ CREATE INDEX idx_readingparagraphs_lesson ON public.readingparagraphs USING btre
 
 
 --
+-- Name: idx_sr_items_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sr_items_due ON public.spacedrepetitionitems USING btree (userid, duedate, lastassignedat);
+
+
+--
+-- Name: idx_sr_reviews_item; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sr_reviews_item ON public.spacedrepetitionreviews USING btree (itemid, reviewedat DESC);
+
+
+--
+-- Name: idx_support_ticket_messages_ticket_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_support_ticket_messages_ticket_created ON public.supportticketmessages USING btree (ticketid, createdat);
+
+
+--
+-- Name: idx_support_tickets_status_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_support_tickets_status_created ON public.supporttickets USING btree (status, createdat DESC);
+
+
+--
+-- Name: idx_support_tickets_user_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_support_tickets_user_created ON public.supporttickets USING btree (userid, createdat DESC);
+
+
+--
 -- Name: idx_user_collections_public_review; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3589,27 +2774,6 @@ CREATE INDEX idx_user_collections_public_review ON public.usercollections USING 
 --
 
 CREATE INDEX idx_user_email ON public.users USING btree (email);
-
-
---
--- Name: idx_user_error_events_reference; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_user_error_events_reference ON public.usererrorevents USING btree (referencetype, referenceid);
-
-
---
--- Name: idx_user_error_events_user_skill; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_user_error_events_user_skill ON public.usererrorevents USING btree (userid, skill, createdat DESC);
-
-
---
--- Name: idx_user_weaknesses_user_weight; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_user_weaknesses_user_weight ON public.userweaknesses USING btree (userid, weight DESC, lastseenat DESC);
 
 
 --
@@ -3657,6 +2821,14 @@ ALTER TABLE ONLY public.grammarprogress
 
 
 --
+-- Name: grammarprogress grammarprogress_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grammarprogress
+    ADD CONSTRAINT grammarprogress_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: grammarquiz grammarquiz_topicid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3678,6 +2850,14 @@ ALTER TABLE ONLY public.grammartopics
 
 ALTER TABLE ONLY public.listeningprogress
     ADD CONSTRAINT listeningprogress_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.listeninglessons(id) ON DELETE CASCADE;
+
+
+--
+-- Name: listeningprogress listeningprogress_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.listeningprogress
+    ADD CONSTRAINT listeningprogress_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -3729,6 +2909,38 @@ ALTER TABLE ONLY public.minigamequestions
 
 
 --
+-- Name: notificationrecipients notificationrecipients_notificationid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notificationrecipients
+    ADD CONSTRAINT notificationrecipients_notificationid_fkey FOREIGN KEY (notificationid) REFERENCES public.notifications(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notificationrecipients notificationrecipients_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notificationrecipients
+    ADD CONSTRAINT notificationrecipients_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notifications notifications_createdby_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_createdby_fkey FOREIGN KEY (createdby) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: passwordresetcodes passwordresetcodes_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passwordresetcodes
+    ADD CONSTRAINT passwordresetcodes_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: paymentrequests paymentrequests_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3753,6 +2965,14 @@ ALTER TABLE ONLY public.readingprogress
 
 
 --
+-- Name: readingprogress readingprogress_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.readingprogress
+    ADD CONSTRAINT readingprogress_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: readingquestions readingquestions_lessonid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3766,6 +2986,46 @@ ALTER TABLE ONLY public.readingquestions
 
 ALTER TABLE ONLY public.readingvocabulary
     ADD CONSTRAINT readingvocabulary_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.readinglessons(id) ON DELETE CASCADE;
+
+
+--
+-- Name: spacedrepetitionitems spacedrepetitionitems_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.spacedrepetitionitems
+    ADD CONSTRAINT spacedrepetitionitems_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: spacedrepetitionreviews spacedrepetitionreviews_itemid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.spacedrepetitionreviews
+    ADD CONSTRAINT spacedrepetitionreviews_itemid_fkey FOREIGN KEY (itemid) REFERENCES public.spacedrepetitionitems(id) ON DELETE CASCADE;
+
+
+--
+-- Name: spacedrepetitionreviews spacedrepetitionreviews_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.spacedrepetitionreviews
+    ADD CONSTRAINT spacedrepetitionreviews_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: speakingprogress speakingprogress_lessonid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.speakingprogress
+    ADD CONSTRAINT speakingprogress_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.speakinglessons(id) ON DELETE CASCADE;
+
+
+--
+-- Name: speakingprogress speakingprogress_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.speakingprogress
+    ADD CONSTRAINT speakingprogress_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -3785,19 +3045,35 @@ ALTER TABLE ONLY public.studytimedaily
 
 
 --
--- Name: userachievements userachievements_achievementid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: supportticketmessages supportticketmessages_senderid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.userachievements
-    ADD CONSTRAINT userachievements_achievementid_fkey FOREIGN KEY (achievementid) REFERENCES public.achievements(id);
+ALTER TABLE ONLY public.supportticketmessages
+    ADD CONSTRAINT supportticketmessages_senderid_fkey FOREIGN KEY (senderid) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
--- Name: userachievements userachievements_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: supportticketmessages supportticketmessages_ticketid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.userachievements
-    ADD CONSTRAINT userachievements_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id);
+ALTER TABLE ONLY public.supportticketmessages
+    ADD CONSTRAINT supportticketmessages_ticketid_fkey FOREIGN KEY (ticketid) REFERENCES public.supporttickets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: supporttickets supporttickets_respondedby_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.supporttickets
+    ADD CONSTRAINT supporttickets_respondedby_fkey FOREIGN KEY (respondedby) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: supporttickets supporttickets_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.supporttickets
+    ADD CONSTRAINT supporttickets_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -3822,14 +3098,6 @@ ALTER TABLE ONLY public.usercollections
 
 ALTER TABLE ONLY public.usercollectionwords
     ADD CONSTRAINT usercollectionwords_collectionid_fkey FOREIGN KEY (collectionid) REFERENCES public.usercollections(id);
-
-
---
--- Name: usererrorevents usererrorevents_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.usererrorevents
-    ADD CONSTRAINT usererrorevents_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -3865,19 +3133,27 @@ ALTER TABLE ONLY public.userstats
 
 
 --
--- Name: userweaknesses userweaknesses_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.userweaknesses
-    ADD CONSTRAINT userweaknesses_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
 -- Name: writingexercises writingexercises_lessonid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.writingexercises
     ADD CONSTRAINT writingexercises_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.writinglessons(id) ON DELETE CASCADE;
+
+
+--
+-- Name: writingprogress writingprogress_lessonid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.writingprogress
+    ADD CONSTRAINT writingprogress_lessonid_fkey FOREIGN KEY (lessonid) REFERENCES public.writinglessons(id) ON DELETE CASCADE;
+
+
+--
+-- Name: writingprogress writingprogress_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.writingprogress
+    ADD CONSTRAINT writingprogress_userid_fkey FOREIGN KEY (userid) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -3889,8 +3165,14 @@ ALTER TABLE ONLY public.writingvocab
 
 
 --
+-- Seed accounts:
+--   admin.primary@system.com / Admin@123
+--   admin@system.com / Admin@123
+--   hocvien.basic@example.com / User@123
+--   hocvien.intermediate@example.com / User@123
+--   hocvien.advanced@example.com / User@123
+
 -- PostgreSQL database dump complete
 --
 
-\unrestrict FnQ4TiPTh6JkIzbiQ2Q2lcdgbVQEQfGASLsoDWiSvKrhqDQrsn8fZUgIs6hJUxE
-
+\unrestrict IrQucG3dr8kyR5udjqo4BZcx4mEaPdHvgeRatHohFC15JaHtnPQqpIjQLYSjO5C

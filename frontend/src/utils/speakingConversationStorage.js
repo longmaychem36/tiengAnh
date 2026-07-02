@@ -48,6 +48,7 @@ export const saveSpeakingConversation = (snapshot) => {
   if (!storageAvailable() || !snapshot?.sessionId) return snapshot;
   const stored = {
     ...snapshot,
+    startedAt: snapshot.startedAt || new Date().toISOString(),
     version: 1,
     updatedAt: new Date().toISOString()
   };
@@ -84,6 +85,8 @@ export const createSpeakingConversationSnapshot = (data) => saveSpeakingConversa
   sessionId: data.sessionId,
   topic: data.topic,
   level: data.level,
+  targetTurns: data.targetTurns || 5,
+  startedAt: data.startedAt || new Date().toISOString(),
   phase: data.phase || 'ready',
   messages: data.messages || [],
   currentTurn: data.currentTurn || null,

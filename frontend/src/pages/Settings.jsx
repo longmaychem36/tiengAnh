@@ -172,6 +172,27 @@ function Settings() {
   };
 
   useEffect(() => {
+    if (active !== 'plus' || user?.isPlus || billingInfo) return undefined;
+
+    let cancelled = false;
+    setLoadingBilling(true);
+    billingApi.getSubscription()
+      .then((res) => {
+        if (!cancelled) setBillingInfo(res.data);
+      })
+      .catch((err) => {
+        if (!cancelled) toast.error(err.message || 'Không tải được thông tin gói Plus');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingBilling(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [active, billingInfo, user?.isPlus]);
+
+  useEffect(() => {
     if (!plusOrder?.id || user?.isPlus) return undefined;
 
     let stopped = false;
@@ -254,7 +275,7 @@ function Settings() {
           </label>
           <label>
             <span>Email</span>
-            <input value={user?.email || ''} disabled />
+            <input value={user?.email || ''} readOnly disabled />
           </label>
           <button type="submit" className="settings-primary-button" disabled={savingProfile}>
             {savingProfile ? 'Đang lưu...' : 'Lưu hồ sơ'}
@@ -368,7 +389,7 @@ function Settings() {
               <span>LINGOCONNECT PLUS</span>
               <h2>Luyện nghe, nói và tạo bài Speaking bằng AI</h2>
             </div>
-            <strong>{formatVnd(billingInfo?.upgrade?.price || 2000)}</strong>
+            <strong>{billingInfo?.upgrade ? formatVnd(billingInfo.upgrade.price) : (loadingBilling ? 'Đang tải...' : '—')}</strong>
           </div>
 
           <ul>
