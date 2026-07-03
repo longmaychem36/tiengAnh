@@ -133,7 +133,6 @@ function DailyTasks() {
                         <strong>+{task.rewardExp || 10} EXP</strong>
                       </div>
                       <h3>{task.title}</h3>
-                      <p>{getDisplayReason(task)}</p>
                     </div>
                     <div className="daily-quest-actions">
                       {completed ? (

@@ -247,7 +247,6 @@ function Dashboard() {
                     {completed && <FiCheckCircle />}
                   </div>
                   <h3>{task.title}</h3>
-                  <p>{getDisplayTaskReason(task)}</p>
                   <div className="daily-task-actions">
                     <Link className="btn btn-primary btn-sm" to={task.url || '/dashboard'}>
                       Luyện ngay
