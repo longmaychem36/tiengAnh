@@ -208,6 +208,34 @@ const AdminSpeaking = () => {
     setQOrder(0);
   };
 
+  const renderLessonForm = () => (
+    <div className={`admin-receptive-form ${editingLesson ? 'admin-inline-edit-form' : ''}`}>
+      <h3>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
+      <div className="admin-form-grid">
+        <span>
+          <span>Tiêu đề</span>
+          <input aria-label="Tiêu đề bài học" className="form-input" value={lessonTitle} onChange={e => setLessonTitle(e.target.value)} placeholder="VD: Chào hỏi cơ bản" />
+        </span>
+        <span>
+          <span>Thứ tự</span>
+          <input aria-label="Thứ tự bài học" className="form-input" type="number" value={lessonOrder} onChange={e => setLessonOrder(e.target.value)} />
+        </span>
+        <label className="admin-check-row">
+          <input type="checkbox" checked={lessonFoundation} onChange={e => setLessonFoundation(e.target.checked)} />
+          <span>Bài nền tảng</span>
+        </label>
+        <span className="is-wide">
+          <span>Mô tả</span>
+          <textarea aria-label="Mô tả bài học" className="form-input" value={lessonDesc} onChange={e => setLessonDesc(e.target.value)} rows={2} />
+        </span>
+      </div>
+      <div className="admin-form-actions">
+        <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
+        <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
+      </div>
+    </div>
+  );
+
   if (loading) return <div className="p-8">Đang tải...</div>;
 
   return (
@@ -219,34 +247,7 @@ const AdminSpeaking = () => {
         </button>
       </div>
 
-      {/* Lesson Form */}
-      {showLessonForm && (
-        <div className="admin-receptive-form">
-          <h3>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
-          <div className="admin-form-grid">
-            <span>
-              <span>Tiêu đề</span>
-              <input aria-label="Trường nhập" className="form-input" value={lessonTitle} onChange={e => setLessonTitle(e.target.value)} placeholder="VD: Chào hỏi cơ bản" />
-            </span>
-            <span>
-              <span>Thứ tự</span>
-              <input aria-label="Trường nhập" className="form-input" type="number" value={lessonOrder} onChange={e => setLessonOrder(e.target.value)} />
-            </span>
-            <label className="admin-check-row">
-              <input type="checkbox" checked={lessonFoundation} onChange={e => setLessonFoundation(e.target.checked)} />
-              <span>Bài nền tảng</span>
-            </label>
-            <span className="is-wide">
-              <span>Mô tả</span>
-              <textarea aria-label="Nội dung" className="form-input" value={lessonDesc} onChange={e => setLessonDesc(e.target.value)} rows={2} />
-            </span>
-          </div>
-          <div className="admin-form-actions">
-            <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
-            <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
-          </div>
-        </div>
-      )}
+      {showLessonForm && !editingLesson && renderLessonForm()}
 
       {/* Lesson List */}
       <div className="admin-receptive-list">
@@ -274,6 +275,8 @@ const AdminSpeaking = () => {
                 <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => handleDeleteLesson(lesson.Id)}>Xóa</button>
               </div>
             </div>
+
+            {showLessonForm && editingLesson?.Id === lesson.Id && renderLessonForm()}
 
             {/* Questions Section */}
             {selectedLesson?.Id === lesson.Id && (

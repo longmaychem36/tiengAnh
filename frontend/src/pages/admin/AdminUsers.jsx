@@ -75,7 +75,10 @@ function formatPlusDays(row) {
 }
 
 function formatPlacement(row) {
-  return getField(row, 'PlacementLevel', 'placementlevel') || '-';
+  const value = getField(row, 'PlacementLevel', 'placementlevel');
+  if (value === 'new') return 'Mới học';
+  if (value === 'basic') return 'Đã có nền tảng';
+  return '-';
 }
 
 function normalizeUserForForm(user) {

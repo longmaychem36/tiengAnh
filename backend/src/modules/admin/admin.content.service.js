@@ -521,7 +521,43 @@ const adminContentService = {
   async deleteListeningSpeaker(id) {
     const config = getReceptiveConfig('listening');
     const pool = getPool();
-    await pool.query(`DELETE FROM ${config.speakerTable} WHERE Id = $1`, [id]);
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      const speakerResult = await client.query(`
+        SELECT Id
+        FROM ${config.speakerTable}
+        WHERE Id = $1
+        FOR UPDATE
+      `, [id]);
+
+      if (speakerResult.rows.length === 0) {
+        throw createAdminError('Không tìm thấy người nói.', 404);
+      }
+
+      const usageResult = await client.query(`
+        SELECT COUNT(*)::int AS UsageCount
+        FROM ${config.contentTable}
+        WHERE SpeakerId = $1
+      `, [id]);
+      const usageCount = Number(usageResult.rows[0]?.usagecount || 0);
+
+      if (usageCount > 0) {
+        throw createAdminError(
+          `Không thể xóa người nói vì đang được chọn trong ${usageCount} dòng transcript.`,
+          409
+        );
+      }
+
+      await client.query(`DELETE FROM ${config.speakerTable} WHERE Id = $1`, [id]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 
   async getReceptiveContent(skill, lessonId) {

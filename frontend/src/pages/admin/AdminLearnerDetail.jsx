@@ -9,6 +9,7 @@ import {
   FiCalendar,
   FiCheckCircle,
   FiClock,
+  FiGift,
   FiHeadphones,
   FiMic,
   FiPlay,
@@ -82,6 +83,8 @@ function AdminLearnerDetail() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [plusDays, setPlusDays] = useState('30');
+  const [giftingPlus, setGiftingPlus] = useState(false);
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
@@ -101,6 +104,37 @@ function AdminLearnerDetail() {
   useEffect(() => {
     loadDetail();
   }, [loadDetail]);
+
+  const giftPlus = async (event) => {
+    event.preventDefault();
+    const days = Math.floor(Number(plusDays));
+
+    if (!Number.isFinite(days) || days < 1 || days > 3650) {
+      toast.error('Số ngày Plus phải từ 1 đến 3650');
+      return;
+    }
+
+    setGiftingPlus(true);
+    try {
+      const response = await adminApi.giftPlusDays(id, days);
+      const updated = response.data || {};
+
+      setData((current) => current ? {
+        ...current,
+        learner: {
+          ...current.learner,
+          plan: updated.Plan ?? updated.plan ?? current.learner.plan,
+          plusexpiresat: updated.PlusExpiresAt ?? updated.plusexpiresat ?? current.learner.plusexpiresat,
+          plusdaysremaining: updated.PlusDaysRemaining ?? updated.plusdaysremaining ?? current.learner.plusdaysremaining
+        }
+      } : current);
+      toast.success(`Đã tặng ${days} ngày Plus cho ${data?.learner?.username || 'học viên'}`);
+    } catch (err) {
+      toast.error(err?.message || 'Không thể tặng Plus cho học viên');
+    } finally {
+      setGiftingPlus(false);
+    }
+  };
 
   if (loading) return <Loading />;
   if (error || !data?.learner) {
@@ -143,12 +177,42 @@ function AdminLearnerDetail() {
           </div>
           <p>{learner.email}</p>
           <div className="admin-learner-facts">
-            <span><FiTarget /> Placement: <strong>{learner.placementlevel || 'new'}</strong></span>
+            <span><FiTarget /> Xếp lớp: <strong>{learner.placementlevel === 'basic' ? 'Đã có nền tảng' : 'Mới học'}</strong></span>
             <span><FiCalendar /> Tham gia: <strong>{formatDate(learner.createdat, false)}</strong></span>
             <span><FiClock /> Đăng nhập gần nhất: <strong>{formatDate(learner.lastlogin)}</strong></span>
             {isPlus && <span><FiZap /> Plus còn <strong>{learner.plusdaysremaining} ngày</strong></span>}
           </div>
         </div>
+      </section>
+
+      <section className="admin-content-card admin-learner-plus-management">
+        <form className="admin-plus-gift-box" onSubmit={giftPlus}>
+          <div>
+            <strong><FiGift /> Quản lý gói Plus</strong>
+            <span>
+              {isPlus
+                ? `Đang còn ${learner.plusdaysremaining} ngày, hết hạn ${formatDate(learner.plusexpiresat, false)}. Số ngày tặng sẽ được cộng vào hạn hiện tại.`
+                : 'Học viên đang dùng gói Free. Tặng ngày để kích hoạt Plus.'}
+            </span>
+          </div>
+          <label className="admin-learner-plus-field">
+            <span>Số ngày tặng</span>
+            <input
+              className="form-input"
+              type="number"
+              min="1"
+              max="3650"
+              step="1"
+              value={plusDays}
+              onChange={(event) => setPlusDays(event.target.value)}
+              aria-label="Số ngày Plus muốn tặng"
+              required
+            />
+          </label>
+          <button type="submit" className="btn btn-primary" disabled={giftingPlus || !plusDays}>
+            <FiGift /> {giftingPlus ? 'Đang tặng...' : 'Tặng Plus'}
+          </button>
+        </form>
       </section>
 
       <section className="admin-learner-metrics" aria-label="Tổng quan learner">

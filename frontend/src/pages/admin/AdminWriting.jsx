@@ -262,6 +262,42 @@ const AdminWriting = () => {
     </div>
   );
 
+  const renderLessonForm = () => (
+    <div className={`admin-receptive-form ${editingLesson ? 'admin-inline-edit-form' : ''}`}>
+      <h3>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
+      <div className="admin-form-grid">
+        <span>
+          <span>Tiêu đề</span>
+          <input aria-label="Tiêu đề bài học" className="form-input" value={lTitle} onChange={e => setLTitle(e.target.value)} />
+        </span>
+        <span>
+          <span>Thứ tự</span>
+          <input aria-label="Thứ tự bài học" className="form-input" type="number" value={lOrder} onChange={e => setLOrder(e.target.value)} />
+        </span>
+        <label className="admin-check-row">
+          <input type="checkbox" checked={lFoundation} onChange={e => setLFoundation(e.target.checked)} />
+          <span>Bài nền tảng</span>
+        </label>
+        <span className="is-wide">
+          <span>Mô tả</span>
+          <textarea aria-label="Mô tả bài học" className="form-input" value={lDesc} onChange={e => setLDesc(e.target.value)} rows={2} />
+        </span>
+        <span className="is-wide">
+          <span>Bài văn hoàn chỉnh (English)</span>
+          <textarea aria-label="Bài văn tiếng Anh" className="form-input" value={lPassageEN} onChange={e => setLPassageEN(e.target.value)} rows={5} />
+        </span>
+        <span className="is-wide">
+          <span>Bản dịch bài văn (Tiếng Việt)</span>
+          <textarea aria-label="Bản dịch bài văn" className="form-input" value={lPassageVI} onChange={e => setLPassageVI(e.target.value)} rows={4} />
+        </span>
+      </div>
+      <div className="admin-form-actions">
+        <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
+        <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
+      </div>
+    </div>
+  );
+
   if (loading) return <div className="p-8">Đang tải...</div>;
 
   return (
@@ -275,41 +311,7 @@ const AdminWriting = () => {
         </button>
       </div>
 
-      {showLessonForm && (
-        <div className="admin-receptive-form">
-          <h3>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
-          <div className="admin-form-grid">
-            <span>
-              <span>Tiêu đề</span>
-              <input aria-label="Trường nhập" className="form-input" value={lTitle} onChange={e => setLTitle(e.target.value)} />
-            </span>
-            <span>
-              <span>Thứ tự</span>
-              <input aria-label="Trường nhập" className="form-input" type="number" value={lOrder} onChange={e => setLOrder(e.target.value)} />
-            </span>
-            <label className="admin-check-row">
-              <input type="checkbox" checked={lFoundation} onChange={e => setLFoundation(e.target.checked)} />
-              <span>Bài nền tảng</span>
-            </label>
-            <span className="is-wide">
-              <span>Mô tả</span>
-              <textarea aria-label="Nội dung" className="form-input" value={lDesc} onChange={e => setLDesc(e.target.value)} rows={2} />
-            </span>
-            <span className="is-wide">
-              <span>Bài văn hoàn chỉnh (English)</span>
-              <textarea aria-label="Nội dung" className="form-input" value={lPassageEN} onChange={e => setLPassageEN(e.target.value)} rows={5} />
-            </span>
-            <span className="is-wide">
-              <span>Bản dịch bài văn (Tiếng Việt)</span>
-              <textarea aria-label="Nội dung" className="form-input" value={lPassageVI} onChange={e => setLPassageVI(e.target.value)} rows={4} />
-            </span>
-          </div>
-          <div className="admin-form-actions">
-            <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
-            <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
-          </div>
-        </div>
-      )}
+      {showLessonForm && !editingLesson && renderLessonForm()}
 
       <div className="admin-receptive-list">
         {lessons.map((lesson, index) => (
@@ -338,6 +340,8 @@ const AdminWriting = () => {
               </div>
             </div>
 
+            {showLessonForm && editingLesson?.Id === lesson.Id && renderLessonForm()}
+
             {selectedLesson?.Id === lesson.Id && (
               <div className="admin-receptive-detail">
                 <section className="admin-subpanel">
@@ -351,11 +355,11 @@ const AdminWriting = () => {
                   <div className="admin-item-list">
                     {exercises.map(ex => (
                       <React.Fragment key={ex.Id}>
-                        <div className="admin-list-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px' }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="admin-list-item admin-writing-exercise-item">
+                          <div className="admin-writing-exercise-main">
+                            <div className="admin-writing-exercise-content">
                               <strong>{ex.ContentVI}</strong>
-                              <p style={{ color: 'var(--admin-primary)', fontWeight: 600, marginTop: 4 }}>{ex.CorrectAnswerEN}</p>
+                              <p>{ex.CorrectAnswerEN}</p>
                             </div>
                             <div className="admin-inline-actions">
                               <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
@@ -366,13 +370,9 @@ const AdminWriting = () => {
                             </div>
                           </div>
 
-                          <div style={{ padding: 'var(--space-2)', background: 'var(--admin-sidebar-bg)', border: '1px solid var(--admin-border)', borderRadius: '3px' }}>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--admin-muted)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              GỢI Ý TỪ VỰNG
-                            </div>
-                            <div className="admin-chip-list">
-                              <VocabManager exId={ex.Id} />
-                            </div>
+                          <div className="admin-writing-vocab-box">
+                            <strong className="admin-writing-vocab-title">Gợi ý từ vựng</strong>
+                            <VocabManager exId={ex.Id} />
                           </div>
                         </div>
                         {showExForm && editingEx?.Id === ex.Id && renderExerciseForm()}
@@ -432,24 +432,20 @@ const VocabManager = ({ exId }) => {
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+    <div className="admin-writing-vocab-manager">
+      <div className="admin-writing-vocab-list">
         {list.map(v => (
-          <span key={v.Id} style={{ 
-            fontSize: 'var(--font-size-xs)', background: 'white', padding: '2px 8px', 
-            borderRadius: 'var(--radius-full)', border: '1px solid var(--color-border)',
-            display: 'inline-flex', alignItems: 'center', gap: 4
-          }}>
-            <strong>{v.Word}</strong>: {v.Meaning}
-            <button type="button" className="btn btn-ghost btn-xs" onClick={() => del(v.Id)}>Xóa</button>
+          <span key={v.Id} className="admin-writing-vocab-chip">
+            <span><strong>{v.Word}</strong>: {v.Meaning}</span>
+            <button type="button" className="admin-writing-vocab-delete" onClick={() => del(v.Id)} aria-label={`Xóa gợi ý ${v.Word}`}><FiX /></button>
           </span>
         ))}
-        {!showAdd && <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAdd(true)} style={{ padding: '0 8px', height: 20, minHeight: 0 }}>+ Thêm gợi ý</button>}
+        {!showAdd && <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAdd(true)}><FiPlus /> Thêm gợi ý</button>}
       </div>
       {showAdd && (
-        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-          <input aria-label="Trường nhập" className="input input-sm" style={{ height: 24 }} placeholder="Từ" value={w} onChange={e => setW(e.target.value)} />
-          <input aria-label="Trường nhập" className="input input-sm" style={{ height: 24 }} placeholder="Nghĩa" value={m} onChange={e => setM(e.target.value)} />
+        <div className="admin-writing-vocab-form">
+          <input aria-label="Từ vựng" className="input input-sm" placeholder="Từ" value={w} onChange={e => setW(e.target.value)} />
+          <input aria-label="Nghĩa của từ" className="input input-sm" placeholder="Nghĩa" value={m} onChange={e => setM(e.target.value)} />
           <button type="button" className="btn btn-primary btn-xs" onClick={add}>Lưu</button>
           <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAdd(false)}>Hủy</button>
         </div>

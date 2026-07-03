@@ -866,9 +866,10 @@ CREATE TABLE public.users (
     plusexpiresat timestamp without time zone,
     avatarurl text,
     onboardingcompleted boolean DEFAULT true,
-    placementlevel character varying(20) DEFAULT 'basic'::character varying,
-    placementsource character varying(30) DEFAULT 'legacy'::character varying,
-    placementcompletedat timestamp with time zone DEFAULT now(),
+    placementlevel character varying(20),
+    placementsource character varying(30),
+    placementcompletedat timestamp with time zone,
+    CONSTRAINT users_placementlevel_check CHECK (((placementlevel IS NULL) OR ((placementlevel)::text = ANY ((ARRAY['new'::character varying, 'basic'::character varying])::text[])))),
     CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'user'::character varying])::text[])))
 );
 
@@ -2060,11 +2061,11 @@ COPY public.usergameprogress (id, userid, levelid, score, stars, iscompleted, be
 --
 
 COPY public.users (id, username, email, passwordhash, role, levelid, isactive, createdat, plan, plusexpiresat, avatarurl, onboardingcompleted, placementlevel, placementsource, placementcompletedat) FROM stdin;
-00000000-0000-4000-8000-000000000001	admin_primary	admin.primary@system.com	$2a$10$ZHD.AVau1zRXJEdxx9yjyevkrSuCEbX4sZIcsnwbLv3E/nyyLm1Lm	admin	1	t	2026-07-01 08:00:00+07	free	\N	\N	t	basic	seed	2026-07-01 08:00:00+07
-00000000-0000-4000-8000-000000000002	admin	admin@system.com	$2a$10$ZHD.AVau1zRXJEdxx9yjyevkrSuCEbX4sZIcsnwbLv3E/nyyLm1Lm	admin	1	t	2026-07-01 08:05:00+07	free	\N	\N	t	basic	seed	2026-07-01 08:05:00+07
-00000000-0000-4000-8000-000000000101	hocvien_basic	hocvien.basic@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	1	t	2026-07-01 09:00:00+07	free	\N	\N	t	basic	seed	2026-07-01 09:00:00+07
-00000000-0000-4000-8000-000000000102	hocvien_intermediate	hocvien.intermediate@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	1	t	2026-07-01 09:05:00+07	free	\N	\N	t	intermediate	seed	2026-07-01 09:05:00+07
-00000000-0000-4000-8000-000000000103	hocvien_advanced	hocvien.advanced@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	1	t	2026-07-01 09:10:00+07	free	\N	\N	t	advanced	seed	2026-07-01 09:10:00+07
+00000000-0000-4000-8000-000000000001	admin_primary	admin.primary@system.com	$2a$10$ZHD.AVau1zRXJEdxx9yjyevkrSuCEbX4sZIcsnwbLv3E/nyyLm1Lm	admin	\N	t	2026-07-01 08:00:00+07	free	\N	\N	t	\N	\N	\N
+00000000-0000-4000-8000-000000000002	admin	admin@system.com	$2a$10$ZHD.AVau1zRXJEdxx9yjyevkrSuCEbX4sZIcsnwbLv3E/nyyLm1Lm	admin	\N	t	2026-07-01 08:05:00+07	free	\N	\N	t	\N	\N	\N
+00000000-0000-4000-8000-000000000101	hocvien_basic	hocvien.basic@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	1	t	2026-07-01 09:00:00+07	free	\N	\N	t	new	seed	2026-07-01 09:00:00+07
+00000000-0000-4000-8000-000000000102	hocvien_intermediate	hocvien.intermediate@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	2	t	2026-07-01 09:05:00+07	free	\N	\N	t	basic	seed	2026-07-01 09:05:00+07
+00000000-0000-4000-8000-000000000103	hocvien_advanced	hocvien.advanced@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	3	t	2026-07-01 09:10:00+07	free	\N	\N	t	basic	seed	2026-07-01 09:10:00+07
 \.
 
 
@@ -2881,7 +2882,7 @@ ALTER TABLE ONLY public.listeningsegments
 --
 
 ALTER TABLE ONLY public.listeningsegments
-    ADD CONSTRAINT listeningsegments_speakerid_fkey FOREIGN KEY (speakerid) REFERENCES public.listeningspeakers(id) ON DELETE SET NULL;
+    ADD CONSTRAINT listeningsegments_speakerid_fkey FOREIGN KEY (speakerid) REFERENCES public.listeningspeakers(id) ON DELETE RESTRICT;
 
 
 --

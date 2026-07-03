@@ -6,6 +6,8 @@ const { sql, getPool } = require('../../config/database');
 const notificationService = require('../notification/notification.service');
 const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 
+const VALID_PLACEMENT_LEVELS = new Set(['new', 'basic']);
+
 function httpError(message, statusCode = 400) {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -24,6 +26,15 @@ function normalizeEmail(email = '') {
 
 function normalizeUsername(username = '') {
   return String(username || '').trim();
+}
+
+function normalizePlacementLevel(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (!VALID_PLACEMENT_LEVELS.has(normalized)) {
+    throw httpError('Placement level must be new or basic', 400);
+  }
+  return normalized;
 }
 
 function validateUsername(username) {
@@ -86,7 +97,7 @@ const adminUserService = {
       .input('isActive', sql.Bit, Boolean(isActive))
       .query(`
         INSERT INTO Users (Username, Email, PasswordHash, Role, IsActive, Plan, OnboardingCompleted, PlacementLevel, PlacementSource, PlacementCompletedAt)
-        VALUES (@username, @email, @passwordHash, @role, @isActive, 'free', true, NULL, 'admin', NOW())
+        VALUES (@username, @email, @passwordHash, @role, @isActive, 'free', true, NULL, NULL, NULL)
         RETURNING Id, Username, Email, Role, IsActive, Plan, OnboardingCompleted, PlacementLevel, CreatedAt
       `);
 
@@ -435,8 +446,8 @@ const adminUserService = {
       : true;
     const nextPlacement = isLearner
       ? data.placementLevel !== undefined
-        ? (data.placementLevel ? String(data.placementLevel) : null)
-        : (pick(current, 'PlacementLevel', 'placementlevel') || null)
+        ? normalizePlacementLevel(data.placementLevel)
+        : normalizePlacementLevel(pick(current, 'PlacementLevel', 'placementlevel'))
       : null;
 
     if (String(userId) === String(currentUserId)) {

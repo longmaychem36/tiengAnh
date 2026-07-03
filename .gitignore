@@ -14,3 +14,6 @@ backend/vosk-model-*/
 baocao/~$*.docx
 baocao/~WRL*.tmp
 baocao/*backup*.docx
+
+# Local database backups and exported credentials
+backend/backups/

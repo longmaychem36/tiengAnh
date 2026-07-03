@@ -7723,6 +7723,39 @@ body.lesson-focus-mode {
   color: #334155;
 }
 
+.admin-learner-plus-management {
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-learner-plus-management .admin-plus-gift-box {
+  border: 0;
+  border-left: 5px solid #7c3aed;
+  border-radius: 0;
+  background: #faf8ff;
+}
+
+.admin-learner-plus-management .admin-plus-gift-box > div > strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.admin-learner-plus-management .admin-plus-gift-box > div > strong svg {
+  color: #7c3aed;
+}
+
+.admin-learner-plus-field {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-learner-plus-field > span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+}
+
 .admin-learner-metrics,
 .admin-learner-sr-metrics {
   display: grid;

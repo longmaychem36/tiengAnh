@@ -343,14 +343,24 @@ function AdminReceptive({ skill }) {
     }
   };
 
+  const getSpeakerUsageCount = (speakerId) => (
+    contentItems.filter((item) => String(item.SpeakerId) === String(speakerId)).length
+  );
+
   const handleDeleteSpeaker = async (speakerId) => {
-    if (!window.confirm('Xóa người nói này? Các dòng transcript đang dùng người này sẽ bị bỏ chọn speaker.')) return;
+    const usageCount = getSpeakerUsageCount(speakerId);
+    if (usageCount > 0) {
+      toast.error(`Không thể xóa: người nói đang được chọn trong ${usageCount} dòng transcript`);
+      return;
+    }
+
+    if (!window.confirm('Xóa người nói này?')) return;
     try {
       await axios.delete(`${API_URL}/admin/listening/speakers/${speakerId}`, { headers: authHeaders() });
       toast.success('Đã xóa người nói');
       fetchLessonChildren(selectedLesson.Id);
     } catch (err) {
-      toast.error('Lỗi xóa người nói');
+      toast.error(err.response?.data?.message || 'Lỗi xóa người nói');
     }
   };
 
@@ -528,6 +538,69 @@ function AdminReceptive({ skill }) {
     setShowQuestionForm(true);
   };
 
+  const renderLessonForm = () => (
+    <div className={`admin-receptive-form ${editingLesson ? 'admin-inline-edit-form' : ''}`}>
+      <h3>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
+      <div className="admin-form-grid">
+        <span>
+          <span>Tiêu đề</span>
+          <input aria-label="Tiêu đề bài học" className="form-input" value={lessonForm.Title} onChange={(event) => updateLessonField('Title', event.target.value)} />
+        </span>
+        <span>
+          <span>Cấp độ</span>
+          <select aria-label="Cấp độ bài học" className="form-input" value={lessonForm.Level} onChange={(event) => updateLessonField('Level', event.target.value)}>
+            <option value="">Chưa đặt cấp độ</option>
+            <option value="A1">A1</option>
+            <option value="A2">A2</option>
+            <option value="B1">B1</option>
+            <option value="B2">B2</option>
+            <option value="C1">C1</option>
+          </select>
+        </span>
+        <span>
+          <span>Chủ đề</span>
+          <input aria-label="Chủ đề bài học" className="form-input" value={lessonForm.Topic} onChange={(event) => updateLessonField('Topic', event.target.value)} />
+        </span>
+        <span>
+          <span>Thời lượng</span>
+          <input aria-label="Thời lượng bài học" className="form-input" value={lessonForm.Duration} onChange={(event) => updateLessonField('Duration', event.target.value)} placeholder="VD: 10 phút" />
+        </span>
+        {skill === 'reading' && (
+          <span>
+            <span>Tiêu đề bài đọc</span>
+            <input aria-label="Tiêu đề bài đọc" className="form-input" value={lessonForm.PassageTitle} onChange={(event) => updateLessonField('PassageTitle', event.target.value)} />
+          </span>
+        )}
+        {skill === 'listening' && (
+          <span>
+            <span>Audio URL</span>
+            <input aria-label="Audio URL" className="form-input" value={lessonForm.AudioUrl} onChange={(event) => updateLessonField('AudioUrl', event.target.value)} />
+          </span>
+        )}
+        <span>
+          <span>Thứ tự</span>
+          <input aria-label="Thứ tự bài học" className="form-input" type="number" value={lessonForm.OrderIndex} onChange={(event) => updateLessonField('OrderIndex', event.target.value)} />
+        </span>
+        <label className="admin-check-row">
+          <input type="checkbox" checked={Boolean(lessonForm.IsFoundation)} onChange={(event) => updateLessonField('IsFoundation', event.target.checked)} />
+          <span>Bài nền tảng</span>
+        </label>
+        <span className="is-wide">
+          <span>Mô tả</span>
+          <textarea aria-label="Mô tả bài học" className="form-input" rows={2} value={lessonForm.Description} onChange={(event) => updateLessonField('Description', event.target.value)} />
+        </span>
+        <span className="is-wide">
+          <span>Mục tiêu</span>
+          <textarea aria-label="Mục tiêu bài học" className="form-input" rows={2} value={lessonForm.Objective} onChange={(event) => updateLessonField('Objective', event.target.value)} />
+        </span>
+      </div>
+      <div className="admin-form-actions">
+        <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
+        <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
+      </div>
+    </div>
+  );
+
   if (loading) return <div className="p-8">Đang tải...</div>;
 
   return (
@@ -541,68 +614,7 @@ function AdminReceptive({ skill }) {
         </button>
       </div>
 
-      {showLessonForm && (
-        <div className="admin-receptive-form">
-          <h3>{editingLesson ? 'Sửa bài học' : 'Thêm bài học mới'}</h3>
-          <div className="admin-form-grid">
-            <span>
-              <span>Tiêu đề</span>
-              <input aria-label="Trường nhập" className="form-input" value={lessonForm.Title} onChange={(event) => updateLessonField('Title', event.target.value)} />
-            </span>
-            <span>
-              <span>Cấp độ</span>
-              <select aria-label="Lựa chọn" className="form-input" value={lessonForm.Level} onChange={(event) => updateLessonField('Level', event.target.value)}>
-                <option value="">Chưa đặt cấp độ</option>
-                <option value="A1">A1</option>
-                <option value="A2">A2</option>
-                <option value="B1">B1</option>
-                <option value="B2">B2</option>
-                <option value="C1">C1</option>
-              </select>
-            </span>
-            <span>
-              <span>Chủ đề</span>
-              <input aria-label="Trường nhập" className="form-input" value={lessonForm.Topic} onChange={(event) => updateLessonField('Topic', event.target.value)} />
-            </span>
-            <span>
-              <span>Thời lượng</span>
-              <input aria-label="Trường nhập" className="form-input" value={lessonForm.Duration} onChange={(event) => updateLessonField('Duration', event.target.value)} placeholder="VD: 10 phút" />
-            </span>
-            {skill === 'reading' && (
-              <span>
-                <span>Tiêu đề bài đọc</span>
-                <input aria-label="Trường nhập" className="form-input" value={lessonForm.PassageTitle} onChange={(event) => updateLessonField('PassageTitle', event.target.value)} />
-              </span>
-            )}
-            {skill === 'listening' && (
-              <span>
-                <span>Audio URL</span>
-                <input aria-label="Trường nhập" className="form-input" value={lessonForm.AudioUrl} onChange={(event) => updateLessonField('AudioUrl', event.target.value)} />
-              </span>
-            )}
-            <span>
-              <span>Thứ tự</span>
-              <input aria-label="Trường nhập" className="form-input" type="number" value={lessonForm.OrderIndex} onChange={(event) => updateLessonField('OrderIndex', event.target.value)} />
-            </span>
-            <label className="admin-check-row">
-              <input type="checkbox" checked={Boolean(lessonForm.IsFoundation)} onChange={(event) => updateLessonField('IsFoundation', event.target.checked)} />
-              <span>Bài nền tảng</span>
-            </label>
-            <span className="is-wide">
-              <span>Mô tả</span>
-              <textarea aria-label="Nội dung" className="form-input" rows={2} value={lessonForm.Description} onChange={(event) => updateLessonField('Description', event.target.value)} />
-            </span>
-            <span className="is-wide">
-              <span>Mục tiêu</span>
-              <textarea aria-label="Nội dung" className="form-input" rows={2} value={lessonForm.Objective} onChange={(event) => updateLessonField('Objective', event.target.value)} />
-            </span>
-          </div>
-          <div className="admin-form-actions">
-            <button type="button" className="btn btn-primary" onClick={handleSaveLesson}><FiSave /> Lưu</button>
-            <button type="button" className="btn btn-ghost" onClick={closeLessonForm}><FiX /> Hủy</button>
-          </div>
-        </div>
-      )}
+      {showLessonForm && !editingLesson && renderLessonForm()}
 
       <div className="admin-receptive-list">
         {lessons.map((lesson, index) => (
@@ -624,6 +636,8 @@ function AdminReceptive({ skill }) {
               </div>
             </div>
 
+            {showLessonForm && editingLesson?.Id === lesson.Id && renderLessonForm()}
+
             {selectedLesson?.Id === lesson.Id && (
               <div className="admin-receptive-detail">
                 {skill === 'listening' && (
@@ -639,12 +653,24 @@ function AdminReceptive({ skill }) {
                       />
                     )}
                     <div className="admin-item-list">
-                      {speakerItems.map((item) => (
-                        <AdminItem key={item.Id} onEdit={() => startEditSpeaker(item)} onDelete={() => handleDeleteSpeaker(item.Id)}>
+                    {speakerItems.map((item) => {
+                      const usageCount = getSpeakerUsageCount(item.Id);
+                      return (
+                        <AdminItem
+                          key={item.Id}
+                          onEdit={() => startEditSpeaker(item)}
+                          onDelete={() => handleDeleteSpeaker(item.Id)}
+                          deleteDisabled={usageCount > 0}
+                          deleteTitle={usageCount > 0 ? `Đang được dùng trong ${usageCount} dòng transcript` : 'Xóa người nói'}
+                        >
                           <strong>{item.Name}</strong>
-                          <p>{speakerLabel(item)} · {item.VoiceName || 'Tự chọn giọng phù hợp trên trình duyệt'}</p>
+                          <p>
+                            {speakerLabel(item)} · {item.VoiceName || 'Tự chọn giọng phù hợp trên trình duyệt'}
+                            {usageCount > 0 && ` · Đang dùng trong ${usageCount} dòng transcript`}
+                          </p>
                         </AdminItem>
-                      ))}
+                      );
+                    })}
                       {speakerItems.length === 0 && !showSpeakerForm && <EmptyState text="Thêm người nói trước khi nhập transcript." />}
                     </div>
                   </AdminPanel>
@@ -764,13 +790,21 @@ function AdminPanel({ title, actionLabel, onAdd, children }) {
   );
 }
 
-function AdminItem({ children, onEdit, onDelete }) {
+function AdminItem({ children, onEdit, onDelete, deleteDisabled = false, deleteTitle = 'Xóa' }) {
   return (
     <div className="admin-list-item">
       <div>{children}</div>
       <div className="admin-inline-actions">
         <button type="button" className="btn btn-ghost btn-sm" onClick={onEdit}>Sửa</button>
-        <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={onDelete}>Xóa</button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm is-danger"
+          onClick={onDelete}
+          disabled={deleteDisabled}
+          title={deleteTitle}
+        >
+          Xóa
+        </button>
       </div>
     </div>
   );
