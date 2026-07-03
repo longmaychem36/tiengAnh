@@ -60,12 +60,6 @@ function formatHours(value) {
   return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
 }
 
-function getDisplayTaskReason(task) {
-  const text = String(task.reason || task.description || '').trim();
-  if (!text.includes('SM-2') && !text.includes('lịch ghi nhớ')) return text;
-  return 'Đã đến lúc ôn lại để ghi nhớ tốt hơn.';
-}
-
 function Dashboard() {
   const { user } = useAuth();
   const [overview, setOverview] = useState(null);

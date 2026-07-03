@@ -42,13 +42,6 @@ function daysBetween(fromDate, toDate) {
   return Math.max(0, Math.floor((to - from) / 86400000));
 }
 
-function normalizeStoredTaskReason(reason, { overdueDays = 0 } = {}) {
-  const text = String(reason || '').trim();
-  if (!text) return '';
-  if (!text.includes('SM-2') && !text.includes('lịch ghi nhớ')) return text;
-  return 'Đã đến lúc ôn lại để ghi nhớ tốt hơn.';
-}
-
 function shapeTask(row) {
   const targetType = row.targettype || row.TargetType;
   const targetId = row.targetid || row.TargetId;
@@ -79,7 +72,6 @@ function shapeTask(row) {
     targetId,
     title: row.title || row.Title,
     description: row.description || row.Description || '',
-    reason: normalizeStoredTaskReason(row.reason || row.Reason || '', { overdueDays }),
     status,
     orderIndex: row.orderindex ?? row.OrderIndex ?? 0,
     aiRationale: row.airationale || row.AiRationale || '',
@@ -106,7 +98,6 @@ async function ensureInsightsSchema() {
       TargetId VARCHAR(120) NOT NULL,
       Title VARCHAR(255) NOT NULL,
       Description TEXT,
-      Reason TEXT,
       Status VARCHAR(30) NOT NULL DEFAULT 'pending',
       OrderIndex INTEGER NOT NULL DEFAULT 0,
       AiRationale TEXT,
@@ -122,6 +113,7 @@ async function ensureInsightsSchema() {
   await pool.query('ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS PlanVersion SMALLINT NOT NULL DEFAULT 1');
   await pool.query("ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS TaskMode VARCHAR(20) NOT NULL DEFAULT 'new'");
   await pool.query('ALTER TABLE DailyTasks ADD COLUMN IF NOT EXISTS DueDate DATE');
+  await pool.query('ALTER TABLE DailyTasks DROP COLUMN IF EXISTS Reason');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_daily_tasks_user_date ON DailyTasks (UserId, TaskDate, OrderIndex)');
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_tasks_user_date_order ON DailyTasks (UserId, TaskDate, OrderIndex)');
   await spacedRepetitionService.ensureSchema();
@@ -146,9 +138,6 @@ function candidateFromRow(row, config) {
     overdueDays,
     easeFactor: Number(row.easefactor || 2.5),
     lastAssignedAt: row.lastassignedat || null,
-    reason: taskMode === 'new'
-      ? 'Nội dung mới phù hợp với tiến độ hiện tại của bạn.'
-      : 'Đã đến lúc ôn lại để ghi nhớ tốt hơn.',
     aiRationale: taskMode === 'new' ? 'sm2_new' : overdueDays > 0 ? 'sm2_overdue' : 'sm2_due',
     rewardExp: DAILY_TASK_REWARDS[config.targetType] || DAILY_TASK_REWARDS.default
   };
@@ -233,7 +222,6 @@ function newCandidate(row, config) {
     overdueDays: 0,
     easeFactor: 2.5,
     lastAssignedAt: null,
-    reason: 'Nội dung mới phù hợp với tiến độ hiện tại của bạn.',
     aiRationale: 'sm2_new',
     rewardExp: DAILY_TASK_REWARDS[config.targetType] || DAILY_TASK_REWARDS.default
   };
@@ -408,7 +396,6 @@ function getStarterTask() {
     targetType: 'daily_login', targetId: 'today', skill: 'habit',
     title: 'Đăng nhập hôm nay',
     description: 'Mở hệ thống học tập để giữ nhịp học mỗi ngày.',
-    reason: 'Nhiệm vụ khởi động nhanh, nhận EXP ngay khi hoàn thành.',
     aiRationale: 'habit', taskMode: 'habit', dueDate: getSaigonDate(),
     rewardExp: DAILY_TASK_REWARDS.daily_login
   };
@@ -423,13 +410,13 @@ async function insertTaskRows(client, userId, taskDate, tasks, startOrder = 0) {
     const task = tasks[index];
     await client.query(`
       INSERT INTO DailyTasks (
-        UserId, TaskDate, Skill, TargetType, TargetId, Title, Description, Reason,
+        UserId, TaskDate, Skill, TargetType, TargetId, Title, Description,
         Status, OrderIndex, AiRationale, RewardExp, PlanVersion, TaskMode, DueDate
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11, $12, $13, $14)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11, $12, $13)
       ON CONFLICT (UserId, TaskDate, OrderIndex) DO NOTHING
     `, [
       userId, taskDate, task.skill, task.targetType, String(task.targetId), task.title,
-      task.description, task.reason, startOrder + index, task.aiRationale,
+      task.description, startOrder + index, task.aiRationale,
       task.rewardExp || DAILY_TASK_REWARDS[task.targetType] || DAILY_TASK_REWARDS.default,
       PLAN_VERSION, task.taskMode || 'new', task.dueDate || taskDate
     ]);
@@ -479,6 +466,40 @@ async function buildLearningPlan(userId, includePlusSkills, count, excluded = ne
     collectNewCandidates(userId, { includePlusSkills })
   ]);
   return selectDiverseTasks(dueCandidates, newCandidates, count, excluded);
+}
+
+async function repairLockedGameTasks(client, userId, taskDate) {
+  await client.query(`
+    WITH unlocked AS (
+      SELECT gl.Id AS LevelId, gl.LevelNumber, gl.Name,
+             ROW_NUMBER() OVER (ORDER BY gl.LevelNumber ASC) AS rn
+      FROM GameLevels gl
+      LEFT JOIN GameLevels prev ON prev.LevelNumber = gl.LevelNumber - 1
+      LEFT JOIN UserGameProgress prevp ON prevp.UserId = $1 AND prevp.LevelId = prev.Id
+      LEFT JOIN UserGameProgress curp ON curp.UserId = $1 AND curp.LevelId = gl.Id
+      WHERE COALESCE(curp.IsCompleted, false) = false
+        AND (gl.LevelNumber = 1 OR COALESCE(prevp.IsCompleted, false) = true)
+    ), next_unlocked AS (
+      SELECT LevelId, LevelNumber, Name FROM unlocked WHERE rn = 1
+    ), mismatched AS (
+      SELECT dt.Id AS TaskId, nu.LevelId, nu.LevelNumber, nu.Name
+      FROM DailyTasks dt
+      CROSS JOIN next_unlocked nu
+      LEFT JOIN GameLevels current_level ON current_level.Id::text = dt.TargetId
+      WHERE dt.UserId = $1
+        AND dt.TaskDate = $2
+        AND dt.TargetType = 'game_level'
+        AND (current_level.Id IS NULL OR current_level.LevelNumber <> nu.LevelNumber)
+    )
+    UPDATE DailyTasks dt
+    SET TargetId = m.LevelId::text,
+        Title = 'Mini game: ' || m.Name,
+        Description = 'Mini game - Level ' || m.LevelNumber,
+        Status = 'pending',
+        CompletedAt = NULL
+    FROM mismatched m
+    WHERE dt.Id = m.TaskId
+  `, [userId, taskDate]);
 }
 
 const dailyService = {
@@ -533,13 +554,15 @@ const dailyService = {
           }
         }
 
-        const refreshed = await client.query(`
-          SELECT * FROM DailyTasks
-          WHERE UserId = $1 AND TaskDate = $2
-          ORDER BY OrderIndex ASC
-        `, [user.id, taskDate]);
-        rows = refreshed.rows;
       }
+
+      await repairLockedGameTasks(client, user.id, taskDate);
+      const refreshed = await client.query(`
+        SELECT * FROM DailyTasks
+        WHERE UserId = $1 AND TaskDate = $2
+        ORDER BY OrderIndex ASC
+      `, [user.id, taskDate]);
+      rows = refreshed.rows;
 
       await client.query('COMMIT');
     } catch (error) {

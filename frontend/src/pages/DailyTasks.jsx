@@ -42,12 +42,6 @@ function getTaskModeLabel(task) {
   return 'Ôn tập';
 }
 
-function getDisplayReason(task) {
-  const text = String(task.reason || task.description || '').trim();
-  if (!text.includes('SM-2') && !text.includes('lịch ghi nhớ')) return text;
-  return 'Đã đến lúc ôn lại để ghi nhớ tốt hơn.';
-}
-
 function DailyTasks() {
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);

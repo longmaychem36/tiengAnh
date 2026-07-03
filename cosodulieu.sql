@@ -225,7 +225,6 @@ CREATE TABLE public.dailytasks (
     targetid character varying(120) NOT NULL,
     title character varying(255) NOT NULL,
     description text,
-    reason text,
     status character varying(30) DEFAULT 'pending'::character varying NOT NULL,
     orderindex integer DEFAULT 0 NOT NULL,
     airationale text,
@@ -959,7 +958,7 @@ ALTER TABLE ONLY public.learninglevels ALTER COLUMN id SET DEFAULT nextval('publ
 -- Data for Name: dailytasks; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.dailytasks (id, userid, taskdate, skill, targettype, targetid, title, description, reason, status, orderindex, airationale, completedat, createdat, rewardexp, planversion, taskmode, duedate) FROM stdin;
+COPY public.dailytasks (id, userid, taskdate, skill, targettype, targetid, title, description, status, orderindex, airationale, completedat, createdat, rewardexp, planversion, taskmode, duedate) FROM stdin;
 \.
 
 
