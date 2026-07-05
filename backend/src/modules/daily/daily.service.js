@@ -46,10 +46,13 @@ function shapeTask(row) {
   const targetType = row.targettype || row.TargetType;
   const targetId = row.targetid || row.TargetId;
   const status = row.status || row.Status || 'pending';
-  const taskMode = row.taskmode || row.TaskMode || (targetType === 'daily_login' ? 'habit' : 'new');
   const planVersion = Number(row.planversion || row.PlanVersion || 1);
   const dueDate = toDateString(row.duedate || row.DueDate);
   const today = getSaigonDate();
+  const storedTaskMode = row.taskmode || row.TaskMode || (targetType === 'daily_login' ? 'habit' : 'new');
+  const taskMode = targetType !== 'daily_login' && dueDate && dueDate < today
+    ? 'review'
+    : storedTaskMode;
   const overdueDays = taskMode === 'review' && dueDate ? daysBetween(dueDate, today) : 0;
   const urlByType = {
     daily_login: '/daily-tasks',
@@ -124,21 +127,19 @@ async function ensureInsightsSchema() {
 function candidateFromRow(row, config) {
   const dueDate = toDateString(row.duedate);
   const today = getSaigonDate();
-  const reviewed = Boolean(row.lastreviewedat) || Number(row.repetitions || 0) > 0;
   const overdueDays = dueDate ? daysBetween(dueDate, today) : 0;
-  const taskMode = reviewed ? 'review' : 'new';
   return {
     targetType: config.targetType,
     targetId: String(row.targetid || row.id),
     skill: config.skill,
     title: safeString(config.title(row)).slice(0, 255),
     description: safeString(config.description(row)),
-    taskMode,
+    taskMode: 'review',
     dueDate: dueDate || today,
     overdueDays,
     easeFactor: Number(row.easefactor || 2.5),
     lastAssignedAt: row.lastassignedat || null,
-    aiRationale: taskMode === 'new' ? 'sm2_new' : overdueDays > 0 ? 'sm2_overdue' : 'sm2_due',
+    aiRationale: overdueDays > 0 ? 'sm2_overdue' : 'sm2_due',
     rewardExp: DAILY_TASK_REWARDS[config.targetType] || DAILY_TASK_REWARDS.default
   };
 }
