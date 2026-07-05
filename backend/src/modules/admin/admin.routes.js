@@ -693,8 +693,8 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
         COALESCE((SELECT COUNT(DISTINCT UserId) FROM StudyTimeDaily WHERE ActivityDate >= CURRENT_DATE - 29), 0)::int AS ActiveLearners30d,
         COALESCE((SELECT COUNT(*) FROM DailyTasks WHERE Status = 'completed' AND TaskDate >= CURRENT_DATE - 29), 0)::int AS CompletedTasks30d,
         COALESCE((SELECT SUM(ActiveSeconds) FROM StudyTimeDaily WHERE ActivityDate >= CURRENT_DATE - 29), 0)::int AS StudySeconds30d,
-        COALESCE((SELECT COUNT(*) FROM SpacedRepetitionItems WHERE COALESCE(IsMastered, false) = true), 0)::int AS MasteredItems,
-        COALESCE((SELECT COUNT(*) FROM SpacedRepetitionItems WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false), 0)::int AS DueReviewItems
+        COALESCE((SELECT COUNT(*) FROM SpacedRepetitionItems WHERE LastReviewedAt IS NOT NULL AND COALESCE(IsMastered, false) = true), 0)::int AS MasteredItems,
+        COALESCE((SELECT COUNT(*) FROM SpacedRepetitionItems WHERE LastReviewedAt IS NOT NULL AND DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false), 0)::int AS DueReviewItems
     `))[0] || {};
 
     const activity7d = await pool.query(`

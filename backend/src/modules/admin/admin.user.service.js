@@ -263,7 +263,7 @@ const adminUserService = {
       pool.query(`
         SELECT COUNT(*)::int AS Total,
                COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS Completed,
-               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS Due,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL AND DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS Due,
                COALESCE(ROUND(AVG(LastScore))::int, 0) AS AverageScore,
                MAX(LastReviewedAt) AS LastActivityAt
         FROM SpacedRepetitionItems
@@ -278,31 +278,32 @@ const adminUserService = {
           COALESCE((SELECT COUNT(*) FROM UserCollections WHERE UserId = $1), 0)::int AS OwnedCollections
       `, [userId]),
       pool.query(`
-        SELECT COUNT(*)::int AS TotalItems,
+        SELECT COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS TotalItems,
                COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS ReviewedItems,
-               COUNT(*) FILTER (WHERE LastReviewedAt IS NULL AND COALESCE(IsMastered, false) = false)::int AS NewItems,
-               COUNT(*) FILTER (WHERE COALESCE(IsMastered, false) = true)::int AS MasteredItems,
-               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS DueItems,
-               COUNT(*) FILTER (WHERE DueDate < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS OverdueItems,
-               COALESCE(ROUND(AVG(EaseFactor), 2), 0) AS AverageEaseFactor,
-               COALESCE(SUM(Lapses), 0)::int AS TotalLapses,
-               MIN(DueDate) FILTER (WHERE COALESCE(IsMastered, false) = false) AS NextDueDate,
+               0::int AS NewItems,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL AND COALESCE(IsMastered, false) = true)::int AS MasteredItems,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL AND DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS DueItems,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL AND DueDate < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS OverdueItems,
+               COALESCE(ROUND(AVG(EaseFactor) FILTER (WHERE LastReviewedAt IS NOT NULL), 2), 0) AS AverageEaseFactor,
+               COALESCE(SUM(Lapses) FILTER (WHERE LastReviewedAt IS NOT NULL), 0)::int AS TotalLapses,
+               MIN(DueDate) FILTER (WHERE LastReviewedAt IS NOT NULL AND COALESCE(IsMastered, false) = false) AS NextDueDate,
                MAX(LastReviewedAt) AS LastReviewedAt
         FROM SpacedRepetitionItems
         WHERE UserId = $1
       `, [userId]),
       pool.query(`
         SELECT TargetType,
-               COUNT(*)::int AS Total,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS Total,
                COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS Reviewed,
-               COUNT(*) FILTER (WHERE COALESCE(IsMastered, false) = true)::int AS Mastered,
-               COUNT(*) FILTER (WHERE DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS Due,
-               COUNT(*) FILTER (WHERE DueDate < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS Overdue,
-               COALESCE(ROUND(AVG(LastScore))::int, 0) AS AverageScore,
-               COALESCE(SUM(Lapses), 0)::int AS Lapses
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL AND COALESCE(IsMastered, false) = true)::int AS Mastered,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL AND DueDate <= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS Due,
+               COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL AND DueDate < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AND COALESCE(IsMastered, false) = false)::int AS Overdue,
+               COALESCE(ROUND(AVG(LastScore) FILTER (WHERE LastReviewedAt IS NOT NULL))::int, 0) AS AverageScore,
+               COALESCE(SUM(Lapses) FILTER (WHERE LastReviewedAt IS NOT NULL), 0)::int AS Lapses
         FROM SpacedRepetitionItems
         WHERE UserId = $1
         GROUP BY TargetType
+        HAVING COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL) > 0
         ORDER BY TargetType
       `, [userId]),
       pool.query(`

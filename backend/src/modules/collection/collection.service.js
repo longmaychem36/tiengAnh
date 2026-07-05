@@ -146,15 +146,10 @@ const collectionService = {
 
     const words = await collectionRepo.getWords(collectionId);
     if (!words.length) throw createHttpError('Học phần chưa có từ vựng để ôn.', 400);
-    const item = await spacedRepetitionService.registerItem(
-      userId,
-      'vocabulary_review',
-      collectionId
-    );
     return {
       collectionId: String(collectionId),
       wordCount: words.length,
-      dueDate: spacedRepetitionService.formatDueDate(item.duedate || item.DueDate)
+      dueDate: spacedRepetitionService.getSaigonDate()
     };
   },
 

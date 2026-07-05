@@ -184,6 +184,7 @@ async function registerItem(userId, targetType, targetId, options = {}) {
 async function markAssigned(userId, targets = []) {
   await ensureSchema();
   for (const target of targets) {
+    if (target.taskMode === 'new') continue;
     await registerItem(userId, target.targetType, target.targetId, { assigned: true });
   }
 }

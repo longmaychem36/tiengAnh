@@ -49,10 +49,7 @@ function shapeTask(row) {
   const planVersion = Number(row.planversion || row.PlanVersion || 1);
   const dueDate = toDateString(row.duedate || row.DueDate);
   const today = getSaigonDate();
-  const storedTaskMode = row.taskmode || row.TaskMode || (targetType === 'daily_login' ? 'habit' : 'new');
-  const taskMode = targetType !== 'daily_login' && dueDate && dueDate < today
-    ? 'review'
-    : storedTaskMode;
+  const taskMode = row.taskmode || row.TaskMode || (targetType === 'daily_login' ? 'habit' : 'new');
   const overdueDays = taskMode === 'review' && dueDate ? daysBetween(dueDate, today) : 0;
   const urlByType = {
     daily_login: '/daily-tasks',
@@ -198,6 +195,7 @@ async function collectDueCandidates(userId, { includePlusSkills }) {
         WHERE sri.UserId = $1
           AND sri.TargetType = $2
           AND sri.DueDate <= $3
+          AND sri.LastReviewedAt IS NOT NULL
           AND COALESCE(sri.IsMastered, false) = false
           ${spec.extraWhere || ''}
         ORDER BY sri.DueDate ASC, sri.EaseFactor ASC, sri.LastAssignedAt ASC NULLS FIRST
@@ -235,6 +233,7 @@ async function findNewSequentialLesson(userId, config, placementLevel) {
     LEFT JOIN ${config.progressTable} p ON p.LessonId = l.Id AND p.UserId = $1
     LEFT JOIN SpacedRepetitionItems sri
       ON sri.UserId = $1 AND sri.TargetType = $2 AND sri.TargetId = l.Id::text
+      AND sri.LastReviewedAt IS NOT NULL
     ORDER BY l.OrderIndex ASC, l.CreatedAt ASC
   `, [userId, config.targetType]);
   const visible = placementLevel === 'basic'
@@ -280,6 +279,7 @@ async function collectNewCandidates(userId, { includePlusSkills }) {
       LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = $1
       LEFT JOIN SpacedRepetitionItems sri
         ON sri.UserId = $1 AND sri.TargetType = 'grammar_topic' AND sri.TargetId = gt.Id::text
+        AND sri.LastReviewedAt IS NOT NULL
       ORDER BY gt.CategoryId, gt.OrderIndex ASC, gt.Id ASC
     `, [userId]);
     const byCategory = new Map();
@@ -316,6 +316,7 @@ async function collectNewCandidates(userId, { includePlusSkills }) {
       LEFT JOIN UserGameProgress ugp ON ugp.LevelId = gl.Id AND ugp.UserId = $1
       LEFT JOIN SpacedRepetitionItems sri
         ON sri.UserId = $1 AND sri.TargetType = 'game_level' AND sri.TargetId = gl.Id::text
+        AND sri.LastReviewedAt IS NOT NULL
       ORDER BY gl.LevelNumber ASC
     `, [userId]);
     for (let index = 0; index < gameResult.rows.length; index += 1) {
@@ -490,6 +491,7 @@ async function repairLockedGameTasks(client, userId, taskDate) {
       WHERE dt.UserId = $1
         AND dt.TaskDate = $2
         AND dt.TargetType = 'game_level'
+        AND dt.Status <> 'completed'
         AND (current_level.Id IS NULL OR current_level.LevelNumber <> nu.LevelNumber)
     )
     UPDATE DailyTasks dt
