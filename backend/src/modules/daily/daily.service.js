@@ -492,6 +492,7 @@ async function repairLockedGameTasks(client, userId, taskDate) {
         AND dt.TaskDate = $2
         AND dt.TargetType = 'game_level'
         AND dt.Status <> 'completed'
+        AND COALESCE(dt.TaskMode, 'new') = 'new'
         AND (current_level.Id IS NULL OR current_level.LevelNumber <> nu.LevelNumber)
     )
     UPDATE DailyTasks dt
