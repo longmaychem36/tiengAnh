@@ -428,12 +428,20 @@ const SpeakingLesson = () => {
               {currentOptions.map((option, index) => {
                 const selected = selectedOptionIndex === index;
                 return (
-                  <button
+                  <div
                     key={`${option.text}-${index}`}
-                    type="button"
+                    role="button"
+                    tabIndex={result ? -1 : 0}
                     className={`speaking-answer-option ${selected ? 'is-selected' : ''}`}
                     onClick={() => {
                       if (!result) setSelectedOptionIndex(index);
+                    }}
+                    onKeyDown={(event) => {
+                      if (result) return;
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setSelectedOptionIndex(index);
+                      }
                     }}
                   >
                     <span>{index + 1}</span>
@@ -441,13 +449,18 @@ const SpeakingLesson = () => {
                       <strong>{option.text}</strong>
                       {option.translation && <p>{option.translation}</p>}
                     </div>
-                    <FiVolume2
+                    <button
+                      type="button"
+                      className="speaking-option-listen"
                       onClick={(event) => {
                         event.stopPropagation();
                         playTTS(option.text);
                       }}
-                    />
-                  </button>
+                      aria-label={`Nghe câu trả lời ${index + 1}`}
+                    >
+                      <FiVolume2 />
+                    </button>
+                  </div>
                 );
               })}
             </div>

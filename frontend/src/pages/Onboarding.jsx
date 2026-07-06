@@ -696,24 +696,36 @@ function Onboarding() {
 
           <div className="speaking-option-list">
             {options.map((option, index) => (
-              <button
+              <div
                 key={`${option.text}-${index}`}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className={`speaking-answer-option ${selectedIndex === index ? 'is-selected' : ''}`}
                 onClick={() => handleSpeakingOptionSelect(currentQuestion.id, index)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleSpeakingOptionSelect(currentQuestion.id, index);
+                  }
+                }}
               >
                 <span>{index + 1}</span>
                 <div>
                   <strong>{option.text}</strong>
                   {option.translation && <p>{option.translation}</p>}
                 </div>
-                <FiVolume2
+                <button
+                  type="button"
+                  className="speaking-option-listen"
                   onClick={(event) => {
                     event.stopPropagation();
                     speakText(option.text, { lang: 'en-US' });
                   }}
-                />
-              </button>
+                  aria-label={`Nghe câu trả lời ${index + 1}`}
+                >
+                  <FiVolume2 />
+                </button>
+              </div>
             ))}
           </div>
         </QuestionCard>

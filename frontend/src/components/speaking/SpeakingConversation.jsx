@@ -47,6 +47,7 @@ function SpeakingConversation() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const autoSpokenRef = useRef(new Set());
+  const autoSpeechPendingRef = useRef(new Set());
   const advancingTokenRef = useRef('');
   const chatEndRef = useRef(null);
   const [conversation, setConversation] = useState(null);
@@ -89,18 +90,27 @@ function SpeakingConversation() {
     };
   }, [selectedVoiceURI]);
 
-  const playMessage = useCallback((text) => {
+  const playMessage = useCallback((text, callbacks = {}) => {
     if (!hasSpeechSupport()) {
       toast.error('Trình duyệt không hỗ trợ đọc tự động.');
       return;
     }
     const voice = voices.find((item) => item.voiceURI === selectedVoiceURI) || null;
-    speakText(text, {
+    return speakText(text, {
       lang: 'en-US',
       voice,
-      onstart: () => setIsCharacterSpeaking(true),
-      onend: () => setIsCharacterSpeaking(false),
-      onerror: () => setIsCharacterSpeaking(false)
+      onstart: () => {
+        setIsCharacterSpeaking(true);
+        callbacks.onstart?.();
+      },
+      onend: () => {
+        setIsCharacterSpeaking(false);
+        callbacks.onend?.();
+      },
+      onerror: (event) => {
+        setIsCharacterSpeaking(false);
+        callbacks.onerror?.(event);
+      }
     });
   }, [selectedVoiceURI, voices]);
 
@@ -114,10 +124,32 @@ function SpeakingConversation() {
 
   const latestMessage = visibleMessages[visibleMessages.length - 1];
   useEffect(() => {
-    if (!latestMessage || latestMessage.role !== 'assistant' || autoSpokenRef.current.has(latestMessage.id)) return;
-    autoSpokenRef.current.add(latestMessage.id);
-    const timer = window.setTimeout(() => playMessage(latestMessage.text), 420);
-    return () => window.clearTimeout(timer);
+    if (!latestMessage
+      || latestMessage.role !== 'assistant'
+      || autoSpokenRef.current.has(latestMessage.id)
+      || autoSpeechPendingRef.current.has(latestMessage.id)) return undefined;
+
+    autoSpeechPendingRef.current.add(latestMessage.id);
+    const clearPending = () => autoSpeechPendingRef.current.delete(latestMessage.id);
+    const pendingTimeout = window.setTimeout(clearPending, 3500);
+    const timer = window.setTimeout(() => {
+      const utterance = playMessage(latestMessage.text, {
+        onstart: () => {
+          autoSpokenRef.current.add(latestMessage.id);
+          clearPending();
+          window.clearTimeout(pendingTimeout);
+        },
+        onend: clearPending,
+        onerror: clearPending
+      });
+      if (!utterance) clearPending();
+    }, 420);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(pendingTimeout);
+      clearPending();
+    };
   }, [latestMessage, playMessage]);
 
   useEffect(() => {

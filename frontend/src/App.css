@@ -5330,7 +5330,23 @@
   font-weight: 700;
 }
 
-.speaking-answer-option svg {
+.speaking-option-listen {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--receptive-accent) 24%, white);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--receptive-accent) 8%, white);
+  color: var(--receptive-accent);
+  cursor: pointer;
+}
+
+.speaking-option-listen:hover {
+  background: color-mix(in srgb, var(--receptive-accent) 14%, white);
+}
+
+.speaking-option-listen svg {
   color: var(--receptive-accent);
 }
 
