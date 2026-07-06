@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { sql, getPool } = require('../../config/database');
 const { generateToken } = require('../../config/jwt');
 const billingService = require('../billing/billing.service');
+const dailyService = require('../daily/daily.service');
 const { ensureOnboardingSchema } = require('../onboarding/onboarding.schema');
 const { sendMail } = require('../../utils/mailer');
 
@@ -111,6 +112,25 @@ async function findUserByEmail(email) {
   return result.recordset[0] || null;
 }
 
+async function findUserById(userId) {
+  const pool = getPool();
+  const result = await pool.request()
+    .input('userId', sql.UniqueIdentifier, userId)
+    .query(`
+      SELECT u.Id, u.Username, u.Email, u.PasswordHash, u.Role, COALESCE(u.IsActive, true) AS IsActive,
+             u.Plan, u.PlusExpiresAt, u.LevelId, u.AvatarUrl,
+             u.OnboardingCompleted, u.PlacementLevel, u.PlacementSource, u.PlacementCompletedAt, u.CreatedAt,
+             ll.Code as LevelCode, ll.Name as LevelName,
+             us.Exp, us.Level as GameLevel, us.StreakDays, us.LastLogin
+      FROM Users u
+      LEFT JOIN LearningLevels ll ON u.LevelId = ll.Id
+      LEFT JOIN UserStats us ON u.Id = us.UserId
+      WHERE u.Id = @userId
+    `);
+
+  return result.recordset[0] || null;
+}
+
 async function updateLoginStats(userId) {
   const pool = getPool();
   await pool.request()
@@ -135,9 +155,21 @@ async function createSession(user) {
     role: normalizeRole(user.Role)
   });
 
+  let dailyPlan = null;
+  if (normalizeRole(user.Role) !== 'admin') {
+    try {
+      dailyPlan = await dailyService.getToday({ id: user.Id });
+    } catch (error) {
+      console.error('[auth] failed to prepare daily tasks on login:', error.message);
+    }
+  }
+
+  const refreshedUser = await findUserById(user.Id).catch(() => null);
+
   return {
-    user: shapeUser(user),
-    token
+    user: shapeUser(refreshedUser || user),
+    token,
+    dailyPlan
   };
 }
 
@@ -339,25 +371,12 @@ const authService = {
    * Get user by ID (for /me endpoint)
    */
   async getUserById(userId) {
-    const pool = getPool();
     await prepareAuthSchemas();
 
-    const result = await pool.request()
-      .input('userId', sql.UniqueIdentifier, userId)
-      .query(`
-        SELECT u.Id, u.Username, u.Email, u.Role, u.Plan, u.PlusExpiresAt, u.LevelId, u.AvatarUrl,
-               u.OnboardingCompleted, u.PlacementLevel, u.PlacementSource, u.PlacementCompletedAt, u.CreatedAt,
-               ll.Code as LevelCode, ll.Name as LevelName,
-               us.Exp, us.Level as GameLevel, us.StreakDays, us.LastLogin
-        FROM Users u
-        LEFT JOIN LearningLevels ll ON u.LevelId = ll.Id
-        LEFT JOIN UserStats us ON u.Id = us.UserId
-        WHERE u.Id = @userId
-      `);
+    const user = await findUserById(userId);
+    if (!user) return null;
 
-    if (result.recordset.length === 0) return null;
-
-    return shapeUser(result.recordset[0]);
+    return shapeUser(user);
   }
 };
 
