@@ -51,6 +51,7 @@ const grammarService = {
       SELECT gc.Id, gc.Name, gc.NameVI, gc.Icon, gc.OrderIndex,
              (SELECT COUNT(*) FROM GrammarTopics WHERE CategoryId = gc.Id AND COALESCE(IsDeleted, false) = false) as TopicCount
       FROM GrammarCategories gc
+      WHERE COALESCE(gc.IsDeleted, false) = false
       ORDER BY gc.OrderIndex ASC
     `);
     return result.recordset;
@@ -76,6 +77,7 @@ const grammarService = {
         LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = @userId
         WHERE gt.CategoryId = @categoryId
           AND COALESCE(gt.IsDeleted, false) = false
+          AND COALESCE(gc.IsDeleted, false) = false
         ORDER BY gt.OrderIndex ASC
       `);
     const topics = result.recordset;
@@ -111,6 +113,7 @@ const grammarService = {
         LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = @userId
         WHERE gt.Id = @topicId
           AND COALESCE(gt.IsDeleted, false) = false
+          AND COALESCE(gc.IsDeleted, false) = false
       `);
 
     if (topicResult.recordset.length === 0) return null;
@@ -126,9 +129,11 @@ const grammarService = {
         .query(`
           SELECT gt.Id, gt.Title, COALESCE(gp.BestScore, 0) as BestScore
           FROM GrammarTopics gt
+          LEFT JOIN GrammarCategories gc ON gc.Id = gt.CategoryId
           LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = @userId
           WHERE gt.CategoryId = @categoryId AND gt.OrderIndex < @orderIndex
             AND COALESCE(gt.IsDeleted, false) = false
+            AND COALESCE(gc.IsDeleted, false) = false
           ORDER BY gt.OrderIndex DESC
           LIMIT 1
         `);
@@ -158,8 +163,10 @@ const grammarService = {
              gt.Title, gt.TitleVI, gt.CategoryId
       FROM GrammarQuiz q
       INNER JOIN GrammarTopics gt ON gt.Id = q.TopicId
+      LEFT JOIN GrammarCategories gc ON gc.Id = gt.CategoryId
       WHERE q.TopicId = $1
         AND COALESCE(gt.IsDeleted, false) = false
+        AND COALESCE(gc.IsDeleted, false) = false
     `, [topicId]);
 
     const quizMap = new Map(quizResult.rows.map((row) => [String(row.id), row]));

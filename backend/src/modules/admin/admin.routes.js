@@ -553,6 +553,7 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       'GameLevels',
       'SpeakingLessons',
       'WritingLessons',
+      'GrammarCategories',
       'GrammarTopics',
       'ListeningLessons',
       'ReadingLessons',

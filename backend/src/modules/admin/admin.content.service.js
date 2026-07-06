@@ -828,12 +828,19 @@ const adminContentService = {
 
   // ========== GRAMMAR MANAGEMENT ==========
   async getGrammarCategories() {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
-    const res = await pool.request().query(`SELECT * FROM GrammarCategories ORDER BY OrderIndex ASC`);
+    const res = await pool.request().query(`
+      SELECT *
+      FROM GrammarCategories
+      WHERE COALESCE(IsDeleted, false) = false
+      ORDER BY OrderIndex ASC
+    `);
     return res.recordset;
   },
 
   async createGrammarCategory(data) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const res = await pool.request()
       .input('name', sql.NVarChar, data.Name)
@@ -848,6 +855,7 @@ const adminContentService = {
   },
 
   async updateGrammarCategory(id, data) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     await pool.request()
       .input('id', sql.Int, id)
@@ -863,8 +871,13 @@ const adminContentService = {
   },
 
   async deleteGrammarCategory(id) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
-    await pool.request().input('id', sql.Int, id).query(`DELETE FROM GrammarCategories WHERE Id = @id`);
+    await pool.request().input('id', sql.Int, id).query(`
+      UPDATE GrammarCategories
+      SET IsDeleted = true, DeletedAt = COALESCE(DeletedAt, NOW())
+      WHERE Id = @id
+    `);
   },
 
   async getGrammarTopics(categoryId) {

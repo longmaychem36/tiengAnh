@@ -6,6 +6,7 @@ const SOFT_DELETE_TABLES = [
   'WritingLessons',
   'ListeningLessons',
   'ReadingLessons',
+  'GrammarCategories',
   'GrammarTopics',
   'GameLevels',
   'UserCollections'

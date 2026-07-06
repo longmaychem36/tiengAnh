@@ -169,6 +169,7 @@ async function collectDueCandidates(userId, { includePlusSkills }) {
     },
     {
       targetType: 'grammar_topic', skill: 'grammar', table: 'GrammarTopics', alias: 'l',
+      extraWhere: "AND EXISTS (SELECT 1 FROM GrammarCategories gc WHERE gc.Id = l.CategoryId AND COALESCE(gc.IsDeleted, false) = false)",
       title: (row) => `Grammar: ${row.titlevi || row.title}`,
       description: () => 'Ôn lý thuyết và làm quiz ngữ pháp.'
     },
@@ -280,11 +281,13 @@ async function collectNewCandidates(userId, { includePlusSkills }) {
     const grammarResult = await pool.query(`
       SELECT gt.*, gp.Status, sri.Id AS ReviewItemId
       FROM GrammarTopics gt
+      LEFT JOIN GrammarCategories gc ON gc.Id = gt.CategoryId
       LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = $1
       LEFT JOIN SpacedRepetitionItems sri
         ON sri.UserId = $1 AND sri.TargetType = 'grammar_topic' AND sri.TargetId = gt.Id::text
         AND sri.LastReviewedAt IS NOT NULL
       WHERE COALESCE(gt.IsDeleted, false) = false
+        AND COALESCE(gc.IsDeleted, false) = false
       ORDER BY gt.CategoryId, gt.OrderIndex ASC, gt.Id ASC
     `, [userId]);
     const byCategory = new Map();
