@@ -46,6 +46,8 @@ function shapeStats(stats) {
   if (!stats) return null;
 
   const exp = Number.parseInt(stats.Exp ?? stats.exp, 10) || 0;
+  const streakDays = Number.parseInt(stats.StreakDays ?? stats.Streakdays ?? stats.streakdays, 10) || 0;
+  const lastLogin = stats.LastLogin ?? stats.Lastlogin ?? stats.lastlogin ?? null;
   const computedLevel = getLevelForExp(exp);
   const level = computedLevel;
   const meta = getLevelMeta(exp, level);
@@ -54,6 +56,8 @@ function shapeStats(stats) {
     ...stats,
     Exp: exp,
     Level: level,
+    StreakDays: streakDays,
+    LastLogin: lastLogin,
     expToNextLevel: meta.expToNextLevel,
     levelProgress: meta.levelProgress,
     currentLevelExp: meta.currentLevelEarnedExp,

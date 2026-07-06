@@ -260,10 +260,10 @@ const writingController = {
       await ensureOnboardingSchema();
       const placementLevel = await getUserPlacementLevel(req.user.id);
       const query = `
-        SELECT l.Id, l.Title, l.Description, l.OrderIndex, l.IsFoundation, COUNT(e.Id) as ExerciseCount
+        SELECT l.Id, l.Title, l.Description, l.Level, l.Duration, l.OrderIndex, l.IsFoundation, COUNT(e.Id) as ExerciseCount
         FROM WritingLessons l
         LEFT JOIN WritingExercises e ON e.LessonId = l.Id
-        GROUP BY l.Id, l.Title, l.Description, l.OrderIndex, l.IsFoundation
+        GROUP BY l.Id, l.Title, l.Description, l.Level, l.Duration, l.OrderIndex, l.IsFoundation
         ORDER BY l.OrderIndex ASC
       `;
       const result = await pool.query(query);
@@ -283,6 +283,8 @@ const writingController = {
           id: row.id,
           title: row.title,
           description: row.description,
+          level: row.level || '',
+          duration: row.duration || '',
           isFoundation: Boolean(row.isfoundation),
           exerciseCount: row.exercisecount,
           isCompleted,
@@ -303,7 +305,7 @@ const writingController = {
       await ensureOnboardingSchema();
       
       const lessonResult = await pool.query(`
-        SELECT Id, Title, Description, PassageEN, PassageVI, IsFoundation
+        SELECT Id, Title, Description, Level, Duration, PassageEN, PassageVI, IsFoundation
         FROM WritingLessons
         WHERE Id = $1
       `, [id]);
@@ -339,6 +341,8 @@ const writingController = {
           id: lesson.id,
           title: lesson.title,
           description: lesson.description,
+          level: lesson.level || '',
+          duration: lesson.duration || '',
           isFoundation: Boolean(lesson.isfoundation),
           passageEN: lesson.passageen || buildFallbackPassage(exercises, 'correctAnswerEN'),
           passageVI: lesson.passagevi || buildFallbackPassage(exercises, 'contentVI')

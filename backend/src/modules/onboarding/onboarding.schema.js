@@ -78,6 +78,10 @@ async function ensureOnboardingSchema() {
   await pool.query(`ALTER TABLE ReadingLessons ADD COLUMN IF NOT EXISTS IsFoundation boolean DEFAULT false`);
   await pool.query(`ALTER TABLE SpeakingLessons ADD COLUMN IF NOT EXISTS IsFoundation boolean DEFAULT false`);
   await pool.query(`ALTER TABLE WritingLessons ADD COLUMN IF NOT EXISTS IsFoundation boolean DEFAULT false`);
+  await pool.query(`ALTER TABLE SpeakingLessons ADD COLUMN IF NOT EXISTS Level varchar(20) DEFAULT ''`);
+  await pool.query(`ALTER TABLE WritingLessons ADD COLUMN IF NOT EXISTS Level varchar(20) DEFAULT ''`);
+  await pool.query(`ALTER TABLE SpeakingLessons ADD COLUMN IF NOT EXISTS Duration varchar(50) DEFAULT ''`);
+  await pool.query(`ALTER TABLE WritingLessons ADD COLUMN IF NOT EXISTS Duration varchar(50) DEFAULT ''`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS PlacementMiniGameQuestions (

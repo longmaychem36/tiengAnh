@@ -190,11 +190,13 @@ const adminContentService = {
     const res = await pool.request()
       .input('title', sql.NVarChar, data.Title)
       .input('desc', sql.NVarChar, data.Description)
+      .input('level', sql.NVarChar, data.Level || '')
+      .input('duration', sql.NVarChar, data.Duration || '')
       .input('isFoundation', sql.Bit, data.IsFoundation === true || data.IsFoundation === 'true')
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
-        INSERT INTO SpeakingLessons (Title, Description, IsFoundation, OrderIndex)
-        VALUES (@title, @desc, @isFoundation, @order) RETURNING *
+        INSERT INTO SpeakingLessons (Title, Description, Level, Duration, IsFoundation, OrderIndex)
+        VALUES (@title, @desc, @level, @duration, @isFoundation, @order) RETURNING *
       `);
     return res.recordset[0];
   },
@@ -206,11 +208,13 @@ const adminContentService = {
       .input('id', sql.UniqueIdentifier, id)
       .input('title', sql.NVarChar, data.Title)
       .input('desc', sql.NVarChar, data.Description)
+      .input('level', sql.NVarChar, data.Level || '')
+      .input('duration', sql.NVarChar, data.Duration || '')
       .input('isFoundation', sql.Bit, data.IsFoundation === true || data.IsFoundation === 'true')
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         UPDATE SpeakingLessons 
-        SET Title = @title, Description = @desc, IsFoundation = @isFoundation, OrderIndex = @order
+        SET Title = @title, Description = @desc, Level = @level, Duration = @duration, IsFoundation = @isFoundation, OrderIndex = @order
         WHERE Id = @id
       `);
   },
@@ -290,13 +294,15 @@ const adminContentService = {
     const res = await pool.request()
       .input('title', sql.NVarChar, data.Title)
       .input('desc', sql.NVarChar, data.Description)
+      .input('level', sql.NVarChar, data.Level || '')
+      .input('duration', sql.NVarChar, data.Duration || '')
       .input('passageEN', sql.NText, data.PassageEN || data.passageEN || '')
       .input('passageVI', sql.NText, data.PassageVI || data.passageVI || '')
       .input('isFoundation', sql.Bit, data.IsFoundation === true || data.IsFoundation === 'true')
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
-        INSERT INTO WritingLessons (Title, Description, PassageEN, PassageVI, IsFoundation, OrderIndex)
-        VALUES (@title, @desc, @passageEN, @passageVI, @isFoundation, @order) RETURNING *
+        INSERT INTO WritingLessons (Title, Description, Level, Duration, PassageEN, PassageVI, IsFoundation, OrderIndex)
+        VALUES (@title, @desc, @level, @duration, @passageEN, @passageVI, @isFoundation, @order) RETURNING *
       `);
     return res.recordset[0];
   },
@@ -308,13 +314,15 @@ const adminContentService = {
       .input('id', sql.UniqueIdentifier, id)
       .input('title', sql.NVarChar, data.Title)
       .input('desc', sql.NVarChar, data.Description)
+      .input('level', sql.NVarChar, data.Level || '')
+      .input('duration', sql.NVarChar, data.Duration || '')
       .input('passageEN', sql.NText, data.PassageEN || data.passageEN || '')
       .input('passageVI', sql.NText, data.PassageVI || data.passageVI || '')
       .input('isFoundation', sql.Bit, data.IsFoundation === true || data.IsFoundation === 'true')
       .input('order', sql.Int, data.OrderIndex || 0)
       .query(`
         UPDATE WritingLessons 
-        SET Title = @title, Description = @desc, PassageEN = @passageEN, PassageVI = @passageVI, IsFoundation = @isFoundation, OrderIndex = @order
+        SET Title = @title, Description = @desc, Level = @level, Duration = @duration, PassageEN = @passageEN, PassageVI = @passageVI, IsFoundation = @isFoundation, OrderIndex = @order
         WHERE Id = @id
       `);
   },

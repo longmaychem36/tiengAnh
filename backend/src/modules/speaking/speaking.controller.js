@@ -600,10 +600,10 @@ const speakingController = {
       await ensureOnboardingSchema();
       const placementLevel = await getUserPlacementLevel(req.user.id);
       const query = `
-        SELECT l.Id, l.Title as Name, l.Description, l.OrderIndex, l.IsFoundation, COUNT(q.Id) as QuestionCount
+        SELECT l.Id, l.Title as Name, l.Description, l.Level, l.Duration, l.OrderIndex, l.IsFoundation, COUNT(q.Id) as QuestionCount
         FROM SpeakingLessons l
         LEFT JOIN SpeakingQuestions q ON q.LessonId = l.Id
-        GROUP BY l.Id, l.Title, l.Description, l.OrderIndex, l.IsFoundation
+        GROUP BY l.Id, l.Title, l.Description, l.Level, l.Duration, l.OrderIndex, l.IsFoundation
         ORDER BY l.OrderIndex ASC
       `;
       const pool = getPool();
@@ -624,6 +624,8 @@ const speakingController = {
           id: row.Id,
           title: row.Name,
           description: row.Description || '',
+          level: row.Level || '',
+          duration: row.Duration || '',
           isFoundation: Boolean(row.IsFoundation),
           questionCount: row.QuestionCount,
           isCompleted,
@@ -644,7 +646,7 @@ const speakingController = {
       await ensureOnboardingSchema();
       
       const pool = getPool();
-      const levelResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`SELECT Id, Title as Name, IsFoundation FROM SpeakingLessons WHERE Id = @id`);
+      const levelResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`SELECT Id, Title as Name, Level, Duration, IsFoundation FROM SpeakingLessons WHERE Id = @id`);
       if (levelResult.recordset.length === 0) return badRequest(res, 'Lesson not found');
       if (levelResult.recordset[0].IsFoundation && await getUserPlacementLevel(req.user.id) === 'basic') {
         return badRequest(res, 'Lesson not found');
@@ -671,7 +673,13 @@ const speakingController = {
       });
 
       return success(res, { 
-        lesson: { id: levelResult.recordset[0].Id, title: levelResult.recordset[0].Name, isFoundation: Boolean(levelResult.recordset[0].IsFoundation) },
+        lesson: {
+          id: levelResult.recordset[0].Id,
+          title: levelResult.recordset[0].Name,
+          level: levelResult.recordset[0].Level || '',
+          duration: levelResult.recordset[0].Duration || '',
+          isFoundation: Boolean(levelResult.recordset[0].IsFoundation)
+        },
         sentences 
       });
     } catch (err) {

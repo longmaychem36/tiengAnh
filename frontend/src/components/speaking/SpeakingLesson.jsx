@@ -392,13 +392,13 @@ const SpeakingLesson = () => {
         header={(
           <LessonHeader
             title={lessonData?.title || 'Chưa có tiêu đề'}
-            level=""
+            level={lessonData?.level || ''}
             topic={lessonData?.topic}
             progress={progressPercent}
             answered={answeredCount}
             total={totalQuestions}
             score={passRate}
-            duration={`${recordDuration}s/câu`}
+            duration={lessonData?.duration || `${recordDuration}s/câu`}
             backLabel="Thoát"
             onBack={() => navigate('/speaking/lessons')}
             confirmOnBack

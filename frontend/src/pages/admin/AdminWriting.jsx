@@ -4,6 +4,8 @@ import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiChevronRight, FiChevronDown, 
 import toast from 'react-hot-toast';
 import { API_URL } from '../../api/config';
 
+const LESSON_LEVEL_OPTIONS = ['', 'A0', 'A1', 'A2', 'B1'];
+
 const AdminWriting = () => {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,8 @@ const AdminWriting = () => {
   // Lesson state
   const [lTitle, setLTitle] = useState('');
   const [lDesc, setLDesc] = useState('');
+  const [lLevel, setLLevel] = useState('');
+  const [lDuration, setLDuration] = useState('');
   const [lPassageEN, setLPassageEN] = useState('');
   const [lPassageVI, setLPassageVI] = useState('');
   const [lOrder, setLOrder] = useState(0);
@@ -79,6 +83,8 @@ const AdminWriting = () => {
     setEditingLesson(null);
     setLTitle('');
     setLDesc('');
+    setLLevel('');
+    setLDuration('');
     setLPassageEN('');
     setLPassageVI('');
     setLOrder(getNextLessonOrder());
@@ -89,6 +95,8 @@ const AdminWriting = () => {
   const buildLessonPayload = (lesson, orderIndex = lesson.OrderIndex) => ({
     Title: lesson.Title,
     Description: lesson.Description || '',
+    Level: lesson.Level || '',
+    Duration: lesson.Duration || '',
     PassageEN: lesson.PassageEN || '',
     PassageVI: lesson.PassageVI || '',
     OrderIndex: orderIndex,
@@ -122,6 +130,8 @@ const AdminWriting = () => {
       const data = {
         Title: lTitle,
         Description: lDesc,
+        Level: lLevel,
+        Duration: lDuration,
         PassageEN: lPassageEN,
         PassageVI: lPassageVI,
         OrderIndex: lOrder,
@@ -162,7 +172,7 @@ const AdminWriting = () => {
   const closeLessonForm = () => {
     setShowLessonForm(false);
     setEditingLesson(null);
-    setLTitle(''); setLDesc(''); setLPassageEN(''); setLPassageVI(''); setLOrder(0); setLFoundation(false);
+    setLTitle(''); setLDesc(''); setLLevel(''); setLDuration(''); setLPassageEN(''); setLPassageVI(''); setLOrder(0); setLFoundation(false);
   };
 
   const handleSelectLesson = (lesson) => {
@@ -274,6 +284,18 @@ const AdminWriting = () => {
           <span>Thứ tự</span>
           <input aria-label="Thứ tự bài học" className="form-input" type="number" value={lOrder} onChange={e => setLOrder(e.target.value)} />
         </span>
+        <span>
+          <span>Cấp độ</span>
+          <select aria-label="Cấp độ bài học" className="form-input" value={lLevel} onChange={e => setLLevel(e.target.value)}>
+            {LESSON_LEVEL_OPTIONS.map(level => (
+              <option key={level || 'empty'} value={level}>{level || 'Chưa đặt'}</option>
+            ))}
+          </select>
+        </span>
+        <span>
+          <span>Thời lượng</span>
+          <input aria-label="Thời lượng bài học" className="form-input" value={lDuration} onChange={e => setLDuration(e.target.value)} placeholder="VD: 10 phút" />
+        </span>
         <label className="admin-check-row">
           <input type="checkbox" checked={lFoundation} onChange={e => setLFoundation(e.target.checked)} />
           <span>Bài nền tảng</span>
@@ -321,7 +343,7 @@ const AdminWriting = () => {
                 <span className="admin-expand-label">{selectedLesson?.Id === lesson.Id ? 'Đóng' : 'Mở'}</span>
                 <div>
                   <strong>{lesson.Title}</strong>
-                  <p className="admin-order-badge">STT {index + 1}{lesson.IsFoundation ? ' · Nền tảng' : ''}</p>
+                  <p className="admin-order-badge">STT {index + 1}{lesson.Level ? ` · ${lesson.Level}` : ''}{lesson.Duration ? ` · ${lesson.Duration}` : ''}{lesson.IsFoundation ? ' · Nền tảng' : ''}</p>
                   {lesson.PassageEN && (
                     <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 4 }}>
                       {lesson.PassageEN.slice(0, 140)}{lesson.PassageEN.length > 140 ? '...' : ''}
@@ -333,7 +355,7 @@ const AdminWriting = () => {
                 <button type="button" className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => handleMoveLesson(lesson.Id, -1)}>Lên</button>
                 <button type="button" className="btn btn-ghost btn-sm" disabled={index === lessons.length - 1} onClick={() => handleMoveLesson(lesson.Id, 1)}>Xuống</button>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
-                  setEditingLesson(lesson); setLTitle(lesson.Title); setLDesc(lesson.Description); setLPassageEN(lesson.PassageEN || ''); setLPassageVI(lesson.PassageVI || ''); setLOrder(lesson.OrderIndex); setLFoundation(Boolean(lesson.IsFoundation));
+                  setEditingLesson(lesson); setLTitle(lesson.Title); setLDesc(lesson.Description); setLLevel(lesson.Level || ''); setLDuration(lesson.Duration || ''); setLPassageEN(lesson.PassageEN || ''); setLPassageVI(lesson.PassageVI || ''); setLOrder(lesson.OrderIndex); setLFoundation(Boolean(lesson.IsFoundation));
                   setShowLessonForm(true);
                 }}>Sửa</button>
                 <button type="button" className="btn btn-ghost btn-sm is-danger" onClick={() => handleDeleteLesson(lesson.Id)}>Xóa</button>

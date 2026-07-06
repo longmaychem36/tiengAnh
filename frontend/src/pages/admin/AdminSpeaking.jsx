@@ -4,6 +4,8 @@ import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiChevronRight, FiChevronDown, 
 import toast from 'react-hot-toast';
 import { API_URL } from '../../api/config';
 
+const LESSON_LEVEL_OPTIONS = ['', 'A0', 'A1', 'A2', 'B1'];
+
 const AdminSpeaking = () => {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,8 @@ const AdminSpeaking = () => {
   // Lesson state
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonDesc, setLessonDesc] = useState('');
+  const [lessonLevel, setLessonLevel] = useState('');
+  const [lessonDuration, setLessonDuration] = useState('');
   const [lessonFoundation, setLessonFoundation] = useState(false);
   const [lessonOrder, setLessonOrder] = useState(0);
 
@@ -67,6 +71,8 @@ const AdminSpeaking = () => {
     setEditingLesson(null);
     setLessonTitle('');
     setLessonDesc('');
+    setLessonLevel('');
+    setLessonDuration('');
     setLessonFoundation(false);
     setLessonOrder(getNextLessonOrder());
     setShowLessonForm(true);
@@ -75,6 +81,8 @@ const AdminSpeaking = () => {
   const buildLessonPayload = (lesson, orderIndex = lesson.OrderIndex) => ({
     Title: lesson.Title,
     Description: lesson.Description || '',
+    Level: lesson.Level || '',
+    Duration: lesson.Duration || '',
     IsFoundation: Boolean(lesson.IsFoundation),
     OrderIndex: orderIndex
   });
@@ -103,7 +111,14 @@ const AdminSpeaking = () => {
 
   const handleSaveLesson = async () => {
     try {
-      const data = { Title: lessonTitle, Description: lessonDesc, IsFoundation: lessonFoundation, OrderIndex: lessonOrder };
+      const data = {
+        Title: lessonTitle,
+        Description: lessonDesc,
+        Level: lessonLevel,
+        Duration: lessonDuration,
+        IsFoundation: lessonFoundation,
+        OrderIndex: lessonOrder
+      };
       if (editingLesson) {
         await axios.put(`${API_URL}/admin/speaking/lessons/${editingLesson.Id}`, data, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -141,6 +156,8 @@ const AdminSpeaking = () => {
     setEditingLesson(null);
     setLessonTitle('');
     setLessonDesc('');
+    setLessonLevel('');
+    setLessonDuration('');
     setLessonFoundation(false);
     setLessonOrder(0);
   };
@@ -220,6 +237,18 @@ const AdminSpeaking = () => {
           <span>Thứ tự</span>
           <input aria-label="Thứ tự bài học" className="form-input" type="number" value={lessonOrder} onChange={e => setLessonOrder(e.target.value)} />
         </span>
+        <span>
+          <span>Cấp độ</span>
+          <select aria-label="Cấp độ bài học" className="form-input" value={lessonLevel} onChange={e => setLessonLevel(e.target.value)}>
+            {LESSON_LEVEL_OPTIONS.map(level => (
+              <option key={level || 'empty'} value={level}>{level || 'Chưa đặt'}</option>
+            ))}
+          </select>
+        </span>
+        <span>
+          <span>Thời lượng</span>
+          <input aria-label="Thời lượng bài học" className="form-input" value={lessonDuration} onChange={e => setLessonDuration(e.target.value)} placeholder="VD: 8 phút" />
+        </span>
         <label className="admin-check-row">
           <input type="checkbox" checked={lessonFoundation} onChange={e => setLessonFoundation(e.target.checked)} />
           <span>Bài nền tảng</span>
@@ -258,7 +287,7 @@ const AdminSpeaking = () => {
                 <span className="admin-expand-label">{selectedLesson?.Id === lesson.Id ? 'Đóng' : 'Mở'}</span>
                 <div>
                   <strong>{lesson.Title}</strong>
-                  <span>STT {index + 1}{lesson.IsFoundation ? ' · Nền tảng' : ''}</span>
+                  <span>STT {index + 1}{lesson.Level ? ` · ${lesson.Level}` : ''}{lesson.Duration ? ` · ${lesson.Duration}` : ''}{lesson.IsFoundation ? ' · Nền tảng' : ''}</span>
                 </div>
               </button>
               <div className="admin-inline-actions">
@@ -268,6 +297,8 @@ const AdminSpeaking = () => {
                   setEditingLesson(lesson);
                   setLessonTitle(lesson.Title);
                   setLessonDesc(lesson.Description);
+                  setLessonLevel(lesson.Level || '');
+                  setLessonDuration(lesson.Duration || '');
                   setLessonFoundation(Boolean(lesson.IsFoundation));
                   setLessonOrder(lesson.OrderIndex);
                   setShowLessonForm(true);

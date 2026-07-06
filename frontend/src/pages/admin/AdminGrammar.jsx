@@ -9,6 +9,7 @@ const ReactQuill = lazy(() => import('react-quill'));
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const textValue = (value) => value ?? '';
 const numberValue = (value) => Number.parseInt(value, 10) || 0;
+const GRAMMAR_ICON_OPTIONS = ['📘', '📖', '📝', '🔤', '🧩', '⏰', '⚡', '🎯', '💬', '❓', '✅', '📌', '🧠', '🏆', '🌟', '🔍', '📚', '🗂️'];
 
 const AdminGrammar = () => {
   const [categories, setCategories] = useState([]);
@@ -244,6 +245,24 @@ const AdminGrammar = () => {
             <span>
               <span>Tên (VI)</span>
               <input aria-label="Trường nhập" className="form-input" value={catNameVI} onChange={e => setCatNameVI(e.target.value)} />
+            </span>
+            <span>
+              <span>Icon</span>
+              <input aria-label="Icon danh mục" className="form-input" value={catIcon} onChange={e => setCatIcon(e.target.value)} placeholder="📘" />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                {GRAMMAR_ICON_OPTIONS.map(icon => (
+                  <button
+                    type="button"
+                    key={icon}
+                    className={`btn btn-ghost btn-xs ${catIcon === icon ? 'is-active' : ''}`}
+                    onClick={() => setCatIcon(icon)}
+                    style={{ minWidth: 34, padding: '6px 8px', fontSize: 18, lineHeight: 1 }}
+                    aria-label={`Chọn icon ${icon}`}
+                  >
+                    {icon}
+                  </button>
+                ))}
+              </div>
             </span>
             <span>
               <span>Thứ tự</span>

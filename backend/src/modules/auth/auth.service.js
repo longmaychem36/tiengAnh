@@ -77,10 +77,10 @@ function shapeUser(user = {}) {
     ...getOnboardingInfo(user),
     level: user.LevelCode ? { code: user.LevelCode, name: user.LevelName } : null,
     stats: {
-      exp: user.Exp || 0,
-      gameLevel: user.GameLevel || 1,
-      streakDays: user.StreakDays || 0,
-      lastLogin: user.LastLogin
+      exp: user.Exp ?? user.exp ?? 0,
+      gameLevel: user.GameLevel ?? user.gamelevel ?? user.Level ?? user.level ?? 1,
+      streakDays: user.StreakDays ?? user.Streakdays ?? user.streakdays ?? 0,
+      lastLogin: user.LastLogin ?? user.Lastlogin ?? user.lastlogin ?? null
     },
     createdAt: user.CreatedAt
   };

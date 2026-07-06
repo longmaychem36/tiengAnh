@@ -24,6 +24,8 @@
   "passagevi": "PassageVI",
   "orderindex": "OrderIndex",
   "userid": "UserId",
+  "streakdays": "StreakDays",
+  "lastlogin": "LastLogin",
   "courseid": "CourseId",
   "lessonid": "LessonId",
   "gameid": "GameId",
