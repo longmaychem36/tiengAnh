@@ -3,6 +3,7 @@
 // ============================================
 const { getPool } = require('../../config/database');
 const { ensureOnboardingSchema } = require('../onboarding/onboarding.schema');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 function parseOptions(value) {
   if (!value) return null;
@@ -27,11 +28,13 @@ function stringifyOptions(value) {
 const adminGameService = {
   // ========== LEVELS ==========
   async getLevels() {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const r = await pool.query(
       `SELECT Id, LevelNumber, Name, Difficulty, TimeLimit, PassScore, IsLocked,
               (SELECT COUNT(*) FROM MiniGameQuestions WHERE LevelId = GameLevels.Id) as "QuestionCount"
        FROM GameLevels
+       WHERE COALESCE(IsDeleted, false) = false
        ORDER BY LevelNumber ASC, CreatedAt ASC`
     );
 
@@ -48,6 +51,7 @@ const adminGameService = {
   },
 
   async createLevel(data) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const { levelNumber, name, difficulty, timeLimit, passScore } = data;
     const r = await pool.query(
@@ -59,6 +63,7 @@ const adminGameService = {
   },
 
   async updateLevel(id, data) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const { levelNumber, name, difficulty, timeLimit, passScore } = data;
     await pool.query(
@@ -70,10 +75,13 @@ const adminGameService = {
   },
 
   async deleteLevel(id) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
-    await pool.query(`DELETE FROM MiniGameQuestions WHERE LevelId=$1`, [id]);
-    await pool.query(`DELETE FROM UserGameProgress WHERE LevelId=$1`, [id]);
-    await pool.query(`DELETE FROM GameLevels WHERE Id=$1`, [id]);
+    await pool.query(`
+      UPDATE GameLevels
+      SET IsDeleted = true, DeletedAt = COALESCE(DeletedAt, NOW())
+      WHERE Id=$1
+    `, [id]);
   },
 
   // ========== QUESTIONS ==========

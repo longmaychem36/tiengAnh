@@ -3,6 +3,7 @@
 // ============================================
 const { verifyToken } = require('../config/jwt');
 const { sql, getPool } = require('../config/database');
+const { ensureSoftDeleteSchema } = require('../modules/soft-delete/soft-delete.schema');
 
 /**
  * Middleware to verify JWT token from Authorization header
@@ -21,12 +22,14 @@ async function authMiddleware(req, res, next) {
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
 
+    await ensureSoftDeleteSchema();
     const result = await getPool().request()
       .input('id', sql.UniqueIdentifier, decoded.id)
       .query(`
         SELECT Username, Role, COALESCE(IsActive, true) AS IsActive
         FROM Users
         WHERE Id = @id
+          AND COALESCE(IsDeleted, false) = false
       `);
     const account = result.recordset[0];
 

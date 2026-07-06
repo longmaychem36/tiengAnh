@@ -1,6 +1,7 @@
 ﻿const crypto = require('crypto');
 const { getPool } = require('../../config/database');
 const { ensureOnboardingSchema } = require('./onboarding.schema');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 const DIRECT_PLACEMENT = new Set(['new', 'basic']);
 const PASS_SCORE = 70;
@@ -428,12 +429,14 @@ async function updatePlacement(pool, userId, placementLevel, placementSource) {
 }
 
 async function hasLessonsForSource(pool, skill, sourceType) {
+  await ensureSoftDeleteSchema();
   const config = SKILL_TABLES[skill];
   const isFoundation = sourceType === 'foundation';
   const result = await pool.query(`
     SELECT 1
     FROM ${config.lessonTable} l
     WHERE COALESCE(l.IsFoundation, false) = $1
+      AND COALESCE(l.IsDeleted, false) = false
       AND EXISTS (
         SELECT 1
         FROM ${config.itemTable} item
@@ -458,12 +461,14 @@ async function getPlacementTestSummary(pool) {
 }
 
 async function pickSourceLesson(pool, skill, sourceType) {
+  await ensureSoftDeleteSchema();
   const config = SKILL_TABLES[skill];
   const isFoundation = sourceType === 'foundation';
   const result = await pool.query(`
     SELECT l.*
     FROM ${config.lessonTable} l
     WHERE COALESCE(l.IsFoundation, false) = $1
+      AND COALESCE(l.IsDeleted, false) = false
       AND EXISTS (
         SELECT 1
         FROM ${config.itemTable} item

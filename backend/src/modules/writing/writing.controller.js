@@ -9,6 +9,7 @@ const dailyService = require('../daily/daily.service');
 const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 const { EXP_REWARDS } = require('../../utils/constants');
 const { ensureOnboardingSchema, getUserPlacementLevel } = require('../onboarding/onboarding.schema');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 const OPENAI_MODEL = process.env.WRITING_OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
@@ -258,11 +259,13 @@ const writingController = {
     try {
       const pool = getPool();
       await ensureOnboardingSchema();
+      await ensureSoftDeleteSchema();
       const placementLevel = await getUserPlacementLevel(req.user.id);
       const query = `
         SELECT l.Id, l.Title, l.Description, l.Level, l.Duration, l.OrderIndex, l.IsFoundation, COUNT(e.Id) as ExerciseCount
         FROM WritingLessons l
         LEFT JOIN WritingExercises e ON e.LessonId = l.Id
+        WHERE COALESCE(l.IsDeleted, false) = false
         GROUP BY l.Id, l.Title, l.Description, l.Level, l.Duration, l.OrderIndex, l.IsFoundation
         ORDER BY l.OrderIndex ASC
       `;
@@ -303,11 +306,12 @@ const writingController = {
       const { id } = req.params;
       const pool = getPool();
       await ensureOnboardingSchema();
+      await ensureSoftDeleteSchema();
       
       const lessonResult = await pool.query(`
         SELECT Id, Title, Description, Level, Duration, PassageEN, PassageVI, IsFoundation
         FROM WritingLessons
-        WHERE Id = $1
+        WHERE Id = $1 AND COALESCE(IsDeleted, false) = false
       `, [id]);
       if (lessonResult.rows.length === 0) return badRequest(res, 'Lesson not found');
       if (lessonResult.rows[0].isfoundation && await getUserPlacementLevel(req.user.id) === 'basic') {

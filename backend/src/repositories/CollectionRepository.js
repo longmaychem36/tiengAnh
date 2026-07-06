@@ -1,12 +1,28 @@
 const BaseRepository = require('./BaseRepository');
 const { getPool, sql } = require('../config/database');
+const { ensureSoftDeleteSchema } = require('../modules/soft-delete/soft-delete.schema');
 
 class CollectionRepository extends BaseRepository {
   constructor() {
     super('UserCollections', 'Id');
   }
 
+  async getById(collectionId) {
+    await ensureSoftDeleteSchema();
+    const pool = getPool();
+    const result = await pool.request()
+      .input('id', sql.UniqueIdentifier, collectionId)
+      .query(`
+        SELECT *
+        FROM UserCollections
+        WHERE Id = @id
+          AND COALESCE(IsDeleted, false) = false
+      `);
+    return result.recordset[0] || null;
+  }
+
   async getByUserId(userId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
@@ -18,12 +34,14 @@ class CollectionRepository extends BaseRepository {
         LEFT JOIN Users u ON u.Id = c.UserId
         WHERE c.UserId = @userId
           AND COALESCE(c.IsPublic, false) = false
+          AND COALESCE(c.IsDeleted, false) = false
         ORDER BY c.UpdatedAt DESC, c.CreatedAt DESC
       `);
     return result.recordset;
   }
 
   async getPublicSubmissionsByUser(userId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
@@ -37,6 +55,7 @@ class CollectionRepository extends BaseRepository {
         LEFT JOIN Users reviewer ON reviewer.Id = c.ReviewedBy
         WHERE c.UserId = @userId
           AND c.IsPublic = true
+          AND COALESCE(c.IsDeleted, false) = false
         ORDER BY
           CASE c.ReviewStatus
             WHEN 'draft' THEN 0
@@ -51,6 +70,7 @@ class CollectionRepository extends BaseRepository {
   }
 
   async getPublicApproved() {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request().query(`
       SELECT c.*,
@@ -58,13 +78,16 @@ class CollectionRepository extends BaseRepository {
              (SELECT COUNT(*) FROM UserCollectionWords WHERE CollectionId = c.Id) as WordCount
       FROM UserCollections c
       LEFT JOIN Users u ON u.Id = c.UserId
-      WHERE c.IsPublic = true AND c.ReviewStatus = 'approved'
+      WHERE c.IsPublic = true
+        AND c.ReviewStatus = 'approved'
+        AND COALESCE(c.IsDeleted, false) = false
       ORDER BY c.UpdatedAt DESC, c.CreatedAt DESC
     `);
     return result.recordset;
   }
 
   async create(collection) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const reviewStatus = collection.reviewStatus || 'approved';
     const submittedAt = collection.isPublic && reviewStatus !== 'draft' ? new Date() : null;
@@ -91,6 +114,7 @@ class CollectionRepository extends BaseRepository {
   }
 
   async update(collectionId, data) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const reviewStatus = data.reviewStatus || 'approved';
     const isPublic = Boolean(data.isPublic);
@@ -114,26 +138,30 @@ class CollectionRepository extends BaseRepository {
             ReviewedAt = CASE WHEN @clearReview = true THEN NULL ELSE ReviewedAt END,
             ReviewedBy = CASE WHEN @clearReview = true THEN NULL ELSE ReviewedBy END,
             UpdatedAt = NOW()
-        WHERE Id = @id
+        WHERE Id = @id AND COALESCE(IsDeleted, false) = false
         RETURNING *
       `);
     return result.recordset[0];
   }
 
   async getWords(collectionId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('collectionId', sql.UniqueIdentifier, collectionId)
       .query(`
         SELECT w.*
         FROM UserCollectionWords w
+        INNER JOIN UserCollections c ON c.Id = w.CollectionId
         WHERE w.CollectionId = @collectionId
+          AND COALESCE(c.IsDeleted, false) = false
         ORDER BY w.AddedAt ASC
       `);
     return result.recordset;
   }
 
   async addWord(wordData) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('collectionId', sql.UniqueIdentifier, wordData.collectionId)
@@ -148,6 +176,7 @@ class CollectionRepository extends BaseRepository {
   }
 
   async updateWord(wordId, wordData) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, wordId)
@@ -167,14 +196,22 @@ class CollectionRepository extends BaseRepository {
   }
 
   async getWordById(wordId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, wordId)
-      .query(`SELECT * FROM UserCollectionWords WHERE Id = @id`);
+      .query(`
+        SELECT w.*
+        FROM UserCollectionWords w
+        INNER JOIN UserCollections c ON c.Id = w.CollectionId
+        WHERE w.Id = @id
+          AND COALESCE(c.IsDeleted, false) = false
+      `);
     return result.recordset[0] || null;
   }
 
   async markPending(collectionId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, collectionId)
@@ -185,13 +222,14 @@ class CollectionRepository extends BaseRepository {
             ReviewedAt = NULL,
             ReviewedBy = NULL,
             UpdatedAt = NOW()
-        WHERE Id = @id AND IsPublic = true
+        WHERE Id = @id AND IsPublic = true AND COALESCE(IsDeleted, false) = false
         RETURNING *
       `);
     return result.recordset[0] || null;
   }
 
   async markDraft(collectionId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, collectionId)
@@ -202,13 +240,14 @@ class CollectionRepository extends BaseRepository {
             ReviewedAt = NULL,
             ReviewedBy = NULL,
             UpdatedAt = NOW()
-        WHERE Id = @id AND IsPublic = true
+        WHERE Id = @id AND IsPublic = true AND COALESCE(IsDeleted, false) = false
         RETURNING *
       `);
     return result.recordset[0] || null;
   }
 
   async setReviewStatus(collectionId, status, reviewerId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, collectionId)
@@ -220,7 +259,7 @@ class CollectionRepository extends BaseRepository {
             ReviewedBy = @reviewerId,
             ReviewedAt = NOW(),
             UpdatedAt = NOW()
-        WHERE Id = @id
+        WHERE Id = @id AND COALESCE(IsDeleted, false) = false
         RETURNING *
       `);
     return result.recordset[0];
@@ -235,14 +274,18 @@ class CollectionRepository extends BaseRepository {
   }
 
   async delete(collectionId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
-    await pool.request()
-      .input('id', sql.UniqueIdentifier, collectionId)
-      .query(`DELETE FROM UserCollectionWords WHERE CollectionId = @id`);
-
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, collectionId)
-      .query(`DELETE FROM UserCollections WHERE Id = @id`);
+      .query(`
+        UPDATE UserCollections
+        SET IsDeleted = true,
+            DeletedAt = COALESCE(DeletedAt, NOW()),
+            UpdatedAt = NOW()
+        WHERE Id = @id
+          AND COALESCE(IsDeleted, false) = false
+      `);
 
     return result.rowsAffected[0] > 0;
   }

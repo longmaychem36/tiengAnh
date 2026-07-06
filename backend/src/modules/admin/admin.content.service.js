@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../../config/database');
 const { ensureOnboardingSchema } = require('../onboarding/onboarding.schema');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 const RECEPTIVE_CONFIG = {
   listening: {
@@ -75,11 +76,13 @@ function mapVocabularyCollection(row) {
 }
 
 async function assertAdminOwnedVocabularyCollection(pool, collectionId) {
+  await ensureSoftDeleteSchema();
   const result = await pool.query(`
     SELECT c.Id, u.Role as CreatorRole
     FROM UserCollections c
     LEFT JOIN Users u ON u.Id = c.UserId
     WHERE c.Id = $1 AND c.IsPublic = true
+      AND COALESCE(c.IsDeleted, false) = false
     LIMIT 1
   `, [collectionId]);
 
@@ -93,12 +96,14 @@ async function assertAdminOwnedVocabularyCollection(pool, collectionId) {
 }
 
 async function assertAdminOwnedVocabularyWord(pool, wordId) {
+  await ensureSoftDeleteSchema();
   const result = await pool.query(`
     SELECT w.Id, c.Id as CollectionId, u.Role as CreatorRole
     FROM UserCollectionWords w
     INNER JOIN UserCollections c ON c.Id = w.CollectionId
     LEFT JOIN Users u ON u.Id = c.UserId
     WHERE w.Id = $1 AND c.IsPublic = true
+      AND COALESCE(c.IsDeleted, false) = false
     LIMIT 1
   `, [wordId]);
 
@@ -179,13 +184,15 @@ const adminContentService = {
   // ========== SPEAKING MANAGEMENT ==========
   async getSpeakingLessons() {
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const pool = getPool();
-    const res = await pool.request().query(`SELECT * FROM SpeakingLessons ORDER BY OrderIndex ASC`);
+    const res = await pool.request().query(`SELECT * FROM SpeakingLessons WHERE COALESCE(IsDeleted, false) = false ORDER BY OrderIndex ASC`);
     return res.recordset;
   },
 
   async createSpeakingLesson(data) {
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const res = await pool.request()
       .input('title', sql.NVarChar, data.Title)
@@ -203,6 +210,7 @@ const adminContentService = {
 
   async updateSpeakingLesson(id, data) {
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     await pool.request()
       .input('id', sql.UniqueIdentifier, id)
@@ -220,8 +228,13 @@ const adminContentService = {
   },
 
   async deleteSpeakingLesson(id) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
-    await pool.request().input('id', sql.UniqueIdentifier, id).query(`DELETE FROM SpeakingLessons WHERE Id = @id`);
+    await pool.request().input('id', sql.UniqueIdentifier, id).query(`
+      UPDATE SpeakingLessons
+      SET IsDeleted = true, DeletedAt = COALESCE(DeletedAt, NOW())
+      WHERE Id = @id
+    `);
   },
 
   async getSpeakingQuestions(lessonId) {
@@ -283,13 +296,15 @@ const adminContentService = {
   // ========== WRITING MANAGEMENT ==========
   async getWritingLessons() {
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const pool = getPool();
-    const res = await pool.request().query(`SELECT * FROM WritingLessons ORDER BY OrderIndex ASC`);
+    const res = await pool.request().query(`SELECT * FROM WritingLessons WHERE COALESCE(IsDeleted, false) = false ORDER BY OrderIndex ASC`);
     return res.recordset;
   },
 
   async createWritingLesson(data) {
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const res = await pool.request()
       .input('title', sql.NVarChar, data.Title)
@@ -309,6 +324,7 @@ const adminContentService = {
 
   async updateWritingLesson(id, data) {
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     await pool.request()
       .input('id', sql.UniqueIdentifier, id)
@@ -328,8 +344,13 @@ const adminContentService = {
   },
 
   async deleteWritingLesson(id) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
-    await pool.request().input('id', sql.UniqueIdentifier, id).query(`DELETE FROM WritingLessons WHERE Id = @id`);
+    await pool.request().input('id', sql.UniqueIdentifier, id).query(`
+      UPDATE WritingLessons
+      SET IsDeleted = true, DeletedAt = COALESCE(DeletedAt, NOW())
+      WHERE Id = @id
+    `);
   },
 
   async getWritingExercises(lessonId) {
@@ -400,11 +421,13 @@ const adminContentService = {
   // ========== LISTENING / READING MANAGEMENT ==========
   async getReceptiveLessons(skill) {
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const config = getReceptiveConfig(skill);
     const pool = getPool();
     const res = await pool.query(`
       SELECT *
       FROM ${config.lessonTable}
+      WHERE COALESCE(IsDeleted, false) = false
       ORDER BY OrderIndex ASC, CreatedAt ASC
     `);
     return res.rows.map(mapLesson);
@@ -412,6 +435,7 @@ const adminContentService = {
 
   async createReceptiveLesson(skill, data) {
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const config = getReceptiveConfig(skill);
     const pool = getPool();
     const res = await pool.query(`
@@ -436,6 +460,7 @@ const adminContentService = {
 
   async updateReceptiveLesson(skill, id, data) {
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const config = getReceptiveConfig(skill);
     const pool = getPool();
     await pool.query(`
@@ -468,9 +493,16 @@ const adminContentService = {
   },
 
   async deleteReceptiveLesson(skill, id) {
+    await ensureSoftDeleteSchema();
     const config = getReceptiveConfig(skill);
     const pool = getPool();
-    await pool.query(`DELETE FROM ${config.lessonTable} WHERE Id = $1`, [id]);
+    await pool.query(`
+      UPDATE ${config.lessonTable}
+      SET IsDeleted = true,
+          DeletedAt = COALESCE(DeletedAt, NOW()),
+          UpdatedAt = NOW()
+      WHERE Id = $1
+    `, [id]);
   },
 
   async getListeningSpeakers(lessonId) {
@@ -836,13 +868,15 @@ const adminContentService = {
   },
 
   async getGrammarTopics(categoryId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const res = await pool.request().input('catId', sql.Int, categoryId)
-      .query(`SELECT * FROM GrammarTopics WHERE CategoryId = @catId ORDER BY OrderIndex ASC`);
+      .query(`SELECT * FROM GrammarTopics WHERE CategoryId = @catId AND COALESCE(IsDeleted, false) = false ORDER BY OrderIndex ASC`);
     return res.recordset;
   },
 
   async createGrammarTopic(data) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const res = await pool.request()
       .input('catId', sql.Int, data.CategoryId)
@@ -858,6 +892,7 @@ const adminContentService = {
   },
 
   async updateGrammarTopic(id, data) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     await pool.request()
       .input('id', sql.UniqueIdentifier, id)
@@ -873,8 +908,13 @@ const adminContentService = {
   },
 
   async deleteGrammarTopic(id) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
-    await pool.request().input('id', sql.UniqueIdentifier, id).query(`DELETE FROM GrammarTopics WHERE Id = @id`);
+    await pool.request().input('id', sql.UniqueIdentifier, id).query(`
+      UPDATE GrammarTopics
+      SET IsDeleted = true, DeletedAt = COALESCE(DeletedAt, NOW())
+      WHERE Id = @id
+    `);
   },
 
   async getGrammarQuizzes(topicId) {
@@ -926,6 +966,7 @@ const adminContentService = {
   },
 
   async getVocabularyCollections(status = 'all', source = 'all') {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const normalizedStatus = ['pending', 'approved', 'rejected'].includes(status) ? status : null;
     const normalizedSource = ['user', 'admin'].includes(source) ? source : null;
@@ -943,6 +984,7 @@ const adminContentService = {
       LEFT JOIN Users u ON u.Id = c.UserId
       LEFT JOIN Users reviewer ON reviewer.Id = c.ReviewedBy
       WHERE c.IsPublic = true
+        AND COALESCE(c.IsDeleted, false) = false
         AND c.ReviewStatus <> 'draft'
         AND ($1::varchar IS NULL OR c.ReviewStatus = $1)
         AND (
@@ -959,6 +1001,7 @@ const adminContentService = {
   },
 
   async createVocabularyCollection(adminUserId, data) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.query(`
       INSERT INTO UserCollections (UserId, Name, Description, IsPublic, ReviewStatus, SubmittedAt, ReviewedAt, ReviewedBy, UpdatedAt)
@@ -969,13 +1012,14 @@ const adminContentService = {
   },
 
   async updateVocabularyCollection(id, data) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     await pool.query(`
       UPDATE UserCollections
       SET Name = $1,
           Description = $2,
           UpdatedAt = NOW()
-      WHERE Id = $3 AND IsPublic = true
+      WHERE Id = $3 AND IsPublic = true AND COALESCE(IsDeleted, false) = false
     `, [data.Name || data.name, data.Description || data.description || null, id]);
   },
 
@@ -983,6 +1027,7 @@ const adminContentService = {
     if (!['approved', 'rejected', 'pending'].includes(status)) {
       throw new Error('Invalid vocabulary review status');
     }
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.query(`
       WITH updated AS (
@@ -991,7 +1036,7 @@ const adminContentService = {
             ReviewedBy = $2,
             ReviewedAt = NOW(),
             UpdatedAt = NOW()
-        WHERE Id = $3 AND IsPublic = true AND ReviewStatus <> 'draft'
+        WHERE Id = $3 AND IsPublic = true AND ReviewStatus <> 'draft' AND COALESCE(IsDeleted, false) = false
         RETURNING *
       )
       SELECT updated.*,
@@ -1014,8 +1059,15 @@ const adminContentService = {
   },
 
   async deleteVocabularyCollection(id) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
-    await pool.query('DELETE FROM UserCollections WHERE Id = $1 AND IsPublic = true', [id]);
+    await pool.query(`
+      UPDATE UserCollections
+      SET IsDeleted = true,
+          DeletedAt = COALESCE(DeletedAt, NOW()),
+          UpdatedAt = NOW()
+      WHERE Id = $1 AND IsPublic = true
+    `, [id]);
   },
 
   async getVocabularyWords(collectionId) {

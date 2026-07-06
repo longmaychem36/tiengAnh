@@ -8,6 +8,7 @@ const FormData = require('form-data');
 const { sql, getPool } = require('../../config/database');
 const { parsePagination } = require('../../utils/pagination');
 const { ensureOnboardingSchema } = require('../onboarding/onboarding.schema');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 let profileSchemaReady = false;
 
@@ -50,11 +51,12 @@ const userService = {
   async getAll(page, limit) {
     await ensureProfileSchema();
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const { offset } = parsePagination({ page, limit });
 
     const countResult = await pool.request()
-      .query('SELECT COUNT(*) as total FROM Users');
+      .query('SELECT COUNT(*) as total FROM Users WHERE COALESCE(IsDeleted, false) = false');
     const total = countResult.recordset[0].total;
 
     const result = await pool.request()
@@ -66,6 +68,7 @@ const userService = {
                ll.Code as LevelCode, ll.Name as LevelName
         FROM Users u
         LEFT JOIN LearningLevels ll ON u.LevelId = ll.Id
+        WHERE COALESCE(u.IsDeleted, false) = false
         ORDER BY u.CreatedAt DESC
         LIMIT @limit OFFSET @offset
       `);
@@ -76,6 +79,7 @@ const userService = {
   async getById(userId) {
     await ensureProfileSchema();
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
@@ -86,6 +90,7 @@ const userService = {
         FROM Users u
         LEFT JOIN LearningLevels ll ON u.LevelId = ll.Id
         WHERE u.Id = @userId
+          AND COALESCE(u.IsDeleted, false) = false
       `);
     return result.recordset[0] || null;
   },
@@ -93,6 +98,7 @@ const userService = {
   async update(userId, data) {
     await ensureProfileSchema();
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const { username, levelId } = data;
 
@@ -101,7 +107,7 @@ const userService = {
       const existing = await pool.request()
         .input('username', sql.NVarChar, username)
         .input('userId', sql.UniqueIdentifier, userId)
-        .query('SELECT Id FROM Users WHERE Username = @username AND Id != @userId');
+        .query('SELECT Id FROM Users WHERE Username = @username AND Id != @userId AND COALESCE(IsDeleted, false) = false');
       if (existing.recordset.length > 0) {
         return { error: 'Username already taken.' };
       }
@@ -115,7 +121,7 @@ const userService = {
         UPDATE Users
         SET Username = COALESCE(@username, Username),
             LevelId = COALESCE(@levelId, LevelId)
-        WHERE Id = @userId
+        WHERE Id = @userId AND COALESCE(IsDeleted, false) = false
         RETURNING Id, Username, Email, Role, LevelId, AvatarUrl, OnboardingCompleted, PlacementLevel, PlacementSource, PlacementCompletedAt
       `);
 
@@ -125,6 +131,7 @@ const userService = {
   async updateAvatar(userId, file) {
     await ensureProfileSchema();
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
 
     if (!file) {
       const err = new Error('Avatar image is required');
@@ -182,7 +189,7 @@ const userService = {
       .query(`
         UPDATE Users
         SET AvatarUrl = @avatarUrl
-        WHERE Id = @userId
+        WHERE Id = @userId AND COALESCE(IsDeleted, false) = false
         RETURNING Id, Username, Email, Role, LevelId, AvatarUrl, OnboardingCompleted, PlacementLevel, PlacementSource, PlacementCompletedAt
       `);
 
@@ -199,9 +206,10 @@ const userService = {
     }
 
     const pool = getPool();
+    await ensureSoftDeleteSchema();
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
-      .query('SELECT Id, PasswordHash FROM Users WHERE Id = @userId');
+      .query('SELECT Id, PasswordHash FROM Users WHERE Id = @userId AND COALESCE(IsDeleted, false) = false');
 
     const user = result.recordset[0];
     if (!user) throw httpError('User not found', 404);
@@ -220,9 +228,10 @@ const userService = {
 
   async resetLearningProgress(userId) {
     const pool = getPool();
+    await ensureSoftDeleteSchema();
     const existing = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
-      .query('SELECT Id FROM Users WHERE Id = @userId');
+      .query('SELECT Id FROM Users WHERE Id = @userId AND COALESCE(IsDeleted, false) = false');
 
     if (existing.recordset.length === 0) throw httpError('User not found', 404);
 
@@ -261,6 +270,7 @@ const userService = {
 
   async getStats(userId) {
     const pool = getPool();
+    await ensureSoftDeleteSchema();
     const result = await pool.request()
       .input('userId', sql.UniqueIdentifier, userId)
       .query(`

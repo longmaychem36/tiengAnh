@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const { sql, getPool } = require('../../config/database');
 const notificationService = require('../notification/notification.service');
 const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 const VALID_PLACEMENT_LEVELS = new Set(['new', 'basic']);
 
@@ -75,6 +76,7 @@ async function ensureUniqueIdentity(pool, { id = null, username, email }) {
 
 const adminUserService = {
   async createUser({ username, email, password, role = 'admin', isActive = true }) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const safeUsername = normalizeUsername(username);
     const safeEmail = normalizeEmail(email);
@@ -114,13 +116,14 @@ const adminUserService = {
   },
 
   async getAllUsers(page = 1, limit = 20, search = '', role = 'all') {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const safePage = Math.max(1, Number(page) || 1);
     const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
     const offset = (safePage - 1) * safeLimit;
     const safeRole = String(role || 'all').toLowerCase();
 
-    let whereClause = 'WHERE 1 = 1';
+    let whereClause = 'WHERE COALESCE(u.IsDeleted, false) = false';
     const req = pool.request().input('limit', sql.Int, safeLimit).input('offset', sql.Int, offset);
 
     if (search) {
@@ -170,6 +173,7 @@ const adminUserService = {
       LEFT JOIN (
         SELECT UserId, COUNT(*)::int AS CollectionCount
         FROM UserCollections
+        WHERE COALESCE(IsDeleted, false) = false
         GROUP BY UserId
       ) uc ON uc.UserId = u.Id
       ${whereClause}
@@ -186,6 +190,7 @@ const adminUserService = {
     }
 
     await spacedRepetitionService.ensureSchema();
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const learnerResult = await pool.query(`
       SELECT u.Id, u.Username, u.Email, u.Role, u.AvatarUrl,
@@ -203,7 +208,7 @@ const adminUserService = {
              us.LastLogin
       FROM Users u
       LEFT JOIN UserStats us ON us.UserId = u.Id
-      WHERE u.Id = $1 AND u.Role = 'user'
+      WHERE u.Id = $1 AND u.Role = 'user' AND COALESCE(u.IsDeleted, false) = false
     `, [userId]);
     if (!learnerResult.rows[0]) throw httpError('Learner not found', 404);
 
@@ -224,6 +229,7 @@ const adminUserService = {
                MAX(p.UpdatedAt) AS LastActivityAt
         FROM ${lessonTable} l
         LEFT JOIN ${progressTable} p ON p.LessonId = l.Id AND p.UserId = $1
+        WHERE COALESCE(l.IsDeleted, false) = false
       `, [userId]);
       const row = result.rows[0] || {};
       const total = Number(row.total || 0);
@@ -249,6 +255,7 @@ const adminUserService = {
                MAX(gp.UpdatedAt) AS LastActivityAt
         FROM GrammarTopics gt
         LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = $1
+        WHERE COALESCE(gt.IsDeleted, false) = false
       `, [userId]),
       pool.query(`
         SELECT COUNT(gl.Id)::int AS Total,
@@ -259,6 +266,7 @@ const adminUserService = {
                MAX(ugp.CompletedAt) AS LastActivityAt
         FROM GameLevels gl
         LEFT JOIN UserGameProgress ugp ON ugp.LevelId = gl.Id AND ugp.UserId = $1
+        WHERE COALESCE(gl.IsDeleted, false) = false
       `, [userId]),
       pool.query(`
         SELECT COUNT(*)::int AS Total,
@@ -275,7 +283,7 @@ const adminUserService = {
           COALESCE((SELECT SUM(ActiveSeconds) FROM StudyTimeDaily WHERE UserId = $1), 0)::int AS TotalStudySeconds,
           COALESCE((SELECT SUM(ActiveSeconds) FROM StudyTimeDaily WHERE UserId = $1 AND ActivityDate >= CURRENT_DATE - 6), 0)::int AS StudySeconds7d,
           COALESCE((SELECT COUNT(*) FROM DailyTasks WHERE UserId = $1 AND Status = 'completed'), 0)::int AS CompletedDailyTasks,
-          COALESCE((SELECT COUNT(*) FROM UserCollections WHERE UserId = $1), 0)::int AS OwnedCollections
+          COALESCE((SELECT COUNT(*) FROM UserCollections WHERE UserId = $1 AND COALESCE(IsDeleted, false) = false), 0)::int AS OwnedCollections
       `, [userId]),
       pool.query(`
         SELECT COUNT(*) FILTER (WHERE LastReviewedAt IS NOT NULL)::int AS TotalItems,
@@ -413,10 +421,11 @@ const adminUserService = {
   },
 
   async updateUser(userId, data = {}, currentUserId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const existing = await pool.request()
       .input('id', sql.UniqueIdentifier, userId)
-      .query('SELECT Id, Username, Email, Role, IsActive, Plan, PlusExpiresAt, OnboardingCompleted, PlacementLevel FROM Users WHERE Id = @id');
+      .query('SELECT Id, Username, Email, Role, IsActive, Plan, PlusExpiresAt, OnboardingCompleted, PlacementLevel FROM Users WHERE Id = @id AND COALESCE(IsDeleted, false) = false');
     if (existing.recordset.length === 0) throw httpError('User not found', 404);
 
     const current = existing.recordset[0];
@@ -487,6 +496,7 @@ const adminUserService = {
   },
 
   async giftPlusDays(userId, days, adminId = null) {
+    await ensureSoftDeleteSchema();
     const safeDays = Math.floor(Number(days));
     if (!Number.isFinite(safeDays) || safeDays < 1 || safeDays > 3650) {
       throw httpError('Plus gift days must be between 1 and 3650', 400);
@@ -496,7 +506,7 @@ const adminUserService = {
     const existing = await pool.query(`
       SELECT Id, Username, Email, Role, Plan, PlusExpiresAt
       FROM Users
-      WHERE Id = $1
+      WHERE Id = $1 AND COALESCE(IsDeleted, false) = false
     `, [userId]);
 
     if (existing.rows.length === 0) throw httpError('User not found', 404);
@@ -548,11 +558,12 @@ const adminUserService = {
   },
 
   async resetPassword(userId, password) {
+    await ensureSoftDeleteSchema();
     if (!password || String(password).length < 6) throw httpError('Password must be at least 6 characters', 400);
     const pool = getPool();
     const existing = await pool.request()
       .input('id', sql.UniqueIdentifier, userId)
-      .query('SELECT Id, Role FROM Users WHERE Id = @id');
+      .query('SELECT Id, Role FROM Users WHERE Id = @id AND COALESCE(IsDeleted, false) = false');
     if (existing.recordset.length === 0) throw httpError('User not found', 404);
     if (String(existing.recordset[0].Role || '').toLowerCase() !== 'admin') {
       throw httpError('Admin can only reset admin account passwords', 403);
@@ -567,44 +578,32 @@ const adminUserService = {
 
   async deleteUser(userId, currentUserId) {
     if (String(userId) === String(currentUserId)) throw httpError('Cannot delete your own account', 400);
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const existing = await pool.request()
       .input('id', sql.UniqueIdentifier, userId)
-      .query('SELECT Id FROM Users WHERE Id = @id');
+      .query('SELECT Id FROM Users WHERE Id = @id AND COALESCE(IsDeleted, false) = false');
     if (existing.recordset.length === 0) throw httpError('User not found', 404);
 
-    await pool.query('BEGIN');
-    try {
-      await pool.query('DELETE FROM PasswordResetCodes WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM DailyTasks WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM StudyTimeDaily WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM UserGameProgress WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM UserStats WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM UserCollectionWords WHERE CollectionId IN (SELECT Id FROM UserCollections WHERE UserId = $1)', [userId]);
-      await pool.query('DELETE FROM UserCollections WHERE UserId = $1 OR ReviewedBy = $1', [userId]);
-      await pool.query('DELETE FROM GrammarProgress WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM SpeakingProgress WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM WritingProgress WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM ListeningProgress WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM ReadingProgress WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM PaymentRequests WHERE UserId = $1', [userId]);
-      await pool.query('DELETE FROM Users WHERE Id = $1', [userId]);
-      await pool.query('COMMIT');
-    } catch (error) {
-      await pool.query('ROLLBACK');
-      throw error;
-    }
+    await pool.query(`
+      UPDATE Users
+      SET IsDeleted = true,
+          DeletedAt = COALESCE(DeletedAt, NOW()),
+          IsActive = false
+      WHERE Id = $1
+    `, [userId]);
   },
 
   async toggleUserActive(userId, currentUserId) {
     if (String(userId) === String(currentUserId)) throw httpError('Cannot lock your own account', 400);
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, userId)
       .query(`
         UPDATE Users
         SET IsActive = NOT COALESCE(IsActive, true)
-        WHERE Id = @id
+        WHERE Id = @id AND COALESCE(IsDeleted, false) = false
         RETURNING Id, Username, Email, Role, IsActive
       `);
     if (result.recordset.length === 0) throw httpError('User not found', 404);
@@ -612,6 +611,7 @@ const adminUserService = {
   },
 
   async getUserStats() {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const r = await pool.request().query(`
       SELECT
@@ -625,6 +625,7 @@ const adminUserService = {
         COALESCE(AVG(us.Exp), 0)::int as averageExp
       FROM Users u
       LEFT JOIN UserStats us ON us.UserId = u.Id
+      WHERE COALESCE(u.IsDeleted, false) = false
     `);
     const row = r.recordset[0] || {};
     return {

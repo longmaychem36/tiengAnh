@@ -9,6 +9,7 @@ const adminUserService = require('./admin.user.service');
 const adminContentService = require('./admin.content.service');
 const supportController = require('../support/support.controller');
 const { success, badRequest } = require('../../utils/responseHelper');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 // All admin routes require at least admin role
 router.use(authMiddleware);
@@ -546,7 +547,69 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
   try {
     const { getPool } = require('../../config/database');
     const pool = getPool();
-    const countTable = (tableName) => pool.query(`SELECT count(*)::int as count FROM ${tableName}`);
+    await ensureSoftDeleteSchema();
+    const softDeleteTables = new Set([
+      'Users',
+      'GameLevels',
+      'SpeakingLessons',
+      'WritingLessons',
+      'GrammarTopics',
+      'ListeningLessons',
+      'ReadingLessons',
+      'UserCollections'
+    ]);
+    const visibleChildCountQueries = {
+      MiniGameQuestions: `
+        SELECT count(*)::int as count
+        FROM MiniGameQuestions q
+        INNER JOIN GameLevels l ON l.Id = q.LevelId
+        WHERE COALESCE(l.IsDeleted, false) = false
+      `,
+      SpeakingQuestions: `
+        SELECT count(*)::int as count
+        FROM SpeakingQuestions q
+        INNER JOIN SpeakingLessons l ON l.Id = q.LessonId
+        WHERE COALESCE(l.IsDeleted, false) = false
+      `,
+      WritingExercises: `
+        SELECT count(*)::int as count
+        FROM WritingExercises e
+        INNER JOIN WritingLessons l ON l.Id = e.LessonId
+        WHERE COALESCE(l.IsDeleted, false) = false
+      `,
+      GrammarQuiz: `
+        SELECT count(*)::int as count
+        FROM GrammarQuiz q
+        INNER JOIN GrammarTopics t ON t.Id = q.TopicId
+        WHERE COALESCE(t.IsDeleted, false) = false
+      `,
+      ListeningQuestions: `
+        SELECT count(*)::int as count
+        FROM ListeningQuestions q
+        INNER JOIN ListeningLessons l ON l.Id = q.LessonId
+        WHERE COALESCE(l.IsDeleted, false) = false
+      `,
+      ReadingQuestions: `
+        SELECT count(*)::int as count
+        FROM ReadingQuestions q
+        INNER JOIN ReadingLessons l ON l.Id = q.LessonId
+        WHERE COALESCE(l.IsDeleted, false) = false
+      `,
+      UserCollectionWords: `
+        SELECT count(*)::int as count
+        FROM UserCollectionWords w
+        INNER JOIN UserCollections c ON c.Id = w.CollectionId
+        WHERE COALESCE(c.IsDeleted, false) = false
+      `
+    };
+    const countTable = (tableName) => {
+      if (visibleChildCountQueries[tableName]) return pool.query(visibleChildCountQueries[tableName]);
+      return pool.query(`
+        SELECT count(*)::int as count
+        FROM ${tableName}
+        ${softDeleteTables.has(tableName) ? 'WHERE COALESCE(IsDeleted, false) = false' : ''}
+      `);
+    };
     const scalar = async (query) => {
       const result = await pool.query(query);
       return Number(Object.values(result.rows[0] || {})[0] || 0);
@@ -558,12 +621,12 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
 
     const queries = await Promise.all([
       countTable('Users'),
-      scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsActive, true) = true"),
-      scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsActive, true) = false"),
-      scalar("SELECT count(*)::int FROM Users WHERE Role IN ('admin', 'superadmin')"),
-      scalar("SELECT count(*)::int FROM Users WHERE Role = 'user'"),
-      scalar("SELECT count(*)::int FROM Users WHERE Plan = 'plus'"),
-      scalar("SELECT count(*)::int FROM Users WHERE CreatedAt >= NOW() - INTERVAL '7 days'"),
+      scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsDeleted, false) = false AND COALESCE(IsActive, true) = true"),
+      scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsDeleted, false) = false AND COALESCE(IsActive, true) = false"),
+      scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsDeleted, false) = false AND Role IN ('admin', 'superadmin')"),
+      scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsDeleted, false) = false AND Role = 'user'"),
+      scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsDeleted, false) = false AND Plan = 'plus'"),
+      scalar("SELECT count(*)::int FROM Users WHERE COALESCE(IsDeleted, false) = false AND CreatedAt >= NOW() - INTERVAL '7 days'"),
       countTable('GameLevels'),
       countTable('MiniGameQuestions'),
       countTable('SpeakingLessons'),
@@ -594,6 +657,7 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       FROM Users u
       LEFT JOIN UserStats us ON us.UserId = u.Id
       WHERE u.Role = 'user'
+        AND COALESCE(u.IsDeleted, false) = false
       ORDER BY COALESCE(us.Exp, 0) DESC, COALESCE(us.Level, 1) DESC, COALESCE(us.StreakDays, 0) DESC, u.CreatedAt DESC
       LIMIT 8
     `);
@@ -607,6 +671,7 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       FROM Users u
       LEFT JOIN UserStats us ON us.UserId = u.Id
       WHERE u.Role = 'user'
+        AND COALESCE(u.IsDeleted, false) = false
       ORDER BY COALESCE(us.StreakDays, 0) DESC, COALESCE(us.Exp, 0) DESC, u.CreatedAt DESC
       LIMIT 8
     `);
@@ -621,6 +686,7 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       LEFT JOIN UserStats us ON us.UserId = u.Id
       LEFT JOIN StudyTimeDaily std ON std.UserId = u.Id AND std.ActivityDate >= CURRENT_DATE - 29
       WHERE u.Role = 'user'
+        AND COALESCE(u.IsDeleted, false) = false
       GROUP BY u.Id, u.Username, u.Email, u.Plan, us.Exp, us.StreakDays
       HAVING COALESCE(SUM(std.ActiveSeconds), 0) > 0
       ORDER BY COALESCE(SUM(std.ActiveSeconds), 0) DESC, COUNT(std.ActivityDate) DESC, COALESCE(us.Exp, 0) DESC
@@ -637,6 +703,7 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       LEFT JOIN UserStats us ON us.UserId = u.Id
       LEFT JOIN DailyTasks dt ON dt.UserId = u.Id AND dt.Status = 'completed' AND dt.TaskDate >= CURRENT_DATE - 29
       WHERE u.Role = 'user'
+        AND COALESCE(u.IsDeleted, false) = false
       GROUP BY u.Id, u.Username, u.Email, u.Plan, us.Exp, us.StreakDays
       HAVING COUNT(dt.Id) > 0
       ORDER BY COUNT(dt.Id) DESC, COALESCE(SUM(dt.RewardExp), 0) DESC, COALESCE(us.Exp, 0) DESC
@@ -673,6 +740,7 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
         GROUP BY UserId
       ) dt ON dt.UserId = u.Id
       WHERE u.Role = 'user'
+        AND COALESCE(u.IsDeleted, false) = false
         AND (
           COALESCE(u.IsActive, true) = false
           OR us.LastLogin IS NULL
@@ -717,6 +785,7 @@ router.get('/dashboard/stats', requireRole('admin'), async (req, res, next) => {
       LEFT JOIN (
         SELECT CreatedAt::date AS day, COUNT(*)::int AS NewUsers
         FROM Users
+        WHERE COALESCE(IsDeleted, false) = false
         GROUP BY CreatedAt::date
       ) newu ON newu.day = d.day::date
       ORDER BY d.day ASC

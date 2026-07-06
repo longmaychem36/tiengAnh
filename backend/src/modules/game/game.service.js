@@ -6,6 +6,7 @@ const { EXP_REWARDS } = require('../../utils/constants');
 const gamificationService = require('../gamification/gamification.service');
 const dailyService = require('../daily/daily.service');
 const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 const GAME_DIFFICULTY_EXP = {
   easy: 24,
@@ -86,6 +87,7 @@ const gameService = {
   // GET all mini-game levels directly
   // ==================
   async getLevels(userId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
 
     const result = await pool.query(`
@@ -95,6 +97,7 @@ const gameService = {
              ${userId ? `, ugp.Score as "UserScore", ugp.Stars as "UserStars", ugp.IsCompleted as "UserCompleted", ugp.BestTime, ugp.Attempts` : ''}
       FROM GameLevels gl
       ${userId ? `LEFT JOIN UserGameProgress ugp ON gl.Id = ugp.LevelId AND ugp.UserId = $1` : ''}
+      WHERE COALESCE(gl.IsDeleted, false) = false
       ORDER BY gl.LevelNumber ASC
     `, userId ? [userId] : []);
 
@@ -119,12 +122,14 @@ const gameService = {
   // GET every question configured for a level
   // ==================
   async getQuestions(levelId) {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
 
     const levelRes = await pool.query(`
       SELECT gl.*
       FROM GameLevels gl
       WHERE gl.Id = $1
+        AND COALESCE(gl.IsDeleted, false) = false
     `, [levelId]);
     if (levelRes.rows.length === 0) return null;
 

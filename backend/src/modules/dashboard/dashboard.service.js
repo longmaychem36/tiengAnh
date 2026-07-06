@@ -1,6 +1,7 @@
 const { getPool } = require('../../config/database');
 const gamificationService = require('../gamification/gamification.service');
 const studyTimeService = require('../study-time/study-time.service');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 const MONTH_COUNT = 12;
 const LEADERBOARD_LIMIT = 10;
@@ -64,6 +65,7 @@ const dashboardService = {
   async getOverview(userId) {
     const pool = getPool();
     await studyTimeService.ensureTable();
+    await ensureSoftDeleteSchema();
 
     const stats = await gamificationService.getStats(userId);
     const monthBuckets = buildMonthBuckets();
@@ -113,6 +115,7 @@ const dashboardService = {
       INNER JOIN Users u ON u.Id = std.UserId
       LEFT JOIN UserStats us ON us.UserId = u.Id
       WHERE u.Role = 'user'
+        AND COALESCE(u.IsDeleted, false) = false
         AND std.ActivityDate >= date_trunc('month', NOW())::date
       GROUP BY u.Id, u.Username, u.AvatarUrl, us.Level, us.Exp, us.StreakDays
       ORDER BY COALESCE(SUM(std.ActiveSeconds), 0) DESC,
@@ -149,6 +152,7 @@ const dashboardService = {
       FROM Users u
       LEFT JOIN UserStats us ON us.UserId = u.Id
       WHERE u.Role = 'user'
+        AND COALESCE(u.IsDeleted, false) = false
       ORDER BY COALESCE(us.Level, 1) DESC, COALESCE(us.Exp, 0) DESC, COALESCE(us.StreakDays, 0) DESC, u.Username ASC
       LIMIT $1
     `, [LEADERBOARD_LIMIT]);

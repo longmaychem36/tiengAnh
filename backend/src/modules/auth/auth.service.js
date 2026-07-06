@@ -8,6 +8,7 @@ const { generateToken } = require('../../config/jwt');
 const billingService = require('../billing/billing.service');
 const dailyService = require('../daily/daily.service');
 const { ensureOnboardingSchema } = require('../onboarding/onboarding.schema');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 const { sendMail } = require('../../utils/mailer');
 
 let profileSchemaReady = false;
@@ -91,6 +92,7 @@ async function prepareAuthSchemas() {
   await billingService.ensureBillingSchema();
   await ensureProfileSchema();
   await ensureOnboardingSchema();
+  await ensureSoftDeleteSchema();
 }
 
 async function findUserByEmail(email) {
@@ -107,6 +109,7 @@ async function findUserByEmail(email) {
       LEFT JOIN LearningLevels ll ON u.LevelId = ll.Id
       LEFT JOIN UserStats us ON u.Id = us.UserId
       WHERE LOWER(u.Email) = @email
+        AND COALESCE(u.IsDeleted, false) = false
     `);
 
   return result.recordset[0] || null;
@@ -126,6 +129,7 @@ async function findUserById(userId) {
       LEFT JOIN LearningLevels ll ON u.LevelId = ll.Id
       LEFT JOIN UserStats us ON u.Id = us.UserId
       WHERE u.Id = @userId
+        AND COALESCE(u.IsDeleted, false) = false
     `);
 
   return result.recordset[0] || null;

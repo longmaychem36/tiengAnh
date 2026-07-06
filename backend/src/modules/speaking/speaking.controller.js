@@ -13,6 +13,7 @@ const dailyService = require('../daily/daily.service');
 const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
 const { EXP_REWARDS } = require('../../utils/constants');
 const { ensureOnboardingSchema, getUserPlacementLevel } = require('../onboarding/onboarding.schema');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 const WHISPER_SERVER_URL = process.env.WHISPER_SERVER_URL || 'http://127.0.0.1:5001';
 const WHISPER_TIMEOUT_MS = Number.parseInt(process.env.WHISPER_TIMEOUT_MS, 10) || 45000;
@@ -598,11 +599,13 @@ const speakingController = {
     try {
       const { sql, getPool } = require('../../config/database');
       await ensureOnboardingSchema();
+      await ensureSoftDeleteSchema();
       const placementLevel = await getUserPlacementLevel(req.user.id);
       const query = `
         SELECT l.Id, l.Title as Name, l.Description, l.Level, l.Duration, l.OrderIndex, l.IsFoundation, COUNT(q.Id) as QuestionCount
         FROM SpeakingLessons l
         LEFT JOIN SpeakingQuestions q ON q.LessonId = l.Id
+        WHERE COALESCE(l.IsDeleted, false) = false
         GROUP BY l.Id, l.Title, l.Description, l.Level, l.Duration, l.OrderIndex, l.IsFoundation
         ORDER BY l.OrderIndex ASC
       `;
@@ -644,9 +647,14 @@ const speakingController = {
       const { sql, getPool } = require('../../config/database');
       const { id } = req.params;
       await ensureOnboardingSchema();
+      await ensureSoftDeleteSchema();
       
       const pool = getPool();
-      const levelResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`SELECT Id, Title as Name, Level, Duration, IsFoundation FROM SpeakingLessons WHERE Id = @id`);
+      const levelResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`
+        SELECT Id, Title as Name, Level, Duration, IsFoundation
+        FROM SpeakingLessons
+        WHERE Id = @id AND COALESCE(IsDeleted, false) = false
+      `);
       if (levelResult.recordset.length === 0) return badRequest(res, 'Lesson not found');
       if (levelResult.recordset[0].IsFoundation && await getUserPlacementLevel(req.user.id) === 'basic') {
         return badRequest(res, 'Lesson not found');

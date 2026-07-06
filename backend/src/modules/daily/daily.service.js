@@ -2,6 +2,7 @@ const { getPool } = require('../../config/database');
 const gamificationService = require('../gamification/gamification.service');
 const billingService = require('../billing/billing.service');
 const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 const PLAN_VERSION = 2;
 const DAILY_LEARNING_TASK_COUNT = 4;
@@ -116,6 +117,7 @@ async function ensureInsightsSchema() {
   await pool.query('ALTER TABLE DailyTasks DROP COLUMN IF EXISTS Reason');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_daily_tasks_user_date ON DailyTasks (UserId, TaskDate, OrderIndex)');
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_tasks_user_date_order ON DailyTasks (UserId, TaskDate, OrderIndex)');
+  await ensureSoftDeleteSchema();
   await spacedRepetitionService.ensureSchema();
   await spacedRepetitionService.backfillExistingProgress();
   schemaReady = true;
@@ -197,6 +199,7 @@ async function collectDueCandidates(userId, { includePlusSkills }) {
           AND sri.DueDate <= $3
           AND sri.LastReviewedAt IS NOT NULL
           AND COALESCE(sri.IsMastered, false) = false
+          AND COALESCE(${spec.alias}.IsDeleted, false) = false
           ${spec.extraWhere || ''}
         ORDER BY sri.DueDate ASC, sri.EaseFactor ASC, sri.LastAssignedAt ASC NULLS FIRST
         LIMIT 30
@@ -234,6 +237,7 @@ async function findNewSequentialLesson(userId, config, placementLevel) {
     LEFT JOIN SpacedRepetitionItems sri
       ON sri.UserId = $1 AND sri.TargetType = $2 AND sri.TargetId = l.Id::text
       AND sri.LastReviewedAt IS NOT NULL
+    WHERE COALESCE(l.IsDeleted, false) = false
     ORDER BY l.OrderIndex ASC, l.CreatedAt ASC
   `, [userId, config.targetType]);
   const visible = placementLevel === 'basic'
@@ -280,6 +284,7 @@ async function collectNewCandidates(userId, { includePlusSkills }) {
       LEFT JOIN SpacedRepetitionItems sri
         ON sri.UserId = $1 AND sri.TargetType = 'grammar_topic' AND sri.TargetId = gt.Id::text
         AND sri.LastReviewedAt IS NOT NULL
+      WHERE COALESCE(gt.IsDeleted, false) = false
       ORDER BY gt.CategoryId, gt.OrderIndex ASC, gt.Id ASC
     `, [userId]);
     const byCategory = new Map();
@@ -317,6 +322,7 @@ async function collectNewCandidates(userId, { includePlusSkills }) {
       LEFT JOIN SpacedRepetitionItems sri
         ON sri.UserId = $1 AND sri.TargetType = 'game_level' AND sri.TargetId = gl.Id::text
         AND sri.LastReviewedAt IS NOT NULL
+      WHERE COALESCE(gl.IsDeleted, false) = false
       ORDER BY gl.LevelNumber ASC
     `, [userId]);
     for (let index = 0; index < gameResult.rows.length; index += 1) {
@@ -472,15 +478,21 @@ async function buildLearningPlan(userId, includePlusSkills, count, excluded = ne
 
 async function repairLockedGameTasks(client, userId, taskDate) {
   await client.query(`
-    WITH unlocked AS (
-      SELECT gl.Id AS LevelId, gl.LevelNumber, gl.Name,
-             ROW_NUMBER() OVER (ORDER BY gl.LevelNumber ASC) AS rn
+    WITH visible_levels AS (
+      SELECT gl.Id,
+             gl.LevelNumber,
+             gl.Name,
+             LAG(gl.Id) OVER (ORDER BY gl.LevelNumber ASC) AS PreviousVisibleLevelId
       FROM GameLevels gl
-      LEFT JOIN GameLevels prev ON prev.LevelNumber = gl.LevelNumber - 1
-      LEFT JOIN UserGameProgress prevp ON prevp.UserId = $1 AND prevp.LevelId = prev.Id
-      LEFT JOIN UserGameProgress curp ON curp.UserId = $1 AND curp.LevelId = gl.Id
+      WHERE COALESCE(gl.IsDeleted, false) = false
+    ), unlocked AS (
+      SELECT vl.Id AS LevelId, vl.LevelNumber, vl.Name,
+             ROW_NUMBER() OVER (ORDER BY vl.LevelNumber ASC) AS rn
+      FROM visible_levels vl
+      LEFT JOIN UserGameProgress prevp ON prevp.UserId = $1 AND prevp.LevelId = vl.PreviousVisibleLevelId
+      LEFT JOIN UserGameProgress curp ON curp.UserId = $1 AND curp.LevelId = vl.Id
       WHERE COALESCE(curp.IsCompleted, false) = false
-        AND (gl.LevelNumber = 1 OR COALESCE(prevp.IsCompleted, false) = true)
+        AND (vl.PreviousVisibleLevelId IS NULL OR COALESCE(prevp.IsCompleted, false) = true)
     ), next_unlocked AS (
       SELECT LevelId, LevelNumber, Name FROM unlocked WHERE rn = 1
     ), mismatched AS (

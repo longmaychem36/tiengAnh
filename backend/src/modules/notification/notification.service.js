@@ -1,5 +1,6 @@
 const { sql, getPool } = require('../../config/database');
 const { sendMail } = require('../../utils/mailer');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 let schemaReady = false;
 
@@ -66,21 +67,25 @@ async function getUsersByIds(userIds = []) {
   if (ids.length === 0) return [];
 
   const pool = getPool();
+  await ensureSoftDeleteSchema();
   const result = await pool.query(`
     SELECT Id, Username, Email
     FROM Users
     WHERE Id = ANY($1::uuid[])
       AND Role = 'user'
+      AND COALESCE(IsDeleted, false) = false
   `, [ids]);
   return result.rows;
 }
 
 async function getAllLearners() {
   const pool = getPool();
+  await ensureSoftDeleteSchema();
   const result = await pool.query(`
     SELECT Id, Username, Email
     FROM Users
     WHERE Role = 'user'
+      AND COALESCE(IsDeleted, false) = false
   `);
   return result.rows;
 }

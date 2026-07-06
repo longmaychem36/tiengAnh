@@ -4,6 +4,7 @@
 const { sql, getPool } = require('../../config/database');
 const dailyService = require('../daily/daily.service');
 const spacedRepetitionService = require('../spaced-repetition/spaced-repetition.service');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 let progressTableReady = false;
 
@@ -44,10 +45,11 @@ function getNumber(row, fallback, ...keys) {
 
 const grammarService = {
   async getCategories() {
+    await ensureSoftDeleteSchema();
     const pool = getPool();
     const result = await pool.request().query(`
       SELECT gc.Id, gc.Name, gc.NameVI, gc.Icon, gc.OrderIndex,
-             (SELECT COUNT(*) FROM GrammarTopics WHERE CategoryId = gc.Id) as TopicCount
+             (SELECT COUNT(*) FROM GrammarTopics WHERE CategoryId = gc.Id AND COALESCE(IsDeleted, false) = false) as TopicCount
       FROM GrammarCategories gc
       ORDER BY gc.OrderIndex ASC
     `);
@@ -57,6 +59,7 @@ const grammarService = {
   async getTopicsByCategory(categoryId, userId = null) {
     const pool = getPool();
     await ensureProgressTable(pool);
+    await ensureSoftDeleteSchema();
 
     const result = await pool.request()
       .input('categoryId', sql.Int, parseInt(categoryId))
@@ -72,6 +75,7 @@ const grammarService = {
         LEFT JOIN GrammarCategories gc ON gt.CategoryId = gc.Id
         LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = @userId
         WHERE gt.CategoryId = @categoryId
+          AND COALESCE(gt.IsDeleted, false) = false
         ORDER BY gt.OrderIndex ASC
       `);
     const topics = result.recordset;
@@ -91,6 +95,7 @@ const grammarService = {
   async getTopicDetail(topicId, userId = null) {
     const pool = getPool();
     await ensureProgressTable(pool);
+    await ensureSoftDeleteSchema();
     
     const topicResult = await pool.request()
       .input('topicId', sql.UniqueIdentifier, topicId)
@@ -105,6 +110,7 @@ const grammarService = {
         LEFT JOIN GrammarCategories gc ON gt.CategoryId = gc.Id
         LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = @userId
         WHERE gt.Id = @topicId
+          AND COALESCE(gt.IsDeleted, false) = false
       `);
 
     if (topicResult.recordset.length === 0) return null;
@@ -122,6 +128,7 @@ const grammarService = {
           FROM GrammarTopics gt
           LEFT JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = @userId
           WHERE gt.CategoryId = @categoryId AND gt.OrderIndex < @orderIndex
+            AND COALESCE(gt.IsDeleted, false) = false
           ORDER BY gt.OrderIndex DESC
           LIMIT 1
         `);
@@ -145,12 +152,14 @@ const grammarService = {
   async submitQuizAttempt(userId, topicId, answers = [], attemptId = null) {
     const pool = getPool();
     await ensureProgressTable(pool);
+    await ensureSoftDeleteSchema();
     const quizResult = await pool.query(`
       SELECT q.Id, q.Question, q.CorrectAnswer, q.Explanation,
              gt.Title, gt.TitleVI, gt.CategoryId
       FROM GrammarQuiz q
       INNER JOIN GrammarTopics gt ON gt.Id = q.TopicId
       WHERE q.TopicId = $1
+        AND COALESCE(gt.IsDeleted, false) = false
     `, [topicId]);
 
     const quizMap = new Map(quizResult.rows.map((row) => [String(row.id), row]));

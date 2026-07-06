@@ -1,5 +1,6 @@
 const { getPool } = require('../../config/database');
 const { ensureOnboardingSchema, getUserPlacementLevel } = require('../onboarding/onboarding.schema');
+const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
 
 const SKILL_CONFIG = {
   listening: {
@@ -64,12 +65,14 @@ const receptiveService = {
     const config = getConfig(skill);
     const pool = getPool();
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
     const placementLevel = await getUserPlacementLevel(userId);
 
     const result = await pool.query(`
       SELECT l.*, COUNT(q.Id) AS question_count
       FROM ${config.lessonTable} l
       LEFT JOIN ${config.questionTable} q ON q.LessonId = l.Id
+      WHERE COALESCE(l.IsDeleted, false) = false
       GROUP BY l.Id
       ORDER BY l.OrderIndex ASC, l.CreatedAt ASC
     `);
@@ -113,11 +116,12 @@ const receptiveService = {
     const config = getConfig(skill);
     const pool = getPool();
     await ensureOnboardingSchema();
+    await ensureSoftDeleteSchema();
 
     const lessonResult = await pool.query(`
       SELECT *
       FROM ${config.lessonTable}
-      WHERE Id = $1
+      WHERE Id = $1 AND COALESCE(IsDeleted, false) = false
     `, [lessonId]);
 
     if (lessonResult.rows.length === 0) return null;

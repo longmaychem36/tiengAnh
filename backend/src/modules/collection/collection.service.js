@@ -124,7 +124,6 @@ const collectionService = {
     if (!collection) throw createHttpError('Collection not found', 404);
     if (getIdValue(collection, 'UserId', 'userid') !== String(userId)) throw createHttpError('Unauthorized to delete this collection', 403);
 
-    // Due to ON DELETE CASCADE on UserCollectionWords, words will be automatically deleted
     return await collectionRepo.delete(collectionId);
   },
 
