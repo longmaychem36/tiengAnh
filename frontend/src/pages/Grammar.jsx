@@ -10,7 +10,7 @@ import { grammarApi } from '../api/grammarApi';
 import Loading from '../components/common/Loading';
 import { confirmUnsavedProgressExit } from '../utils/confirmExit';
 
-const GRAMMAR_HTML_TAGS = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'h2', 'h3', 'h4', 'blockquote'];
+const GRAMMAR_HTML_TAGS = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'h2', 'h3', 'h4', 'blockquote', 'pre', 'code'];
 const asArray = (value) => (Array.isArray(value) ? value : []);
 const asText = (value, fallback = '') => (value == null ? fallback : String(value));
 const pickValue = (item, ...keys) => {

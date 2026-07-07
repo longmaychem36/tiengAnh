@@ -10,6 +10,7 @@ const adminContentService = require('./admin.content.service');
 const supportController = require('../support/support.controller');
 const { success, badRequest } = require('../../utils/responseHelper');
 const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
+const { uploadGrammarScanPages } = require('../../middlewares/upload');
 
 // All admin routes require at least admin role
 router.use(authMiddleware);
@@ -357,6 +358,17 @@ router.delete('/grammar/topics/:id', requireRole('admin'), async (req, res, next
   try {
     await adminContentService.deleteGrammarTopic(req.params.id);
     return success(res, null, 'Topic deleted');
+  } catch (err) { next(err); }
+});
+
+router.post('/grammar/topics/:id/scan', requireRole('admin'), uploadGrammarScanPages, async (req, res, next) => {
+  try {
+    const data = await adminContentService.scanGrammarTopicContent(
+      req.params.id,
+      req.files || [],
+      req.body?.selectedPages
+    );
+    return success(res, data, 'Đã scan nội dung ngữ pháp');
   } catch (err) { next(err); }
 });
 

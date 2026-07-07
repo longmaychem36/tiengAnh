@@ -49,4 +49,24 @@ const uploadAudio = multer({
   limits: { fileSize: parseInt(process.env.MAX_AUDIO_SIZE) || 10 * 1024 * 1024 }
 }).single('audio');
 
-module.exports = { uploadImage, uploadAudio };
+const scanImageFilter = (req, file, cb) => {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+  if (allowed.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    const error = new Error(`File type ${file.mimetype} is not allowed for grammar scan.`);
+    error.statusCode = 400;
+    cb(error, false);
+  }
+};
+
+const uploadGrammarScanPages = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: scanImageFilter,
+  limits: {
+    fileSize: parseInt(process.env.MAX_GRAMMAR_SCAN_PAGE_SIZE, 10) || 10 * 1024 * 1024,
+    files: parseInt(process.env.MAX_GRAMMAR_SCAN_PAGES, 10) || 8
+  }
+}).array('pages', parseInt(process.env.MAX_GRAMMAR_SCAN_PAGES, 10) || 8);
+
+module.exports = { uploadImage, uploadAudio, uploadGrammarScanPages };

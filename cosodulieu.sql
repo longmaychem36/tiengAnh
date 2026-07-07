@@ -250,6 +250,8 @@ CREATE TABLE public.gamelevels (
     passscore integer DEFAULT 70,
     islocked boolean DEFAULT false,
     createdat timestamp without time zone DEFAULT now(),
+    isdeleted boolean DEFAULT false NOT NULL,
+    deletedat timestamp with time zone,
     CONSTRAINT ck_gamelevels_difficulty CHECK (((difficulty)::text = ANY ((ARRAY['easy'::character varying, 'medium'::character varying, 'hard'::character varying])::text[]))),
     CONSTRAINT ck_gamelevels_passscore CHECK (((passscore >= 0) AND (passscore <= 100))),
     CONSTRAINT ck_gamelevels_timelimit CHECK ((timelimit > 0))
@@ -265,7 +267,9 @@ CREATE TABLE public.grammarcategories (
     name character varying(100) NOT NULL,
     namevi character varying(100),
     icon character varying(10) DEFAULT '📘'::character varying,
-    orderindex integer DEFAULT 0
+    orderindex integer DEFAULT 0,
+    isdeleted boolean DEFAULT false NOT NULL,
+    deletedat timestamp with time zone
 );
 
 
@@ -331,7 +335,9 @@ CREATE TABLE public.grammartopics (
     title character varying(200) NOT NULL,
     titlevi character varying(200),
     content text,
-    orderindex integer DEFAULT 0
+    orderindex integer DEFAULT 0,
+    isdeleted boolean DEFAULT false NOT NULL,
+    deletedat timestamp with time zone
 );
 
 
@@ -384,7 +390,9 @@ CREATE TABLE public.listeninglessons (
     orderindex integer DEFAULT 0,
     createdat timestamp with time zone DEFAULT now(),
     updatedat timestamp with time zone DEFAULT now(),
-    isfoundation boolean DEFAULT false
+    isfoundation boolean DEFAULT false,
+    isdeleted boolean DEFAULT false NOT NULL,
+    deletedat timestamp with time zone
 );
 
 
@@ -588,7 +596,9 @@ CREATE TABLE public.readinglessons (
     orderindex integer DEFAULT 0,
     createdat timestamp with time zone DEFAULT now(),
     updatedat timestamp with time zone DEFAULT now(),
-    isfoundation boolean DEFAULT false
+    isfoundation boolean DEFAULT false,
+    isdeleted boolean DEFAULT false NOT NULL,
+    deletedat timestamp with time zone
 );
 
 
@@ -705,9 +715,13 @@ CREATE TABLE public.speakinglessons (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     title character varying(255),
     description text,
+    level character varying(20) DEFAULT ''::character varying,
+    duration character varying(50) DEFAULT ''::character varying,
     orderindex integer DEFAULT 0,
     createdat timestamp without time zone DEFAULT now(),
-    isfoundation boolean DEFAULT false
+    isfoundation boolean DEFAULT false,
+    isdeleted boolean DEFAULT false NOT NULL,
+    deletedat timestamp with time zone
 );
 
 
@@ -812,7 +826,9 @@ CREATE TABLE public.usercollections (
     submittedat timestamp with time zone,
     reviewedat timestamp with time zone,
     reviewedby uuid,
-    updatedat timestamp with time zone DEFAULT now() NOT NULL
+    updatedat timestamp with time zone DEFAULT now() NOT NULL,
+    isdeleted boolean DEFAULT false NOT NULL,
+    deletedat timestamp with time zone
 );
 
 
@@ -868,6 +884,8 @@ CREATE TABLE public.users (
     placementlevel character varying(20),
     placementsource character varying(30),
     placementcompletedat timestamp with time zone,
+    isdeleted boolean DEFAULT false NOT NULL,
+    deletedat timestamp with time zone,
     CONSTRAINT users_placementlevel_check CHECK (((placementlevel IS NULL) OR ((placementlevel)::text = ANY ((ARRAY['new'::character varying, 'basic'::character varying])::text[])))),
     CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'user'::character varying])::text[])))
 );
@@ -907,11 +925,15 @@ CREATE TABLE public.writinglessons (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     title character varying(255),
     description text,
+    level character varying(20) DEFAULT ''::character varying,
+    duration character varying(50) DEFAULT ''::character varying,
     orderindex integer,
     createdat timestamp without time zone DEFAULT now(),
     passageen text,
     passagevi text,
-    isfoundation boolean DEFAULT false
+    isfoundation boolean DEFAULT false,
+    isdeleted boolean DEFAULT false NOT NULL,
+    deletedat timestamp with time zone
 );
 
 
@@ -1007,12 +1029,6 @@ COPY public.grammarcategories (id, name, namevi, icon, orderindex) FROM stdin;
 --
 
 COPY public.grammarprogress (userid, topicid, bestscore, lastscore, attempts, status, updatedat) FROM stdin;
-00000000-0000-4000-8000-000000000101	d773bd1b-24cd-4d51-9fad-bd84fa4cb41a	76	76	1	completed	2026-07-01 19:00:00
-00000000-0000-4000-8000-000000000102	d773bd1b-24cd-4d51-9fad-bd84fa4cb41a	92	92	2	completed	2026-07-01 19:05:00
-00000000-0000-4000-8000-000000000102	e088946a-b0cf-494c-9746-85e1420a95c1	68	68	1	in_progress	2026-07-01 19:10:00
-00000000-0000-4000-8000-000000000103	d773bd1b-24cd-4d51-9fad-bd84fa4cb41a	100	100	1	completed	2026-07-01 19:15:00
-00000000-0000-4000-8000-000000000103	e088946a-b0cf-494c-9746-85e1420a95c1	94	94	2	completed	2026-07-01 19:20:00
-00000000-0000-4000-8000-000000000103	90ad11e3-ee89-49c2-a421-0ef502b8744a	72	72	1	in_progress	2026-07-01 19:25:00
 \.
 
 
@@ -1354,11 +1370,6 @@ bd620079-7933-41f4-a825-bbae50ab23c7	A Morning Routine	Nghe hội thoại ngắn
 --
 
 COPY public.listeningprogress (userid, lessonid, status, score, updatedat) FROM stdin;
-00000000-0000-4000-8000-000000000101	3c3af2dc-5680-4906-a850-58560747cb9f	in_progress	65	2026-07-01 20:00:00+07
-00000000-0000-4000-8000-000000000102	3c3af2dc-5680-4906-a850-58560747cb9f	completed	86	2026-07-01 20:05:00+07
-00000000-0000-4000-8000-000000000102	eb79a03f-9018-410a-937a-6932047adb7d	in_progress	70	2026-07-01 20:10:00+07
-00000000-0000-4000-8000-000000000103	3c3af2dc-5680-4906-a850-58560747cb9f	completed	95	2026-07-01 20:15:00+07
-00000000-0000-4000-8000-000000000103	eb79a03f-9018-410a-937a-6932047adb7d	completed	90	2026-07-01 20:20:00+07
 \.
 
 
@@ -1816,11 +1827,6 @@ d3b05528-184c-41f1-9ef7-38f0add353ff	5c39d961-4038-4326-8204-3790aa5689f2	You ca
 --
 
 COPY public.readingprogress (userid, lessonid, status, score, updatedat) FROM stdin;
-00000000-0000-4000-8000-000000000101	671cda22-546d-4aee-a195-ec5068c0fc48	in_progress	65	2026-07-01 20:00:00+07
-00000000-0000-4000-8000-000000000102	671cda22-546d-4aee-a195-ec5068c0fc48	completed	86	2026-07-01 20:05:00+07
-00000000-0000-4000-8000-000000000102	1b1e767c-01e8-470c-a9f3-124b116cfe78	in_progress	70	2026-07-01 20:10:00+07
-00000000-0000-4000-8000-000000000103	671cda22-546d-4aee-a195-ec5068c0fc48	completed	95	2026-07-01 20:15:00+07
-00000000-0000-4000-8000-000000000103	1b1e767c-01e8-470c-a9f3-124b116cfe78	completed	90	2026-07-01 20:20:00+07
 \.
 
 
@@ -1942,11 +1948,6 @@ f9f85101-9879-42e0-be0f-f51d900291f8	Thông tin cá nhân	Tập trả lời tên
 --
 
 COPY public.speakingprogress (userid, lessonid, status, score, updatedat) FROM stdin;
-00000000-0000-4000-8000-000000000101	f7c7bb21-bfad-4d5f-9057-aa493a6a2116	in_progress	65	2026-07-01 20:00:00+07
-00000000-0000-4000-8000-000000000102	f7c7bb21-bfad-4d5f-9057-aa493a6a2116	completed	86	2026-07-01 20:05:00+07
-00000000-0000-4000-8000-000000000102	d3c02bda-d397-43f2-8b34-305067ac0b6d	in_progress	70	2026-07-01 20:10:00+07
-00000000-0000-4000-8000-000000000103	f7c7bb21-bfad-4d5f-9057-aa493a6a2116	completed	95	2026-07-01 20:15:00+07
-00000000-0000-4000-8000-000000000103	d3c02bda-d397-43f2-8b34-305067ac0b6d	completed	90	2026-07-01 20:20:00+07
 \.
 
 
@@ -2004,10 +2005,6 @@ cb864b93-21e3-4d41-8a12-03f09adc0565	b9dca3c1-75ad-426c-9b3e-76db3df5b9a2	How is
 --
 
 COPY public.studytimedaily (userid, activitydate, activeseconds, updatedat) FROM stdin;
-00000000-0000-4000-8000-000000000101	2026-07-01	1260	2026-07-01 21:50:00
-00000000-0000-4000-8000-000000000101	2026-07-02	840	2026-07-02 09:30:00
-00000000-0000-4000-8000-000000000102	2026-07-01	2280	2026-07-01 21:55:00
-00000000-0000-4000-8000-000000000103	2026-07-01	3180	2026-07-01 22:00:00
 \.
 
 
@@ -2048,10 +2045,6 @@ COPY public.usercollectionwords (id, collectionid, customword, custommeaning, cu
 --
 
 COPY public.usergameprogress (id, userid, levelid, score, stars, iscompleted, besttime, attempts, completedat) FROM stdin;
-10000000-0000-4000-8000-000000000101	00000000-0000-4000-8000-000000000101	146f267b-a919-48cb-bcb8-bd2b72042a41	72	2	t	54	2	2026-07-01 18:00:00
-10000000-0000-4000-8000-000000000102	00000000-0000-4000-8000-000000000102	146f267b-a919-48cb-bcb8-bd2b72042a41	91	3	t	39	2	2026-07-01 18:05:00
-10000000-0000-4000-8000-000000000103	00000000-0000-4000-8000-000000000103	146f267b-a919-48cb-bcb8-bd2b72042a41	100	3	t	31	1	2026-07-01 18:10:00
-10000000-0000-4000-8000-000000000104	00000000-0000-4000-8000-000000000103	2ef484dc-eba4-4c72-bb6d-93e22387ea22	96	3	t	34	1	2026-07-01 18:15:00
 \.
 
 
@@ -2061,7 +2054,6 @@ COPY public.usergameprogress (id, userid, levelid, score, stars, iscompleted, be
 
 COPY public.users (id, username, email, passwordhash, role, levelid, isactive, createdat, plan, plusexpiresat, avatarurl, onboardingcompleted, placementlevel, placementsource, placementcompletedat) FROM stdin;
 00000000-0000-4000-8000-000000000001	admin_primary	admin.primary@system.com	$2a$10$ZHD.AVau1zRXJEdxx9yjyevkrSuCEbX4sZIcsnwbLv3E/nyyLm1Lm	admin	\N	t	2026-07-01 08:00:00+07	free	\N	\N	t	\N	\N	\N
-00000000-0000-4000-8000-000000000002	admin	admin@system.com	$2a$10$ZHD.AVau1zRXJEdxx9yjyevkrSuCEbX4sZIcsnwbLv3E/nyyLm1Lm	admin	\N	t	2026-07-01 08:05:00+07	free	\N	\N	t	\N	\N	\N
 00000000-0000-4000-8000-000000000101	hocvien_basic	hocvien.basic@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	1	t	2026-07-01 09:00:00+07	free	\N	\N	t	new	seed	2026-07-01 09:00:00+07
 00000000-0000-4000-8000-000000000102	hocvien_intermediate	hocvien.intermediate@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	2	t	2026-07-01 09:05:00+07	free	\N	\N	t	basic	seed	2026-07-01 09:05:00+07
 00000000-0000-4000-8000-000000000103	hocvien_advanced	hocvien.advanced@example.com	$2a$10$NjUxCvtktULUTQI1SHpSU.nsft8BmFidioixYtLAOakB1djPdMa8u	user	3	t	2026-07-01 09:10:00+07	free	\N	\N	t	basic	seed	2026-07-01 09:10:00+07
@@ -2074,10 +2066,9 @@ COPY public.users (id, username, email, passwordhash, role, levelid, isactive, c
 
 COPY public.userstats (userid, exp, level, streakdays, lastlogin) FROM stdin;
 00000000-0000-4000-8000-000000000001	0	1	0	2026-07-02 08:00:00
-00000000-0000-4000-8000-000000000002	0	1	0	2026-07-02 08:05:00
-00000000-0000-4000-8000-000000000101	180	2	2	2026-07-02 09:00:00
-00000000-0000-4000-8000-000000000102	520	4	5	2026-07-02 09:05:00
-00000000-0000-4000-8000-000000000103	960	7	9	2026-07-02 09:10:00
+00000000-0000-4000-8000-000000000101	0	1	0	2026-07-02 09:00:00
+00000000-0000-4000-8000-000000000102	0	1	0	2026-07-02 09:05:00
+00000000-0000-4000-8000-000000000103	0	1	0	2026-07-02 09:10:00
 \.
 
 
@@ -2146,11 +2137,6 @@ a1775087-7de6-46f1-89db-012fac05246b	Kỷ niệm ở trường	Viết đoạn v�
 --
 
 COPY public.writingprogress (userid, lessonid, status, score, updatedat) FROM stdin;
-00000000-0000-4000-8000-000000000101	689823c2-883f-4eec-9dce-f93820865502	in_progress	65	2026-07-01 20:00:00+07
-00000000-0000-4000-8000-000000000102	689823c2-883f-4eec-9dce-f93820865502	completed	86	2026-07-01 20:05:00+07
-00000000-0000-4000-8000-000000000102	69ea9e12-4230-45a7-ab24-53bf55c1ce99	in_progress	70	2026-07-01 20:10:00+07
-00000000-0000-4000-8000-000000000103	689823c2-883f-4eec-9dce-f93820865502	completed	95	2026-07-01 20:15:00+07
-00000000-0000-4000-8000-000000000103	69ea9e12-4230-45a7-ab24-53bf55c1ce99	completed	90	2026-07-01 20:20:00+07
 \.
 
 
@@ -3167,7 +3153,6 @@ ALTER TABLE ONLY public.writingvocab
 --
 -- Seed accounts:
 --   admin.primary@system.com / Admin@123
---   admin@system.com / Admin@123
 --   hocvien.basic@example.com / User@123
 --   hocvien.intermediate@example.com / User@123
 --   hocvien.advanced@example.com / User@123

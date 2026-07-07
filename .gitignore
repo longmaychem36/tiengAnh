@@ -12,8 +12,12 @@ backend/vosk-model-*/
 
 # Microsoft Word temporary and backup files
 baocao/~$*.docx
+baocao/~$*.pptx
 baocao/~WRL*.tmp
 baocao/*backup*.docx
+
+# Local large grammar source PDF; keep it on disk but do not push.
+baocao/*Mai Lan*.pdf
 
 # Local database backups and exported credentials
 backend/backups/

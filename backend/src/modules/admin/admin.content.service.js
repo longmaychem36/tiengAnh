@@ -1,6 +1,11 @@
+const axios = require('axios');
 const { getPool, sql } = require('../../config/database');
 const { ensureOnboardingSchema } = require('../onboarding/onboarding.schema');
 const { ensureSoftDeleteSchema } = require('../soft-delete/soft-delete.schema');
+
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const GRAMMAR_SCAN_MODEL = process.env.GRAMMAR_SCAN_OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const MAX_GRAMMAR_SCAN_PAGES = parseInt(process.env.MAX_GRAMMAR_SCAN_PAGES, 10) || 8;
 
 const RECEPTIVE_CONFIG = {
   listening: {
@@ -48,6 +53,109 @@ function createAdminError(message, statusCode = 400) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
+}
+
+function parseJsonArray(value, fallback = []) {
+  if (Array.isArray(value)) return value;
+  if (value == null || value === '') return fallback;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeGrammarScanHtml(value) {
+  let html = String(value || '').trim();
+  html = html.replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  html = html.replace(/<!doctype[^>]*>/gi, '');
+  html = html.replace(/<\/?(?:html|head|body)[^>]*>/gi, '');
+  html = html.replace(/<(script|style|iframe|object|embed)[\s\S]*?<\/\1>/gi, '');
+  html = html.replace(/<(script|style|iframe|object|embed)\b[^>]*\/?>/gi, '');
+
+  const allowed = new Set(['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'h2', 'h3', 'h4', 'blockquote', 'pre', 'code']);
+  html = html.replace(/<\/?([a-zA-Z0-9]+)([^>]*)>/g, (match, tagName, attrs = '') => {
+    const tag = String(tagName || '').toLowerCase();
+    if (!allowed.has(tag)) return '';
+    if (match.startsWith('</')) return `</${tag}>`;
+    if (tag === 'br') return '<br>';
+    if (tag === 'td' || tag === 'th') {
+      const safeAttrs = [];
+      for (const attr of ['colspan', 'rowspan']) {
+        const found = attrs.match(new RegExp(`${attr}\\s*=\\s*["']?(\\d{1,2})["']?`, 'i'));
+        if (found) safeAttrs.push(`${attr}="${found[1]}"`);
+      }
+      return `<${tag}${safeAttrs.length ? ` ${safeAttrs.join(' ')}` : ''}>`;
+    }
+    return `<${tag}>`;
+  });
+  html = html.replace(/\s{2,}/g, ' ').replace(/>\s+</g, '><').trim();
+
+  const textOnly = html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+  if (textOnly.length < 20) {
+    throw createAdminError('OpenAI không trả về đủ nội dung ngữ pháp để lưu.', 502);
+  }
+  return html;
+}
+
+function extractOpenAIText(responseData) {
+  if (typeof responseData?.output_text === 'string') return responseData.output_text;
+  const chunks = [];
+  for (const item of responseData?.output || []) {
+    for (const content of item?.content || []) {
+      if (typeof content?.text === 'string') chunks.push(content.text);
+      if (typeof content?.output_text === 'string') chunks.push(content.output_text);
+    }
+  }
+  return chunks.join('\n').trim();
+}
+
+function normalizeSelectedPages(value, fileCount) {
+  const selected = parseJsonArray(value, []);
+  const normalized = [];
+  for (let index = 0; index < fileCount; index += 1) {
+    const page = selected[index] || {};
+    normalized.push({
+      pageNumber: Number(page.pageNumber || page.page || index + 1),
+      width: Number(page.width || 0),
+      height: Number(page.height || 0)
+    });
+  }
+  return normalized;
+}
+
+async function assertGrammarTopicExists(pool, topicId) {
+  const result = await pool.query(`
+    SELECT gt.Id
+    FROM GrammarTopics gt
+    LEFT JOIN GrammarCategories gc ON gc.Id = gt.CategoryId
+    WHERE gt.Id = $1
+      AND COALESCE(gt.IsDeleted, false) = false
+      AND COALESCE(gc.IsDeleted, false) = false
+  `, [topicId]);
+  if (!result.rows[0]) throw createAdminError('Không tìm thấy chủ đề ngữ pháp.', 404);
+}
+
+function buildGrammarScanPrompt(topic = {}) {
+  const title = topic.titlevi || topic.title || 'Grammar topic';
+  return [
+    `CRITICAL: Copy every boxed formula, formula table, tense structure, and pattern exactly. Do not omit boxed content.`,
+    `CRITICAL: Put boxed formulas/patterns in <pre><code>...</code></pre> when the source is a formula box, and preserve line breaks inside that formula block.`,
+    `CRITICAL: Only boxed formulas/patterns should use <pre><code>. Do not put examples, explanations, or ordinary theory text into boxes.`,
+    `CRITICAL: Put examples as normal <p><strong>Ex:</strong> ...</p>. Do not wrap examples in blockquote, pre, code, table, or formula boxes.`,
+    `CRITICAL: Keep literal numbering such as 1), 2), 3), a), b), c). Do not convert numbered sections into bullets.`,
+    `Allowed tags include: h2, h3, h4, p, ul, ol, li, table, thead, tbody, tr, th, td, strong, b, em, i, u, blockquote, pre, code, br.`,
+    `Giữ nguyên cấu trúc đề mục và số thứ tự như 1), 2), 3), a), b), c). Không gộp, không đổi thành bullet nếu trang gốc đang đánh số.`,
+    `Mọi công thức, mẫu câu, ghi chú hoặc lý thuyết nằm trong khung/hộp/bảng phải được giữ lại. Biểu diễn công thức trong khung bằng <pre><code>...</code></pre> hoặc table, không bỏ qua vì đó là đồ họa.`,
+    `Bạn là biên tập viên nội dung học ngữ pháp tiếng Anh cho học viên Việt Nam.`,
+    `Hãy đọc các ảnh trang được gửi và trích xuất phần lý thuyết thuộc chủ đề: "${title}".`,
+    `Làm sạch OCR, bỏ số trang/header/footer/nội dung ngoài bài học, sửa lỗi xuống dòng, giữ ví dụ quan trọng.`,
+    `Trả về HTML an toàn, sẵn sàng hiển thị trong bài học.`,
+    `Chỉ dùng các thẻ: h2, h3, h4, p, ul, ol, li, table, thead, tbody, tr, th, td, strong, b, em, i, u, blockquote, pre, code, br.`,
+    `Không tạo quiz, không thêm script/style, không bịa nội dung không có trong trang.`,
+    `Nếu các trang không có nội dung ngữ pháp liên quan rõ ràng đến chủ đề này, chỉ trả về đúng chuỗi: [[NO_RELEVANT_CONTENT]].`
+  ].join('\n');
 }
 
 function isAdminCreator(role) {
@@ -928,6 +1036,81 @@ const adminContentService = {
       SET IsDeleted = true, DeletedAt = COALESCE(DeletedAt, NOW())
       WHERE Id = @id
     `);
+  },
+
+  async scanGrammarTopicContent(topicId, files = [], selectedPagesPayload) {
+    if (!Array.isArray(files) || files.length === 0) {
+      throw createAdminError('Vui lòng chọn ít nhất một trang PDF để scan.', 400);
+    }
+    if (files.length > MAX_GRAMMAR_SCAN_PAGES) {
+      throw createAdminError(`Chỉ scan tối đa ${MAX_GRAMMAR_SCAN_PAGES} trang mỗi lần.`, 400);
+    }
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw createAdminError('Chưa cấu hình OPENAI_API_KEY.', 500);
+
+    for (const file of files) {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+        throw createAdminError(`Định dạng ảnh scan không được hỗ trợ: ${file.mimetype}`, 400);
+      }
+    }
+
+    await ensureSoftDeleteSchema();
+    const pool = getPool();
+    const topicResult = await pool.query(`
+      SELECT gt.Id, gt.Title, gt.TitleVI
+      FROM GrammarTopics gt
+      LEFT JOIN GrammarCategories gc ON gc.Id = gt.CategoryId
+      WHERE gt.Id = $1
+        AND COALESCE(gt.IsDeleted, false) = false
+        AND COALESCE(gc.IsDeleted, false) = false
+    `, [topicId]);
+    const topic = topicResult.rows[0];
+    if (!topic) throw createAdminError('Không tìm thấy chủ đề ngữ pháp.', 404);
+
+    const selectedPages = normalizeSelectedPages(selectedPagesPayload, files.length);
+    const content = [{ type: 'input_text', text: buildGrammarScanPrompt(topic) }];
+    files.forEach((file, index) => {
+      content.push({
+        type: 'input_text',
+        text: `Trang PDF đã chọn số ${selectedPages[index]?.pageNumber || index + 1}:`
+      });
+      content.push({
+        type: 'input_image',
+        image_url: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+        detail: 'high'
+      });
+    });
+
+    let response;
+    try {
+      response = await axios.post(`${OPENAI_BASE_URL.replace(/\/$/, '')}/responses`, {
+        model: GRAMMAR_SCAN_MODEL,
+        input: [{ role: 'user', content }],
+        max_output_tokens: 4000
+      }, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 90000
+      });
+    } catch (error) {
+      const status = error.response?.status;
+      const detail = error.response?.data?.error?.message || error.response?.data?.message || error.message;
+      throw createAdminError(`Scan ngữ pháp bằng OpenAI thất bại${status ? ` (${status})` : ''}: ${detail}`, 502);
+    }
+
+    const rawExtract = extractOpenAIText(response.data);
+    if (/\[\[NO_RELEVANT_CONTENT\]\]/i.test(rawExtract)) {
+      throw createAdminError('File scan không có nội dung ngữ pháp liên quan với chủ đề bài học này.', 422);
+    }
+    const scannedContent = normalizeGrammarScanHtml(rawExtract);
+    return {
+      Id: topicId,
+      Content: scannedContent,
+      RawExtract: rawExtract,
+      SelectedPages: selectedPages
+    };
   },
 
   async getGrammarQuizzes(topicId) {

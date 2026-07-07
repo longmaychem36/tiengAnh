@@ -1,15 +1,50 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import axios from 'axios';
 import 'react-quill/dist/quill.snow.css';
-import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiChevronRight, FiChevronDown, FiBookOpen } from 'react-icons/fi';
+import { FiPlus, FiSave, FiX, FiUpload, FiCheck } from 'react-icons/fi';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import toast from 'react-hot-toast';
 import { API_URL } from '../../api/config';
 
 const ReactQuill = lazy(() => import('react-quill'));
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const textValue = (value) => value ?? '';
 const numberValue = (value) => Number.parseInt(value, 10) || 0;
 const GRAMMAR_ICON_OPTIONS = ['📘', '📖', '📝', '🔤', '🧩', '⏰', '⚡', '🎯', '💬', '❓', '✅', '📌', '🧠', '🏆', '🌟', '🔍', '📚', '🗂️'];
+
+const MAX_SCAN_PAGES = 8;
+
+function formatBytes(bytes) {
+  const size = Number(bytes || 0);
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function dataUrlBytes(dataUrl) {
+  const base64 = String(dataUrl || '').split(',')[1] || '';
+  return Math.round((base64.length * 3) / 4);
+}
+
+function parsePageRange(input, totalPages) {
+  const pages = new Set();
+  String(input || '').split(',').forEach((part) => {
+    const token = part.trim();
+    if (!token) return;
+    const match = token.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+    if (!match) return;
+    const start = Number(match[1]);
+    const end = Number(match[2] || match[1]);
+    const from = Math.min(start, end);
+    const to = Math.max(start, end);
+    for (let page = from; page <= to; page += 1) {
+      if (page >= 1 && page <= totalPages) pages.add(page);
+    }
+  });
+  return Array.from(pages).sort((a, b) => a - b);
+}
 
 const AdminGrammar = () => {
   const [categories, setCategories] = useState([]);
@@ -36,6 +71,14 @@ const AdminGrammar = () => {
   const [topicTitleVI, setTopicTitleVI] = useState('');
   const [topicContent, setTopicContent] = useState('');
   const [topicOrder, setTopicOrder] = useState(0);
+  const [pdfDoc, setPdfDoc] = useState(null);
+  const [pdfFileName, setPdfFileName] = useState('');
+  const [pdfObjectUrl, setPdfObjectUrl] = useState('');
+  const [pdfPages, setPdfPages] = useState([]);
+  const [scanPageRange, setScanPageRange] = useState('1');
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
+  const selectedScanPages = new Set(pdfDoc ? parsePageRange(scanPageRange, pdfDoc.numPages) : []);
 
   // Quiz state
   const [quizQ, setQuizQ] = useState('');
@@ -49,6 +92,10 @@ const AdminGrammar = () => {
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  useEffect(() => () => {
+    if (pdfObjectUrl) URL.revokeObjectURL(pdfObjectUrl);
+  }, [pdfObjectUrl]);
 
   const fetchCategories = async () => {
     try {
@@ -82,6 +129,128 @@ const AdminGrammar = () => {
       setQuizzes(res.data.data || []);
     } catch (err) {
       toast.error('Lỗi tải bài tập');
+    }
+  };
+
+  const resetScanState = () => {
+    setPdfDoc(null);
+    setPdfFileName('');
+    if (pdfObjectUrl) URL.revokeObjectURL(pdfObjectUrl);
+    setPdfObjectUrl('');
+    setPdfPages([]);
+    setScanPageRange('1');
+    setPdfLoading(false);
+    setScanLoading(false);
+  };
+
+  const renderPdfPageDataUrl = async (doc, pageNumber, scale = 0.45) => {
+    const page = await doc.getPage(pageNumber);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    await page.render({ canvasContext: context, viewport }).promise;
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+    canvas.width = 0;
+    canvas.height = 0;
+    return { dataUrl, width: Math.round(viewport.width), height: Math.round(viewport.height) };
+  };
+
+  const renderPdfPageBlob = async (doc, pageNumber, scale = 2.4) => {
+    const page = await doc.getPage(pageNumber);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    await page.render({ canvasContext: context, viewport }).promise;
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.94));
+    canvas.width = 0;
+    canvas.height = 0;
+    return { blob, width: Math.round(viewport.width), height: Math.round(viewport.height) };
+  };
+
+  const handlePdfFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      toast.error('Vui lòng chọn file PDF');
+      return;
+    }
+    setPdfLoading(true);
+    setPdfPages([]);
+    setScanPageRange('1');
+    try {
+      if (pdfObjectUrl) URL.revokeObjectURL(pdfObjectUrl);
+      const objectUrl = URL.createObjectURL(file);
+      setPdfObjectUrl(objectUrl);
+      const loadingTask = pdfjsLib.getDocument({ url: objectUrl });
+      const doc = await loadingTask.promise;
+      setPdfDoc(doc);
+      setPdfFileName(file.name);
+      toast.success(`Đã đọc PDF: ${doc.numPages} trang`);
+    } catch {
+      toast.error('Không thể đọc file PDF');
+      setPdfDoc(null);
+      setPdfFileName('');
+    } finally {
+      setPdfLoading(false);
+      event.target.value = '';
+    }
+  };
+
+  const toggleScanPage = (pageNumber) => {
+    if (!pdfDoc) return;
+    const current = parsePageRange(scanPageRange, pdfDoc.numPages);
+    const next = current.includes(pageNumber)
+      ? current.filter(page => page !== pageNumber)
+      : [...current, pageNumber].sort((a, b) => a - b);
+    if (next.length > MAX_SCAN_PAGES) {
+      toast.error(`Chỉ scan tối đa ${MAX_SCAN_PAGES} trang mỗi lần`);
+      return;
+    }
+    setScanPageRange(next.join(','));
+  };
+
+  const handleScanSelectedPages = async () => {
+    if (!editingTopic?.Id) return toast.error('Vui lòng chọn chủ đề để scan');
+    if (!pdfDoc) return toast.error('Vui lòng chọn file PDF');
+    const pageNumbers = parsePageRange(scanPageRange, pdfDoc.numPages);
+    if (pageNumbers.length === 0) return toast.error('Vui lòng chọn ít nhất một trang');
+    if (pageNumbers.length > MAX_SCAN_PAGES) return toast.error(`Chỉ scan tối đa ${MAX_SCAN_PAGES} trang mỗi lần`);
+    setScanLoading(true);
+    try {
+      const formData = new FormData();
+      const selectedPages = [];
+      const previews = [];
+      for (const pageNumber of pageNumbers) {
+        const thumb = await renderPdfPageDataUrl(pdfDoc, pageNumber);
+        previews.push({
+          pageNumber,
+          thumbUrl: thumb.dataUrl,
+          width: thumb.width,
+          height: thumb.height,
+          thumbBytes: dataUrlBytes(thumb.dataUrl)
+        });
+        const rendered = await renderPdfPageBlob(pdfDoc, pageNumber);
+        if (!rendered.blob) throw new Error('Cannot render selected page');
+        formData.append('pages', rendered.blob, `page-${pageNumber}.jpg`);
+        selectedPages.push({ pageNumber, width: rendered.width, height: rendered.height });
+      }
+      setPdfPages(previews);
+      formData.append('selectedPages', JSON.stringify(selectedPages));
+      const res = await axios.post(`${API_URL}/admin/grammar/topics/${editingTopic.Id}/scan`, formData, {
+        headers: authHeaders()
+      });
+      const scannedTopic = res.data.data || {};
+      const nextContent = textValue(scannedTopic.Content ?? scannedTopic.content);
+      setTopicContent(nextContent);
+      toast.success('Đã scan nội dung vào trình soạn. Bấm Lưu để đăng.');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Scan PDF thất bại');
+    } finally {
+      setScanLoading(false);
     }
   };
 
@@ -134,6 +303,7 @@ const AdminGrammar = () => {
 
   const closeTopicForm = () => {
     setShowTopicForm(false); setEditingTopic(null); setTopicTitle(''); setTopicTitleVI(''); setTopicContent(''); setTopicOrder(0);
+    resetScanState();
   };
 
   // Quiz Actions
@@ -324,7 +494,7 @@ const AdminGrammar = () => {
                 <section className="admin-subpanel">
                   <div className="admin-subpanel-head">
                     <h3>Chủ đề trong {cat.Name}</h3>
-                    <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowTopicForm(true)}><FiPlus /> Thêm chủ đề</button>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { resetScanState(); setShowTopicForm(true); }}><FiPlus /> Thêm chủ đề</button>
                   </div>
 
                   {showTopicForm && (
@@ -360,6 +530,66 @@ const AdminGrammar = () => {
                             </Suspense>
                           </div>
                         </span>
+                        {editingTopic && (
+                          <span className="is-wide">
+                            <span>Scan PDF vào trình soạn</span>
+                            <div style={{ display: 'grid', gap: 12, marginTop: 8 }}>
+                              <div style={{ padding: 12, border: '1px solid var(--admin-border)', background: '#fff', borderRadius: 4 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                                  <div>
+                                    <strong>Chọn file PDF và trang cần scan</strong>
+                                    <p style={{ marginTop: 4, color: 'var(--admin-muted)', fontSize: 12 }}>
+                                      {pdfFileName || 'PDF chỉ xử lý trong trình duyệt; backend chỉ nhận ảnh trang đã chọn.'}
+                                    </p>
+                                  </div>
+                                  <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
+                                    <FiUpload /> Chọn PDF
+                                    <input type="file" accept="application/pdf" onChange={handlePdfFileChange} style={{ display: 'none' }} />
+                                  </label>
+                                  {pdfDoc && (
+                                    <label style={{ minWidth: 220, flex: 1 }}>
+                                      <span>Nhập trang cần scan</span>
+                                      <input className="form-input" value={scanPageRange} onChange={e => setScanPageRange(e.target.value)} placeholder="Ví dụ: 12-15,18" />
+                                    </label>
+                                  )}
+                                </div>
+                                <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap', color: 'var(--admin-muted)', fontSize: 12 }}>
+                                  <span>{pdfPages.length} trang</span>
+                                  <span>{selectedScanPages.size} trang đã chọn</span>
+                                  <span>Ước tính thumbnail: {formatBytes(pdfPages.filter(page => selectedScanPages.has(page.pageNumber)).reduce((sum, page) => sum + page.thumbBytes, 0))}</span>
+                                  <span>Tối đa {MAX_SCAN_PAGES} trang/lần</span>
+                                </div>
+                              </div>
+                              {pdfLoading && <div className="admin-empty-inline">Đang tạo ảnh xem trước PDF...</div>}
+                              {pdfPages.length > 0 && (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
+                                  {pdfPages.map(page => {
+                                    const selected = selectedScanPages.has(page.pageNumber);
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={page.pageNumber}
+                                        onClick={() => toggleScanPage(page.pageNumber)}
+                                        style={{ border: `2px solid ${selected ? 'var(--admin-primary)' : 'var(--admin-border)'}`, background: selected ? 'rgba(79,70,229,0.06)' : '#fff', borderRadius: 4, padding: 8, textAlign: 'left', cursor: 'pointer' }}
+                                      >
+                                        <img src={page.thumbUrl} alt={`Trang ${page.pageNumber}`} style={{ width: '100%', height: 150, objectFit: 'contain', background: '#f8fafc' }} />
+                                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, fontSize: 12, fontWeight: 700 }}>
+                                          Trang {page.pageNumber}
+                                          {selected && <FiCheck />}
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              <div className="admin-form-actions" style={{ justifyContent: 'flex-start' }}>
+                                <button type="button" className="btn btn-primary" onClick={handleScanSelectedPages} disabled={scanLoading || selectedScanPages.size === 0}>
+                                  <FiUpload /> {scanLoading ? 'Đang scan...' : 'Scan vào trình soạn'}
+                                </button>
+                              </div>
+                            </div>
+                          </span>
+                        )}
                         <div className="admin-form-actions">
                           <button type="button" className="btn btn-primary" onClick={handleSaveTopic}><FiSave /> Lưu</button>
                           <button type="button" className="btn btn-ghost" onClick={closeTopicForm}><FiX /> Hủy</button>
@@ -390,7 +620,7 @@ const AdminGrammar = () => {
                           </button>
                           <div className="admin-inline-actions">
                             <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
-                              setEditingTopic(topic); setTopicTitle(textValue(topic.Title)); setTopicTitleVI(textValue(topic.TitleVI)); setTopicContent(textValue(topic.Content)); setTopicOrder(numberValue(topic.OrderIndex)); setShowTopicForm(true);
+                              resetScanState(); setEditingTopic(topic); setTopicTitle(textValue(topic.Title)); setTopicTitleVI(textValue(topic.TitleVI)); setTopicContent(textValue(topic.Content)); setTopicOrder(numberValue(topic.OrderIndex)); setShowTopicForm(true);
                             }}>Sửa</button>
                             <button type="button" className="btn btn-ghost btn-xs text-error" onClick={async () => {
                               if (window.confirm('Xóa chủ đề này?')) {

@@ -275,6 +275,82 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.7;
 }
 
+.grammar-content ol {
+  list-style: decimal;
+  padding-left: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.grammar-content ol li {
+  margin-bottom: var(--space-2);
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+}
+
+.grammar-content blockquote {
+  margin: var(--space-3) 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  white-space: normal;
+}
+
+.grammar-content blockquote::before {
+  content: "Ví dụ";
+  display: inline-block;
+  margin-bottom: var(--space-2);
+  color: var(--color-success);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.grammar-content blockquote::before {
+  content: none;
+  display: none;
+}
+
+.grammar-content pre {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-primary-light);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: rgba(14,165,233,0.08);
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+.grammar-content pre::before {
+  content: "Công thức";
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.grammar-content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95em;
+}
+
+.grammar-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-4) 0;
+}
+
+.grammar-content th,
+.grammar-content td {
+  border: 1px solid var(--color-border);
+  padding: var(--space-2);
+  vertical-align: top;
+}
+
 /* ==================
    Critical app shell styles
    Kept here so the UI stays structured even if the larger App.css HMR module is stale.
