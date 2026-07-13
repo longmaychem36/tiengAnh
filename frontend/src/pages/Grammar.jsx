@@ -28,6 +28,7 @@ const getErrorMessage = (err, fallback) => asText(err?.message || err?.error || 
 const getId = (item) => item?.Id ?? item?.id;
 const getCategoryId = (item) => item?.CategoryId ?? item?.Categoryid ?? item?.categoryId ?? item?.category_id ?? item?.categoryid;
 const getTopicCount = (category) => Number(category?.TopicCount ?? category?.Topiccount ?? category?.topicCount ?? category?.topic_count ?? category?.topiccount ?? 0);
+const getCompletedTopicCount = (category) => Number(category?.CompletedTopicCount ?? category?.Completedtopiccount ?? category?.completedTopicCount ?? category?.completed_topic_count ?? category?.completedtopiccount ?? 0);
 const getQuizCount = (topic) => Number(topic?.QuizCount ?? topic?.Quizcount ?? topic?.quizCount ?? topic?.quiz_count ?? topic?.quizcount ?? 0);
 const getCorrectAnswer = (quiz) => quiz?.CorrectAnswer ?? quiz?.Correctanswer ?? quiz?.correctAnswer ?? quiz?.correct_answer ?? quiz?.correctanswer;
 const getQuizOption = (quiz, key) => getField(quiz, '', `Option${key}`, `Option${key.toLowerCase()}`, `option${key}`, `option${key.toLowerCase()}`, `option_${key.toLowerCase()}`);
@@ -144,9 +145,13 @@ function Grammar() {
         attemptId: crypto.randomUUID()
       });
       if (activeCategoryId) {
-        const res = await grammarApi.getTopicsByCategory(activeCategoryId);
-        const nextTopics = asArray(getData(res, []));
+        const [topicsRes, categoriesRes] = await Promise.all([
+          grammarApi.getTopicsByCategory(activeCategoryId),
+          grammarApi.getCategories()
+        ]);
+        const nextTopics = asArray(getData(topicsRes, []));
         setTopics(nextTopics);
+        setCategories(asArray(getData(categoriesRes, [])));
         return nextTopics;
       }
     } catch {
@@ -439,16 +444,23 @@ function Grammar() {
       </div>
 
       <div className="grid grid-3">
-        {categories.map((cat, i) => (
-          <motion.div key={getId(cat) || i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <div className="card" onClick={() => getId(cat) && loadTopics(getId(cat))} style={{ cursor: getId(cat) ? 'pointer' : 'default', textAlign: 'center', transition: 'transform 0.2s, box-shadow 0.2s' }}>
-              <div style={{ fontSize: 40, marginBottom: 'var(--space-3)' }}>{getField(cat, '📘', 'Icon', 'icon')}</div>
-              <h3 style={{ fontWeight: 700, fontSize: 'var(--font-size-lg)', marginBottom: 4 }}>{getField(cat, 'Grammar', 'Name', 'name')}</h3>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-3)' }}>{getField(cat, '', 'NameVI', 'nameVI', 'namevi', 'name_vi')}</p>
-              <span className="badge badge-secondary">{getTopicCount(cat)} chủ đề</span>
-            </div>
-          </motion.div>
-        ))}
+        {categories.map((cat, i) => {
+          const topicCount = getTopicCount(cat);
+          const completedCount = Math.min(getCompletedTopicCount(cat), topicCount);
+          const isCompleted = topicCount > 0 && completedCount === topicCount;
+          return (
+            <motion.div key={getId(cat) || i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              <div className="card" onClick={() => getId(cat) && loadTopics(getId(cat))} style={{ cursor: getId(cat) ? 'pointer' : 'default', textAlign: 'center', transition: 'transform 0.2s, box-shadow 0.2s' }}>
+                <div style={{ fontSize: 40, marginBottom: 'var(--space-3)' }}>{getField(cat, '📘', 'Icon', 'icon')}</div>
+                <h3 style={{ fontWeight: 700, fontSize: 'var(--font-size-lg)', marginBottom: 4 }}>{getField(cat, 'Grammar', 'Name', 'name')}</h3>
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-3)' }}>{getField(cat, '', 'NameVI', 'nameVI', 'namevi', 'name_vi')}</p>
+                <span className="badge badge-secondary">
+                  {isCompleted ? <><FiCheck /> Hoàn thành</> : `${completedCount}/${topicCount}`}
+                </span>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
       {categories.length === 0 && (
         <div className="card" style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>

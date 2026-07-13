@@ -7,7 +7,7 @@ const { success, notFound, badRequest } = require('../../utils/responseHelper');
 const grammarController = {
   async getCategories(req, res, next) {
     try {
-      const categories = await grammarService.getCategories();
+      const categories = await grammarService.getCategories(req.user?.id || null);
       return success(res, categories);
     } catch (err) { next(err); }
   },

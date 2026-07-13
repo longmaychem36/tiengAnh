@@ -44,12 +44,22 @@ function getNumber(row, fallback, ...keys) {
 }
 
 const grammarService = {
-  async getCategories() {
+  async getCategories(userId = null) {
     await ensureSoftDeleteSchema();
     const pool = getPool();
-    const result = await pool.request().query(`
+    await ensureProgressTable(pool);
+    const result = await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .query(`
       SELECT gc.Id, gc.Name, gc.NameVI, gc.Icon, gc.OrderIndex,
-             (SELECT COUNT(*) FROM GrammarTopics WHERE CategoryId = gc.Id AND COALESCE(IsDeleted, false) = false) as TopicCount
+             (SELECT COUNT(*) FROM GrammarTopics
+              WHERE CategoryId = gc.Id AND COALESCE(IsDeleted, false) = false) as TopicCount,
+             (SELECT COUNT(*)
+              FROM GrammarTopics gt
+              INNER JOIN GrammarProgress gp ON gp.TopicId = gt.Id AND gp.UserId = @userId
+              WHERE gt.CategoryId = gc.Id
+                AND COALESCE(gt.IsDeleted, false) = false
+                AND COALESCE(gp.BestScore, 0) >= 80) as CompletedTopicCount
       FROM GrammarCategories gc
       WHERE COALESCE(gc.IsDeleted, false) = false
       ORDER BY gc.OrderIndex ASC
